@@ -1,17 +1,17 @@
 package yapscan
 
 import (
-	log "github.com/sirupsen/logrus"
+	"github.com/sirupsen/logrus"
 
 	"github.com/urfave/cli/v2"
 )
 
 func initAppAction(c *cli.Context) error {
-	lvl, err := log.ParseLevel(c.String("log-level"))
+	lvl, err := logrus.ParseLevel(c.String("log-level"))
 	if err != nil {
 		return err
 	}
-	log.SetLevel(lvl)
+	logrus.SetLevel(lvl)
 	return nil
 }
 
@@ -48,6 +48,6 @@ func RunApp(args []string) {
 
 	err := app.Run(args)
 	if err != nil {
-		log.Fatal(err)
+		logrus.Fatal(err)
 	}
 }
