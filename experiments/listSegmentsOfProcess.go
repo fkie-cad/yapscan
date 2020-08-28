@@ -5,7 +5,7 @@ import (
 	"os"
 	"strconv"
 
-	"fraunhofer.fkie.yapscan/procIO"
+	"fraunhofer/fkie/yapscan/procIO"
 
 	"github.com/dustin/go-humanize"
 )
@@ -27,10 +27,11 @@ func main() {
 	}
 
 	fmt.Printf("Reading segments from process %d...\n", pid)
-	proc, err := procIO.Open(pid)
+	proc, err := procIO.OpenProcess(pid)
 	if err != nil {
 		panic(err)
 	}
+	defer proc.Close()
 	segments, err := proc.MemorySegments()
 	for _, seg := range segments {
 		fmt.Printf("0x%016x : %8s : %7v : %7v : %v : %v\n", seg.BaseAddress, humanize.Bytes(seg.Size), seg.Type, seg.State, seg.AllocatedPermissions, seg.CurrentPermissions)

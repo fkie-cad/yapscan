@@ -24,6 +24,10 @@ func open(pid int) (Process, error) {
 	return &processWindows{procHandle: handle}, nil
 }
 
+func (p *processWindows) Close() error {
+	return kernel32.CloseHandle(p.procHandle)
+}
+
 func (p *processWindows) Handle() interface{} {
 	return p.procHandle
 }

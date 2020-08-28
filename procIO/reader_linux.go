@@ -2,6 +2,6 @@ package procIO
 
 import "errors"
 
-func NewReader(proc *Process, seg *MemorySegmentInfo) (MemoryReader, error) {
-	return nil, errors.New("not implemented")
+func NewMemoryReader(proc Process, seg *MemorySegmentInfo) MemoryReader {
+	panic(errors.New("not implemented"))
 }

@@ -7,7 +7,7 @@ import (
 	"os"
 	"strconv"
 
-	"fraunhofer.fkie.yapscan/procIO"
+	"fraunhofer/fkie/yapscan/procIO"
 )
 
 func main() {
@@ -27,10 +27,11 @@ func main() {
 	}
 
 	fmt.Printf("Reading segments from process %d...\n", pid)
-	proc, err := procIO.Open(pid)
+	proc, err := procIO.OpenProcess(pid)
 	if err != nil {
 		panic(err)
 	}
+	defer proc.Close()
 	segments, err := proc.MemorySegments()
 	if err != nil {
 		panic(err)
@@ -38,7 +39,7 @@ func main() {
 
 	readSeg := segments[0]
 
-	rdr, _ := procIO.NewMemoryReader(proc, readSeg)
+	rdr := procIO.NewMemoryReader(proc, readSeg)
 	defer rdr.Close()
 
 	if length > 0 {

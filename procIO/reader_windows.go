@@ -3,7 +3,8 @@ package procIO
 import (
 	"io"
 
-	"fraunhofer.fkie.yapscan/procIO/customWin32"
+	"fraunhofer/fkie/yapscan/procIO/customWin32"
+
 	"github.com/0xrawsec/golang-win32/win32"
 )
 
@@ -14,14 +15,15 @@ type copyReader struct {
 	position uint64
 }
 
-func NewMemoryReader(proc Process, seg *MemorySegmentInfo) (MemoryReader, error) {
+func NewMemoryReader(proc Process, seg *MemorySegmentInfo) MemoryReader {
+	// TODO: Maybe modify non-readable segments here and restore perms on close
 	rdr := &copyReader{
 		proc: proc,
 		seg:  seg,
 
 		position: 0,
 	}
-	return rdr, nil
+	return rdr
 }
 
 func (rdr *copyReader) Read(data []byte) (n int, err error) {
