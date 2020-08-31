@@ -8,6 +8,7 @@ import (
 )
 
 type processWindows struct {
+	pid        int
 	procHandle win32.HANDLE
 }
 
@@ -21,7 +22,11 @@ func open(pid int) (Process, error) {
 		return nil, err
 	}
 
-	return &processWindows{procHandle: handle}, nil
+	return &processWindows{pid: pid, procHandle: handle}, nil
+}
+
+func (p *processWindows) String() string {
+	return FormatPID(p.pid)
 }
 
 func (p *processWindows) Close() error {

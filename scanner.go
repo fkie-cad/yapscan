@@ -3,13 +3,13 @@ package yapscan
 import (
 	"io/ioutil"
 
+	"github.com/sirupsen/logrus"
+
 	"fraunhofer/fkie/yapscan/procIO"
 
 	"github.com/hillu/go-yara/v4"
 	"github.com/targodan/go-errors"
 )
-
-type MemorySegmentFilter func(info *procIO.MemorySegmentInfo) bool
 
 type MemoryScanner struct {
 	proc    procIO.Process
@@ -33,6 +33,10 @@ func NewMemoryScanner(pid int, filter MemorySegmentFilter, scanner *yara.Scanner
 func (s *MemoryScanner) Scan() error {
 	segments, err := s.proc.MemorySegments()
 	if err != nil {
+		logrus.WithFields(logrus.Fields{
+			"process":       s.proc,
+			logrus.ErrorKey: err,
+		}).Error("Could not retrieve memory segments for process.")
 		return err
 	}
 	err = nil
@@ -46,15 +50,29 @@ func (s *MemoryScanner) Scan() error {
 }
 
 func (s *MemoryScanner) scanSegment(seg *procIO.MemorySegmentInfo) error {
-	if !s.filter(seg) {
+	match := s.filter.Filter(seg)
+	if !match.Result {
+		logrus.WithFields(logrus.Fields{
+			"segment": seg,
+			"reason":  match.Reason,
+		}).Debug("Memory segment skipped.")
 		return nil
 	}
+
+	logrus.WithFields(logrus.Fields{
+		"segment": seg,
+	}).Info("Scanning memory segment.")
 
 	rdr := procIO.NewMemoryReader(s.proc, seg)
 	defer rdr.Close()
 
 	data, err := ioutil.ReadAll(rdr)
 	if err != nil {
+		logrus.WithFields(logrus.Fields{
+			"process":       s.proc,
+			"segment":       seg,
+			logrus.ErrorKey: err,
+		}).Info("Could not read memory from process.")
 		return err
 	}
 

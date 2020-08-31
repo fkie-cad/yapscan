@@ -1,9 +1,13 @@
 package procIO
 
-import "io"
+import (
+	"fmt"
+	"io"
+)
 
 type Process interface {
 	io.Closer
+	fmt.Stringer
 
 	Handle() interface{}
 	MemorySegments() ([]*MemorySegmentInfo, error)

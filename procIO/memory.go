@@ -17,7 +17,13 @@ type MemorySegmentInfo struct {
 	// On windows: _MEMORY_BASIC_INFORMATION->Type
 	Type Type
 
+	Image string
+
 	SubSegments []*MemorySegmentInfo
+}
+
+func (s *MemorySegmentInfo) String() string {
+	return FormatMemorySegmentAddress(s)
 }
 
 func (s *MemorySegmentInfo) CopyWithoutSubSegments() *MemorySegmentInfo {
@@ -44,8 +50,58 @@ type Permissions struct {
 	Execute bool
 }
 
+var PermR = Permissions{
+	Read: true,
+}
+var PermRW = Permissions{
+	Read:  true,
+	Write: true,
+}
+var PermnRC = Permissions{
+	Read:  true,
+	Write: true,
+	COW:   true,
+}
+var PermRWX = Permissions{
+	Read:    true,
+	Write:   true,
+	Execute: true,
+}
+var PermRCX = Permissions{
+	Read:    true,
+	Write:   true,
+	COW:     true,
+	Execute: true,
+}
+
 func (p Permissions) EqualTo(other Permissions) bool {
 	return p.Read == other.Read && p.Write == other.Write && p.COW == other.COW && p.Execute == other.Execute
+}
+
+func (p Permissions) IsMoreOrEquallyPermissiveThan(other Permissions) bool {
+	if other.Read && !p.Read {
+		return false
+	}
+	if other.Write && !p.Write {
+		return false
+	}
+	if other.Execute && !p.Execute {
+		return false
+	}
+	return true
+}
+
+func (p Permissions) IsMorePermissiveThan(other Permissions) bool {
+	if other.Read && !p.Read {
+		return false
+	}
+	if other.Write && !p.Write {
+		return false
+	}
+	if other.Execute && !p.Execute {
+		return false
+	}
+	return !p.EqualTo(other)
 }
 
 func (p Permissions) String() string {
