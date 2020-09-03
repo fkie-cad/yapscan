@@ -279,7 +279,8 @@ func scan(c *cli.Context) error {
 	for _, pid := range pids {
 		proc, err := procIO.OpenProcess(pid)
 		if err != nil {
-			logrus.WithError(err).Errorf("could not open process %d for scanning, reason: %w", pid)
+			logrus.WithError(err).Errorf("could not open process %d for scanning", pid)
+			continue
 		}
 		defer func() {
 			if err := proc.Close(); err != nil {
@@ -290,8 +291,8 @@ func scan(c *cli.Context) error {
 		if c.Bool("suspend") {
 			err = proc.Suspend()
 			if err != nil {
-				logrus.WithError(err).Errorf("could not suspend process %d, reason: %w", pid)
-				return err
+				logrus.WithError(err).Errorf("could not suspend process %d", pid)
+				continue
 			}
 		}
 
@@ -300,10 +301,12 @@ func scan(c *cli.Context) error {
 		progress, err := scanner.Scan()
 		if err != nil {
 			logrus.WithError(err).Errorf("an error occurred during scanning of process %d", pid)
+			continue
 		}
 		err = reporter.Consume(progress)
 		if err != nil {
 			logrus.WithError(err).Error("an error occurred during progress report, there may be no other output")
+			continue
 		}
 	}
 

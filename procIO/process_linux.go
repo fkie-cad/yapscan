@@ -33,9 +33,10 @@ func (p *processLinux) Handle() interface{} {
 }
 
 func (p *processLinux) Suspend() error {
-	if p.paused {
-		cmd := exec.Command("kill", "-STOP", strconv.Itoa(p.pid))
-		return errors.Errorf("could not suspend process, reason: ", cmd.Run())
+	cmd := exec.Command("kill", "-STOP", strconv.Itoa(p.pid))
+	err := cmd.Run()
+	if err != nil {
+		return errors.Errorf("could not suspend process, reason: %w", err)
 	}
 	return nil
 }
@@ -43,7 +44,10 @@ func (p *processLinux) Suspend() error {
 func (p *processLinux) Resume() error {
 	if p.paused {
 		cmd := exec.Command("kill", "-CONT", strconv.Itoa(p.pid))
-		return errors.Errorf("could not resume process, reason: ", cmd.Run())
+		err := cmd.Run()
+		if err != nil {
+			return errors.Errorf("could not resume process, reason: %w", err)
+		}
 	}
 	return nil
 }
