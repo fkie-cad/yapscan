@@ -15,7 +15,7 @@ type copyReader struct {
 	position uint64
 }
 
-func NewMemoryReader(proc Process, seg *MemorySegmentInfo) MemoryReader {
+func NewMemoryReader(proc Process, seg *MemorySegmentInfo) (MemoryReader, error) {
 	// TODO: Maybe modify non-readable segments here and restore perms on close
 	rdr := &copyReader{
 		proc: proc,
@@ -23,7 +23,7 @@ func NewMemoryReader(proc Process, seg *MemorySegmentInfo) MemoryReader {
 
 		position: 0,
 	}
-	return rdr
+	return rdr, nil
 }
 
 func (rdr *copyReader) Read(data []byte) (n int, err error) {

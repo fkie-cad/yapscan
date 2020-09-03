@@ -63,7 +63,7 @@ func (x *State) UnmarshalText(text []byte) error {
 }
 
 const (
-	// TypeImage is a Type of type Image
+	// TypeImage is a Type of type FilePath
 	TypeImage Type = iota
 	// TypeMapped is a Type of type Mapped
 	TypeMapped

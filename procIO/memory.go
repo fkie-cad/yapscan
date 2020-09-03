@@ -23,7 +23,7 @@ type MemorySegmentInfo struct {
 	// On windows: _MEMORY_BASIC_INFORMATION->Type
 	Type Type
 
-	Image string
+	FilePath string
 
 	SubSegments []*MemorySegmentInfo
 }
@@ -100,6 +100,8 @@ func ParsePermissions(s string) (Permissions, error) {
 			fallthrough
 		case 'x':
 			perm.Execute = true
+		case '-':
+			continue
 		default:
 			return perm, errors.New(fmt.Sprintf("character '%c' is not a valid permission character", c))
 		}
@@ -170,6 +172,7 @@ Reserve
 */
 type State int
 
+// TODO: Consider additional type "Shared"
 /*
 ENUM(
 Image

@@ -63,7 +63,10 @@ func (s *MemoryScanner) scanSegment(seg *procIO.MemorySegmentInfo) error {
 		"segment": seg,
 	}).Info("Scanning memory segment.")
 
-	rdr := procIO.NewMemoryReader(s.proc, seg)
+	rdr, err := procIO.NewMemoryReader(s.proc, seg)
+	if err != nil {
+		return err
+	}
 	defer rdr.Close()
 
 	data, err := ioutil.ReadAll(rdr)

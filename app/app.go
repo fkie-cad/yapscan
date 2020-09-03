@@ -1,10 +1,14 @@
 package app
 
 import (
+	"encoding/hex"
 	"fmt"
 	"fraunhofer/fkie/yapscan"
 	"fraunhofer/fkie/yapscan/procIO"
+	"io"
+	"os"
 	"strconv"
+	"strings"
 
 	"github.com/dustin/go-humanize"
 
@@ -106,9 +110,9 @@ func listMemory(c *cli.Context) error {
 			continue
 		}
 
-		format := "%19s %8s\n"
+		format := "%19s %8s %3s %7s %7s %s\n"
 
-		fmt.Printf(format, procIO.FormatMemorySegmentAddress(seg), humanize.Bytes(seg.Size))
+		fmt.Printf(format, procIO.FormatMemorySegmentAddress(seg), humanize.Bytes(seg.Size), seg.CurrentPermissions, seg.Type, seg.State, seg.FilePath)
 
 		if c.Bool("list-subdivided") {
 			for i, sseg := range seg.SubSegments {
@@ -119,12 +123,81 @@ func listMemory(c *cli.Context) error {
 					addr = "└" + addr
 				}
 
-				fmt.Printf(format, addr, humanize.Bytes(sseg.Size))
+				fmt.Printf(format, addr, humanize.Bytes(sseg.Size), sseg.CurrentPermissions, sseg.Type, sseg.State, sseg.FilePath)
 			}
 		}
 	}
 
-	return errors.New("not implemented")
+	return nil
+}
+
+func dumpMemory(c *cli.Context) error {
+	err := initAppAction(c)
+	if err != nil {
+		return err
+	}
+
+	var dumper io.WriteCloser
+	if c.Bool("raw") {
+		dumper = os.Stdout
+	} else {
+		dumper = hex.Dumper(os.Stdout)
+		defer dumper.Close()
+	}
+
+	if c.NArg() != 2 {
+		return errors.Newf("expected exactly two arguments, got %d", c.NArg())
+	}
+	pid_, err := strconv.ParseUint(c.Args().Get(0), 10, 64)
+	if err != nil {
+		return errors.Newf("\"%s\" is not a pid", c.Args().Get(0))
+	}
+	pid := int(pid_)
+
+	addrS := c.Args().Get(1)
+	if strings.Index(addrS, "0x") == 0 {
+		addrS = addrS[2:]
+	}
+	addr, err := strconv.ParseUint(addrS, 16, 64)
+	if err != nil {
+		return errors.Newf("\"%s\" is not an address", c.Args().Get(1))
+	}
+
+	proc, err := procIO.OpenProcess(pid)
+	if err != nil {
+		return errors.Newf("could not open process %d, reason: %w", pid, err)
+	}
+
+	segments, err := proc.MemorySegments()
+	if err != nil {
+		return errors.Newf("could not retrieve memory segments of process %d, reason: %w", pid, err)
+	}
+	readContiguous := c.Int("contiguous")
+	found := false
+	for i, seg := range segments {
+		if seg.BaseAddress == addr {
+			found = true
+		}
+		if found {
+			rdr, err := procIO.NewMemoryReader(proc, seg)
+			if err != nil {
+				return errors.Newf("could not read memory of process %d at address 0x%016X, reason %w", pid, seg.BaseAddress, err)
+			}
+			_, err = io.Copy(dumper, rdr)
+			if err != nil {
+				return errors.Newf("could not read memory of process %d at address 0x%016X, reason %w", pid, seg.BaseAddress, err)
+			}
+
+			if readContiguous == 0 || (i+1 < len(segments) && segments[i+1].BaseAddress != seg.BaseAddress+seg.Size) {
+				// Next segment is not contiguous
+				break
+			}
+		}
+	}
+	if !found {
+		errors.Newf("process %d has no memory segment starting with address 0x%016X", pid, addr)
+	}
+	return nil
 }
 
 func RunApp(args []string) {
@@ -165,6 +238,7 @@ func RunApp(args []string) {
 
 	app := &cli.App{
 		Name:        "yapscan",
+		HelpName:    "yapscan",
 		Description: "A yara based scanner for files and process memory with some extras.",
 		Version:     "0.1.0",
 		Authors: []*cli.Author{
@@ -193,7 +267,7 @@ func RunApp(args []string) {
 				Name:      "list-process-memory",
 				Aliases:   []string{"lsmem"},
 				Usage:     "lists all memory segments of a process",
-				ArgsUsage: "pid",
+				ArgsUsage: "<pid>",
 				Flags: append([]cli.Flag{
 					&cli.BoolFlag{
 						Name:  "list-free",
@@ -206,6 +280,25 @@ func RunApp(args []string) {
 					},
 				}, segmentFilterFlags...),
 				Action: listMemory,
+			},
+			&cli.Command{
+				Name:      "dump",
+				Usage:     "dumps memory of a process",
+				Action:    dumpMemory,
+				ArgsUsage: "<pid> <address_of_section>",
+				Flags: []cli.Flag{
+					&cli.IntFlag{
+						Name:    "contiguous",
+						Aliases: []string{"c"},
+						Usage:   "also dump the following <value> contiguous sections, -1 for all contiguous sections",
+					},
+					&cli.BoolFlag{
+						Name:    "raw",
+						Aliases: []string{"r"},
+						Usage:   "dump the raw memory as opposed to a hex view of the memory",
+						Value:   false,
+					},
+				},
 			},
 		},
 	}
