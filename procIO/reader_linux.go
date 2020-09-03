@@ -6,8 +6,6 @@ import (
 	"os"
 
 	"github.com/targodan/go-errors"
-
-	"github.com/sirupsen/logrus"
 )
 
 type memfileReader struct {
@@ -20,11 +18,7 @@ type memfileReader struct {
 }
 
 func NewMemoryReader(proc Process, seg *MemorySegmentInfo) (MemoryReader, error) {
-	nativeProc, ok := proc.(*processLinux)
-	if !ok {
-		logrus.Panic("invalid process type, this should never happen")
-	}
-	memfile, err := os.OpenFile(fmt.Sprintf("/proc/%d/mem", nativeProc.pid), os.O_RDONLY, 0600)
+	memfile, err := os.OpenFile(fmt.Sprintf("/proc/%d/mem", proc.PID()), os.O_RDONLY, 0600)
 	if err != nil {
 		return nil, errors.Errorf("could not open process memory for reading, reason: %w", err)
 	}

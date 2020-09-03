@@ -17,6 +17,10 @@ func open(pid int) (Process, error) {
 	return &processLinux{pid: pid}, nil
 }
 
+func (p *processLinux) PID() int {
+	return p.pid
+}
+
 func (p *processLinux) String() string {
 	return FormatPID(p.pid)
 }

@@ -9,6 +9,7 @@ type Process interface {
 	io.Closer
 	fmt.Stringer
 
+	PID() int
 	Handle() interface{}
 	MemorySegments() ([]*MemorySegmentInfo, error)
 }
