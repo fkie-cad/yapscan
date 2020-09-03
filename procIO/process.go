@@ -12,6 +12,8 @@ type Process interface {
 	PID() int
 	Handle() interface{}
 	MemorySegments() ([]*MemorySegmentInfo, error)
+	Suspend() error
+	Resume() error
 }
 
 type CachingProcess interface {
@@ -46,6 +48,14 @@ func (c cachingProcess) PID() int {
 
 func (c cachingProcess) Handle() interface{} {
 	return c.proc.Handle()
+}
+
+func (c cachingProcess) Suspend() error {
+	return c.proc.Suspend()
+}
+
+func (c cachingProcess) Resume() error {
+	return c.proc.Resume()
 }
 
 func (c cachingProcess) MemorySegments() ([]*MemorySegmentInfo, error) {

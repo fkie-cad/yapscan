@@ -5,7 +5,7 @@ import "github.com/hillu/go-yara/v4"
 type ScanResult struct {
 }
 
-type Scanner interface {
+type MemoryScanner interface {
 	ScanMem(buf []byte) (results []yara.MatchRule, err error)
 }
 
@@ -13,7 +13,7 @@ type yaraScanner struct {
 	rules *yara.Rules
 }
 
-func NewScanner(rules *yara.Rules) (Scanner, error) {
+func NewYaraMemoryScanner(rules *yara.Rules) (MemoryScanner, error) {
 	return &yaraScanner{rules}, nil
 }
 

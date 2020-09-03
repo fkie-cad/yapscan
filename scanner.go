@@ -15,32 +15,27 @@ import (
 type ProcessScanner struct {
 	proc    procIO.Process
 	filter  MemorySegmentFilter
-	scanner Scanner
+	scanner MemoryScanner
 }
 
-func NewProcessScanner(pid int, filter MemorySegmentFilter, scanner Scanner) (*ProcessScanner, error) {
-	proc, err := procIO.OpenProcess(pid)
-	if err != nil {
-		return nil, err
-	}
-
+func NewProcessScanner(proc procIO.Process, filter MemorySegmentFilter, scanner MemoryScanner) *ProcessScanner {
 	return &ProcessScanner{
 		proc:    proc,
 		filter:  filter,
 		scanner: scanner,
-	}, nil
+	}
 }
 
 var ErrSkipped = errors.New("skipped memory segment")
 
-type ScannerProgress struct {
+type ScanProgress struct {
 	Process       procIO.Process
 	MemorySegment *procIO.MemorySegmentInfo
 	Matches       []yara.MatchRule
 	Error         error
 }
 
-func (s *ProcessScanner) Scan() (<-chan *ScannerProgress, error) {
+func (s *ProcessScanner) Scan() (<-chan *ScanProgress, error) {
 	segments, err := s.proc.MemorySegments()
 	if err != nil {
 		logrus.WithFields(logrus.Fields{
@@ -50,12 +45,13 @@ func (s *ProcessScanner) Scan() (<-chan *ScannerProgress, error) {
 		return nil, err
 	}
 
-	progress := make(chan *ScannerProgress)
+	progress := make(chan *ScanProgress)
 
 	go func() {
+		defer close(progress)
 		for _, segment := range segments {
 			matches, err := s.scanSegment(segment)
-			progress <- &ScannerProgress{
+			progress <- &ScanProgress{
 				Process:       s.proc,
 				MemorySegment: segment,
 				Matches:       matches,
@@ -64,7 +60,7 @@ func (s *ProcessScanner) Scan() (<-chan *ScannerProgress, error) {
 
 			for _, subSegment := range segment.SubSegments {
 				matches, err := s.scanSegment(subSegment)
-				progress <- &ScannerProgress{
+				progress <- &ScanProgress{
 					Process:       s.proc,
 					MemorySegment: subSegment,
 					Matches:       matches,

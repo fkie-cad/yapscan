@@ -1,6 +1,7 @@
 package app
 
 import (
+	"bytes"
 	"encoding/hex"
 	"fmt"
 	"fraunhofer/fkie/yapscan"
@@ -10,12 +11,16 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/hillu/go-yara/v4"
+
 	"github.com/dustin/go-humanize"
 
 	"github.com/sirupsen/logrus"
 	"github.com/targodan/go-errors"
 	"github.com/urfave/cli/v2"
 )
+
+const yaraRulesNamespace = ""
 
 func initAppAction(c *cli.Context) error {
 	lvl, err := logrus.ParseLevel(c.String("log-level"))
@@ -200,7 +205,119 @@ func dumpMemory(c *cli.Context) error {
 	return nil
 }
 
+func scan(c *cli.Context) error {
+	err := initAppAction(c)
+	if err != nil {
+		return err
+	}
+
+	f, err := filterFromArgs(c)
+	if err != nil {
+		return err
+	}
+
+	if c.NArg() == 0 {
+		return errors.Newf("expected at least one argument, got zero")
+	}
+
+	var rules *yara.Rules
+	{
+		rulesFile, err := os.OpenFile(c.String("rules"), os.O_RDONLY, 0644)
+		if err != nil {
+			return errors.Newf("could not open rules file, reason: %w", err)
+		}
+		defer rulesFile.Close()
+
+		buff := make([]byte, 4)
+		_, err = io.ReadFull(rulesFile, buff)
+		if err != nil {
+			return errors.Newf("could not read rules file, reason: %w", err)
+		}
+		rulesFile.Seek(0, io.SeekStart)
+
+		if bytes.Equal(buff, []byte("YARA")) {
+			logrus.Debug("Yara rules file contains compiled rules.")
+
+			rules, err = yara.ReadRules(rulesFile)
+			if err != nil {
+				return errors.Newf("could not read rules file, reason: %w", err)
+			}
+		} else {
+			logrus.Debug("Yara rules file needs to be compiled.")
+
+			compiler, err := yara.NewCompiler()
+			if err != nil {
+				return errors.Newf("could not create yara compiler, reason: %w", err)
+			}
+			err = compiler.AddFile(rulesFile, yaraRulesNamespace)
+			if err != nil {
+				return errors.Newf("could not compile yara rules, reason: %w", err)
+			}
+
+			rules, err = compiler.GetRules()
+			if err != nil {
+				return errors.Newf("could not compile yara rules, reason: %w", err)
+			}
+		}
+	}
+
+	yaraScanner, err := yapscan.NewYaraMemoryScanner(rules)
+	if err != nil {
+		return errors.Newf("could not initialize yara scanner, reason: %w", err)
+	}
+
+	pids := make([]int, c.NArg())
+	for i := 0; i < c.NArg(); i += 1 {
+		pids[i], err = strconv.Atoi(c.Args().Get(i))
+		if err != nil {
+			return errors.Newf("argument \"%s\" is not a pid: %w", c.Args().Get(i), err)
+		}
+	}
+
+	reporter := yapscan.NewStdoutReporter(yapscan.NewPrettyFormatter())
+
+	for _, pid := range pids {
+		proc, err := procIO.OpenProcess(pid)
+		if err != nil {
+			logrus.WithError(err).Errorf("could not open process %d for scanning, reason: %w", pid)
+		}
+		defer func() {
+			if err := proc.Close(); err != nil {
+				logrus.Error(err)
+			}
+		}()
+
+		if c.Bool("suspend") {
+			err = proc.Suspend()
+			if err != nil {
+				logrus.WithError(err).Errorf("could not suspend process %d, reason: %w", pid)
+				return err
+			}
+		}
+
+		scanner := yapscan.NewProcessScanner(proc, f, yaraScanner)
+
+		progress, err := scanner.Scan()
+		if err != nil {
+			logrus.WithError(err).Errorf("an error occurred during scanning of process %d", pid)
+		}
+		err = reporter.Consume(progress)
+		if err != nil {
+			logrus.WithError(err).Error("an error occurred during progress report, there may be no other output")
+		}
+	}
+
+	return nil
+}
+
 func RunApp(args []string) {
+	suspendFlag := &cli.BoolFlag{
+		Name:    "suspend",
+		Aliases: []string{"s"},
+		Usage:   "suspend the process before reading its memory",
+		Value:   false,
+	}
+
 	segmentFilterFlags := []cli.Flag{
 		&cli.StringFlag{
 			Name:    "filter-permissions",
@@ -253,7 +370,7 @@ func RunApp(args []string) {
 				Name:    "log-level",
 				Aliases: []string{"l"},
 				Usage:   "one of [trace, debug, info, warn, error, fatal]",
-				Value:   "info",
+				Value:   "warn",
 			},
 		},
 		Commands: []*cli.Command{
@@ -268,7 +385,7 @@ func RunApp(args []string) {
 				Aliases:   []string{"lsmem"},
 				Usage:     "lists all memory segments of a process",
 				ArgsUsage: "<pid>",
-				Flags: append([]cli.Flag{
+				Flags: append(append([]cli.Flag{
 					&cli.BoolFlag{
 						Name:  "list-free",
 						Usage: "also list free memory segments",
@@ -278,7 +395,7 @@ func RunApp(args []string) {
 						Name:  "list-subdivided",
 						Usage: "list segment subdivisions as they are now, as opposed to segments as they were allocated once",
 					},
-				}, segmentFilterFlags...),
+				}, segmentFilterFlags...), suspendFlag),
 				Action: listMemory,
 			},
 			&cli.Command{
@@ -286,7 +403,7 @@ func RunApp(args []string) {
 				Usage:     "dumps memory of a process",
 				Action:    dumpMemory,
 				ArgsUsage: "<pid> <address_of_section>",
-				Flags: []cli.Flag{
+				Flags: append([]cli.Flag{
 					&cli.IntFlag{
 						Name:    "contiguous",
 						Aliases: []string{"c"},
@@ -298,7 +415,21 @@ func RunApp(args []string) {
 						Usage:   "dump the raw memory as opposed to a hex view of the memory",
 						Value:   false,
 					},
-				},
+				}, suspendFlag),
+			},
+			&cli.Command{
+				Name:      "scan",
+				Usage:     "scans processes with yara rules",
+				Action:    scan,
+				ArgsUsage: "<pid> [pid...]",
+				Flags: append(append([]cli.Flag{
+					&cli.StringFlag{
+						Name:     "rules",
+						Aliases:  []string{"r", "C"},
+						Usage:    "path to yara rules file, can be compiled or uncompiled",
+						Required: true,
+					},
+				}, segmentFilterFlags...), suspendFlag),
 			},
 		},
 	}

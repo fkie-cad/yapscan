@@ -1,6 +1,7 @@
 package procIO
 
 import (
+	"errors"
 	"syscall"
 
 	"github.com/0xrawsec/golang-win32/win32"
@@ -31,6 +32,15 @@ func (p *processWindows) PID() int {
 
 func (p *processWindows) String() string {
 	return FormatPID(p.pid)
+}
+
+func (c cachingProcess) Suspend() error {
+	return errors.New("not implemented")
+}
+
+func (c cachingProcess) Resume() error {
+	// TODO: implement and call from Close()
+	return errors.New("not implemented")
 }
 
 func (p *processWindows) Close() error {

@@ -5,12 +5,15 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"os/exec"
+	"strconv"
 
 	"github.com/targodan/go-errors"
 )
 
 type processLinux struct {
-	pid int
+	pid    int
+	paused bool
 }
 
 func open(pid int) (Process, error) {
@@ -29,8 +32,24 @@ func (p *processLinux) Handle() interface{} {
 	return p.pid
 }
 
-func (p *processLinux) Close() error {
+func (p *processLinux) Suspend() error {
+	if p.paused {
+		cmd := exec.Command("kill", "-STOP", strconv.Itoa(p.pid))
+		return errors.Errorf("could not suspend process, reason: ", cmd.Run())
+	}
 	return nil
+}
+
+func (p *processLinux) Resume() error {
+	if p.paused {
+		cmd := exec.Command("kill", "-CONT", strconv.Itoa(p.pid))
+		return errors.Errorf("could not resume process, reason: ", cmd.Run())
+	}
+	return nil
+}
+
+func (p *processLinux) Close() error {
+	return p.Resume()
 }
 
 func (p *processLinux) MemorySegments() ([]*MemorySegmentInfo, error) {
