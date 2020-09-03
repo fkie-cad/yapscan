@@ -1,6 +1,12 @@
 //go:generate go-enum -f=$GOFILE --marshal
 package procIO
 
+import (
+	"errors"
+	"fmt"
+	"strings"
+)
+
 type MemorySegmentInfo struct {
 	// On windows: _MEMORY_BASIC_INFORMATION->AllocationBase
 	ParentBaseAddress uint64
@@ -72,6 +78,33 @@ var PermRCX = Permissions{
 	Write:   true,
 	COW:     true,
 	Execute: true,
+}
+
+func ParsePermissions(s string) (Permissions, error) {
+	perm := Permissions{
+		Read:    false,
+		Write:   false,
+		COW:     false,
+		Execute: false,
+	}
+	for _, c := range strings.ToLower(s) {
+		switch c {
+		case 'r':
+			perm.Read = true
+		case 'w':
+			perm.Write = true
+		case 'c':
+			perm.Write = true
+			perm.COW = true
+		case 'e':
+			fallthrough
+		case 'x':
+			perm.Execute = true
+		default:
+			return perm, errors.New(fmt.Sprintf("character '%c' is not a valid permission character", c))
+		}
+	}
+	return perm, nil
 }
 
 func (p Permissions) EqualTo(other Permissions) bool {

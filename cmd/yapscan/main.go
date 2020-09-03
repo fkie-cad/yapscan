@@ -1,11 +1,10 @@
 package main
 
 import (
+	"fraunhofer/fkie/yapscan/app"
 	"os"
-
-	"fraunhofer/fkie/yapscan"
 )
 
 func main() {
-	yapscan.RunApp(os.Args)
+	app.RunApp(os.Args)
 }

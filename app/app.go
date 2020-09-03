@@ -1,12 +1,15 @@
-package yapscan
+package app
 
 import (
-	"errors"
 	"fmt"
+	"fraunhofer/fkie/yapscan"
 	"fraunhofer/fkie/yapscan/procIO"
+	"strconv"
+
+	"github.com/dustin/go-humanize"
 
 	"github.com/sirupsen/logrus"
-
+	"github.com/targodan/go-errors"
 	"github.com/urfave/cli/v2"
 )
 
@@ -28,23 +31,98 @@ func listProcesses(c *cli.Context) error {
 	return errors.New("not implemented")
 }
 
+func filterFromArgs(c *cli.Context) (yapscan.MemorySegmentFilter, error) {
+	var err error
+	i := 0
+
+	filters := make([]yapscan.MemorySegmentFilter, 8)
+
+	filters[i], err = BuildFilterPermissions(c.String("filter-permissions"))
+	if err != nil {
+		return nil, errors.Errorf("invalid flag \"--filter-permissions\", reason: %w", err)
+	}
+	i += 1
+	filters[i], err = BuildFilterPermissionsExact(c.StringSlice("filter-permissions-exact"))
+	if err != nil {
+		return nil, errors.Errorf("invalid flag \"--filter-permissions-exact\", reason: %w", err)
+	}
+	i += 1
+	filters[i], err = BuildFilterType(c.StringSlice("filter-type"))
+	if err != nil {
+		return nil, errors.Errorf("invalid flag \"--filter-type\", reason: %w", err)
+	}
+	i += 1
+	filters[i], err = BuildFilterState(c.StringSlice("filter-state"))
+	if err != nil {
+		return nil, errors.Errorf("invalid flag \"--filter-state\", reason: %w", err)
+	}
+	i += 1
+	filters[i], err = BuildFilterSizeMax(c.String("filter-size-max"))
+	if err != nil {
+		return nil, errors.Errorf("invalid flag \"--filter-size-max\", reason: %w", err)
+	}
+	i += 1
+	filters[i], err = BuildFilterSizeMin(c.String("filter-size-min"))
+	if err != nil {
+		return nil, errors.Errorf("invalid flag \"--filter-size-min\", reason: %w", err)
+	}
+	i += 1
+
+	return yapscan.NewAndFilter(filters...), nil
+}
+
 func listMemory(c *cli.Context) error {
 	err := initAppAction(c)
 	if err != nil {
 		return err
 	}
 
-	f := NewPermissionsFilter(procIO.PermRWX)
-	seg := &procIO.MemorySegmentInfo{
-		BaseAddress:        0xDEADBEEF,
-		Size:               789,
-		State:              procIO.StateFree,
-		Type:               procIO.TypeImage,
-		CurrentPermissions: procIO.PermRW,
+	if c.NArg() != 1 {
+		return errors.Newf("expected exactly one argument, got %d", c.NArg())
+	}
+	pid_, err := strconv.ParseUint(c.Args().Get(0), 10, 64)
+	if err != nil {
+		return errors.Newf("\"%s\" is not a pid", c.Args().Get(0))
+	}
+	pid := int(pid_)
+
+	f, err := filterFromArgs(c)
+	if err != nil {
+		return err
 	}
 
-	match := f.Filter(seg)
-	fmt.Println(match.Reason)
+	proc, err := procIO.OpenProcess(pid)
+	if err != nil {
+		return errors.Newf("could not open process with pid %d, reason: %w", pid, err)
+	}
+
+	segments, err := proc.MemorySegments()
+	if err != nil {
+		return errors.Newf("could not enumerate memory segments of process %d, reason: %w", pid, err)
+	}
+	for _, seg := range segments {
+		fRes := f.Filter(seg)
+		if !fRes.Result {
+			continue
+		}
+
+		format := "%19s %8s\n"
+
+		fmt.Printf(format, procIO.FormatMemorySegmentAddress(seg), humanize.Bytes(seg.Size))
+
+		if c.Bool("list-subdivided") {
+			for i, sseg := range seg.SubSegments {
+				addr := procIO.FormatMemorySegmentAddress(sseg)
+				if i+1 < len(seg.SubSegments) {
+					addr = "├" + addr
+				} else {
+					addr = "└" + addr
+				}
+
+				fmt.Printf(format, addr, humanize.Bytes(sseg.Size))
+			}
+		}
+	}
 
 	return errors.New("not implemented")
 }
@@ -112,9 +190,10 @@ func RunApp(args []string) {
 				Action:  listProcesses,
 			},
 			&cli.Command{
-				Name:    "list-process-memory",
-				Aliases: []string{"lsmem"},
-				Usage:   "lists all memory segments of a process",
+				Name:      "list-process-memory",
+				Aliases:   []string{"lsmem"},
+				Usage:     "lists all memory segments of a process",
+				ArgsUsage: "pid",
 				Flags: append([]cli.Flag{
 					&cli.BoolFlag{
 						Name:  "list-free",

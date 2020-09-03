@@ -169,3 +169,36 @@ func NewPermissionsFilter(perm procIO.Permissions) MemorySegmentFilter {
 		"segment has wrong permissions, permissions: {{.MSI.CurrentPermissions}}, min-permissions: {{.Filter.Parameter}}",
 	)
 }
+
+type andFilter struct {
+	filters []MemorySegmentFilter
+}
+
+func NewAndFilter(filters ...MemorySegmentFilter) MemorySegmentFilter {
+	return &andFilter{
+		filters: filters,
+	}
+}
+
+func (f *andFilter) Filter(info *procIO.MemorySegmentInfo) *FilterMatch {
+	result := &FilterMatch{
+		Result: true,
+		MSI:    info,
+	}
+	reasons := make([]string, 0)
+	for _, filter := range f.filters {
+		if filter == nil {
+			continue
+		}
+
+		r := filter.Filter(info)
+		if !r.Result {
+			result.Result = false
+			reasons = append(reasons, result.Reason)
+		}
+	}
+	if !result.Result {
+		result.Reason = strings.Join(reasons, " AND ")
+	}
+	return result
+}
