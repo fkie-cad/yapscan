@@ -1,9 +1,13 @@
 package procIO
 
 import (
+	"errors"
 	"fmt"
 	"io"
 )
+
+var ErrProcIsSelf = errors.New("not supported on self")
+var ErrProcIsParent = errors.New("not supported on parent")
 
 type Process interface {
 	io.Closer

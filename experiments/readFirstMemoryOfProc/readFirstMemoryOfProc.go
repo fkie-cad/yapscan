@@ -39,7 +39,7 @@ func main() {
 
 	readSeg := segments[0]
 
-	rdr := procIO.NewMemoryReader(proc, readSeg)
+	rdr, _ := procIO.NewMemoryReader(proc, readSeg)
 	defer rdr.Close()
 
 	if length > 0 {

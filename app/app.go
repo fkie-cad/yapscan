@@ -11,10 +11,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/hillu/go-yara/v4"
-
 	"github.com/dustin/go-humanize"
-
+	"github.com/hillu/go-yara/v4"
 	"github.com/sirupsen/logrus"
 	"github.com/targodan/go-errors"
 	"github.com/urfave/cli/v2"
@@ -37,7 +35,16 @@ func listProcesses(c *cli.Context) error {
 		return err
 	}
 
-	return errors.New("not implemented")
+	pids, err := procIO.GetRunningPIDs()
+	if err != nil {
+		return errors.Newf("could not enumerate PIDs, reason: %w", err)
+	}
+
+	for _, pid := range pids {
+		fmt.Println(pid)
+	}
+
+	return nil
 }
 
 func filterFromArgs(c *cli.Context) (yapscan.MemorySegmentFilter, error) {
@@ -205,6 +212,63 @@ func dumpMemory(c *cli.Context) error {
 	return nil
 }
 
+func askYesNoAlways(msg string) (yes bool, always bool) {
+	var validAnswer bool
+	for !validAnswer {
+		fmt.Print(msg)
+		fmt.Print(" (y/a/N): ")
+		var line string
+		fmt.Scanln(&line)
+
+		switch strings.ToLower(strings.Trim(line, " \t\r\n")) {
+		case "y":
+			yes = true
+			validAnswer = true
+		case "":
+			fallthrough
+		case "n":
+			validAnswer = true
+		case "a":
+			yes = true
+			always = true
+			validAnswer = true
+		default:
+			fmt.Println("Invalid answer.")
+		}
+	}
+	return
+}
+
+func askYesNoAlwaysNever(msg string) (yes bool, always bool, never bool) {
+	var validAnswer bool
+	for !validAnswer {
+		fmt.Print(msg)
+		fmt.Print(" (y/a/N/never): ")
+		var line string
+		fmt.Scanln(&line)
+
+		switch strings.ToLower(strings.Trim(line, " \t\r\n")) {
+		case "y":
+			yes = true
+			validAnswer = true
+		case "":
+			fallthrough
+		case "n":
+			validAnswer = true
+		case "a":
+			yes = true
+			always = true
+			validAnswer = true
+		case "never":
+			never = true
+			validAnswer = true
+		default:
+			fmt.Println("Invalid answer.")
+		}
+	}
+	return
+}
+
 func scan(c *cli.Context) error {
 	err := initAppAction(c)
 	if err != nil {
@@ -216,8 +280,8 @@ func scan(c *cli.Context) error {
 		return err
 	}
 
-	if c.NArg() == 0 {
-		return errors.Newf("expected at least one argument, got zero")
+	if c.NArg() == 0 && !c.Bool("all") {
+		return errors.Newf("expected at least one argument or flag \"--all\", got zero")
 	}
 
 	var rules *yara.Rules
@@ -266,15 +330,27 @@ func scan(c *cli.Context) error {
 		return errors.Newf("could not initialize yara scanner, reason: %w", err)
 	}
 
-	pids := make([]int, c.NArg())
-	for i := 0; i < c.NArg(); i += 1 {
-		pids[i], err = strconv.Atoi(c.Args().Get(i))
+	var pids []int
+	if c.Bool("all") {
+		pids, err = procIO.GetRunningPIDs()
 		if err != nil {
-			return errors.Newf("argument \"%s\" is not a pid: %w", c.Args().Get(i), err)
+			return errors.Newf("could not enumerate PIDs, reason: %w", err)
+		}
+	} else {
+		pids = make([]int, c.NArg())
+		for i := 0; i < c.NArg(); i += 1 {
+			pids[i], err = strconv.Atoi(c.Args().Get(i))
+			if err != nil {
+				return errors.Newf("argument \"%s\" is not a pid: %w", c.Args().Get(i), err)
+			}
 		}
 	}
 
 	reporter := yapscan.NewStdoutReporter(yapscan.NewPrettyFormatter())
+
+	alwaysSuspend := c.Bool("force")
+	alwaysDumpWithoutSuspend := false
+	neverDumpWithoutSuspend := false
 
 	for _, pid := range pids {
 		proc, err := procIO.OpenProcess(pid)
@@ -289,10 +365,30 @@ func scan(c *cli.Context) error {
 		}()
 
 		if c.Bool("suspend") {
-			err = proc.Suspend()
-			if err != nil {
-				logrus.WithError(err).Errorf("could not suspend process %d", pid)
-				continue
+			var suspend bool
+			if alwaysSuspend {
+				suspend = true
+			} else {
+				suspend, alwaysSuspend = askYesNoAlways(fmt.Sprintf("Suspend process %d?", pid))
+				if !suspend && !alwaysDumpWithoutSuspend && !neverDumpWithoutSuspend {
+					var dump bool
+					dump, alwaysDumpWithoutSuspend, neverDumpWithoutSuspend = askYesNoAlwaysNever("Scan anyway?")
+					if !dump {
+						continue
+					}
+				}
+			}
+
+			if suspend {
+				err = proc.Suspend()
+				if err != nil {
+					logrus.WithError(err).Errorf("could not suspend process %d", pid)
+					continue
+				}
+			} else {
+				if neverDumpWithoutSuspend {
+					continue
+				}
 			}
 		}
 
@@ -314,11 +410,19 @@ func scan(c *cli.Context) error {
 }
 
 func RunApp(args []string) {
-	suspendFlag := &cli.BoolFlag{
-		Name:    "suspend",
-		Aliases: []string{"s"},
-		Usage:   "suspend the process before reading its memory",
-		Value:   false,
+	suspendFlags := []cli.Flag{
+		&cli.BoolFlag{
+			Name:    "suspend",
+			Aliases: []string{"s"},
+			Usage:   "suspend the process before reading its memory",
+			Value:   false,
+		},
+		&cli.BoolFlag{
+			Name:    "force",
+			Aliases: []string{"f"},
+			Usage:   "don't ask before suspending a process",
+			Value:   false,
+		},
 	}
 
 	segmentFilterFlags := []cli.Flag{
@@ -398,7 +502,7 @@ func RunApp(args []string) {
 						Name:  "list-subdivided",
 						Usage: "list segment subdivisions as they are now, as opposed to segments as they were allocated once",
 					},
-				}, segmentFilterFlags...), suspendFlag),
+				}, segmentFilterFlags...), suspendFlags...),
 				Action: listMemory,
 			},
 			&cli.Command{
@@ -418,13 +522,13 @@ func RunApp(args []string) {
 						Usage:   "dump the raw memory as opposed to a hex view of the memory",
 						Value:   false,
 					},
-				}, suspendFlag),
+				}, suspendFlags...),
 			},
 			&cli.Command{
 				Name:      "scan",
 				Usage:     "scans processes with yara rules",
 				Action:    scan,
-				ArgsUsage: "<pid> [pid...]",
+				ArgsUsage: "[pid...]",
 				Flags: append(append([]cli.Flag{
 					&cli.StringFlag{
 						Name:     "rules",
@@ -432,7 +536,12 @@ func RunApp(args []string) {
 						Usage:    "path to yara rules file, can be compiled or uncompiled",
 						Required: true,
 					},
-				}, segmentFilterFlags...), suspendFlag),
+					&cli.BoolFlag{
+						Name:  "all",
+						Usage: "scan all running processes",
+						Value: false,
+					},
+				}, segmentFilterFlags...), suspendFlags...),
 			},
 		},
 	}

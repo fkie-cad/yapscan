@@ -2,6 +2,7 @@ package yapscan
 
 import (
 	"io/ioutil"
+	"os"
 
 	"github.com/hillu/go-yara/v4"
 
@@ -57,6 +58,9 @@ func (s *ProcessScanner) Scan() (<-chan *ScanProgress, error) {
 				Matches:       matches,
 				Error:         err,
 			}
+			if errors.Is(err, os.ErrPermission) {
+				return
+			}
 
 			for _, subSegment := range segment.SubSegments {
 				matches, err := s.scanSegment(subSegment)
@@ -65,6 +69,9 @@ func (s *ProcessScanner) Scan() (<-chan *ScanProgress, error) {
 					MemorySegment: subSegment,
 					Matches:       matches,
 					Error:         err,
+				}
+				if errors.Is(err, os.ErrPermission) {
+					return
 				}
 			}
 		}

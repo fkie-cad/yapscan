@@ -14,6 +14,8 @@ github.com/doun/terminal v0.0.0-20121006134212-44529d95bd71 h1:CS6EG057Gbde4/SCF
 github.com/doun/terminal v0.0.0-20121006134212-44529d95bd71/go.mod h1:rQIiqVdK1GJ6bugVjMckrGroAjYVJ/I/cvDh+j30o9w=
 github.com/dustin/go-humanize v1.0.0 h1:VSnTsYCnlFHaM2/igO1h6X3HA71jcobQuxemgkq4zYo=
 github.com/dustin/go-humanize v1.0.0/go.mod h1:HtrtbFcZ19U5GC7JDqmcUSB87Iq5E25KnS6fMYU6eOk=
+github.com/eiannone/keyboard v0.0.0-20200508000154-caf4b762e807 h1:jdjd5e68T4R/j4PWxfZqcKY8KtT9oo8IPNVuV4bSXDQ=
+github.com/eiannone/keyboard v0.0.0-20200508000154-caf4b762e807/go.mod h1:Xoiu5VdKMvbRgHuY7+z64lhu/7lvax/22nzASF6GrO8=
 github.com/gopherjs/gopherjs v0.0.0-20181017120253-0766667cb4d1/go.mod h1:wJfORRmW1u3UXTncJ5qlYoELFm8eSnnEO6hX4iZ3EWY=
 github.com/hillu/go-yara/v4 v4.0.2 h1:haSCAkF3rPODgm7jWqqaeP+5bUo9C2GAYrUOG5yQ8fQ=
 github.com/hillu/go-yara/v4 v4.0.2/go.mod h1:rkb/gSAoO8qcmj+pv6fDZN4tOa3N7R+qqGlEkzT4iys=

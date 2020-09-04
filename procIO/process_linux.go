@@ -6,7 +6,9 @@ import (
 	"io"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strconv"
+	"strings"
 
 	"github.com/targodan/go-errors"
 )
@@ -14,6 +16,21 @@ import (
 type processLinux struct {
 	pid    int
 	paused bool
+}
+
+func GetRunningPIDs() ([]int, error) {
+	maps, _ := filepath.Glob("/proc/*/maps")
+
+	pids := make([]int, 0, len(maps)-2)
+	for _, path := range maps {
+		pid, err := strconv.Atoi(strings.Split(path, "/")[2])
+		if err != nil {
+			continue
+		}
+		pids = append(pids, pid)
+	}
+
+	return pids, nil
 }
 
 func open(pid int) (Process, error) {
@@ -33,11 +50,24 @@ func (p *processLinux) Handle() interface{} {
 }
 
 func (p *processLinux) Suspend() error {
+	if p.pid == os.Getpid() {
+		return ErrProcIsSelf
+	}
+	if p.pid == os.Getppid() {
+		return ErrProcIsParent
+	}
+
 	cmd := exec.Command("kill", "-STOP", strconv.Itoa(p.pid))
 	err := cmd.Run()
 	if err != nil {
-		return errors.Errorf("could not suspend process, reason: %w", err)
+		var exitErr *exec.ExitError
+		if errors.As(err, exitErr) {
+			return errors.Errorf("could not suspend process, reason: %w", string(exitErr.Stderr))
+		} else {
+			return errors.Errorf("could not suspend process, reason: %w", err)
+		}
 	}
+	p.paused = true
 	return nil
 }
 

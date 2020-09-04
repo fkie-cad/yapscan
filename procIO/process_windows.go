@@ -2,11 +2,16 @@ package procIO
 
 import (
 	"errors"
+	"os"
 	"syscall"
 
 	"github.com/0xrawsec/golang-win32/win32"
 	"github.com/0xrawsec/golang-win32/win32/kernel32"
 )
+
+func GetRunningPIDs() ([]int, error) {
+	return nil, errors.New("not implemented")
+}
 
 type processWindows struct {
 	pid        int
@@ -35,6 +40,12 @@ func (p *processWindows) String() string {
 }
 
 func (c cachingProcess) Suspend() error {
+	if p.pid == os.Getpid() {
+		return ErrProcIsSelf
+	}
+	if p.pid == os.Getppid() {
+		return ErrProcIsParent
+	}
 	return errors.New("not implemented")
 }
 
