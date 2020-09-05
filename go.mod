@@ -8,10 +8,11 @@ require (
 	github.com/cpuguy83/go-md2man/v2 v2.0.0 // indirect
 	github.com/doun/terminal v0.0.0-20121006134212-44529d95bd71
 	github.com/dustin/go-humanize v1.0.0
-	github.com/eiannone/keyboard v0.0.0-20200508000154-caf4b762e807 // indirect
 	github.com/hillu/go-yara/v4 v4.0.2
 	github.com/sirupsen/logrus v1.6.0
+	github.com/stretchr/testify v1.4.0 // indirect
 	github.com/targodan/go-errors v1.0.0
 	github.com/urfave/cli/v2 v2.2.0
 	golang.org/x/sys v0.0.0-20200831180312-196b9ba8737a // indirect
+	gopkg.in/yaml.v2 v2.2.7 // indirect
 )
