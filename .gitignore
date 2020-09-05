@@ -19,3 +19,6 @@ vendor/
 
 # Jetbrains
 .idea/
+
+# Generated files
+*_enum.go
