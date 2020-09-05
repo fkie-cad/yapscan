@@ -39,7 +39,7 @@ func (p *processWindows) String() string {
 	return FormatPID(p.pid)
 }
 
-func (c cachingProcess) Suspend() error {
+func (p *processWindows) Suspend() error {
 	if p.pid == os.Getpid() {
 		return ErrProcIsSelf
 	}
@@ -49,7 +49,7 @@ func (c cachingProcess) Suspend() error {
 	return errors.New("not implemented")
 }
 
-func (c cachingProcess) Resume() error {
+func (p *processWindows) Resume() error {
 	// TODO: implement and call from Close()
 	return errors.New("not implemented")
 }

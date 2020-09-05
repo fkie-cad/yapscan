@@ -38,31 +38,31 @@ type cachingProcess struct {
 	cache []*MemorySegmentInfo
 }
 
-func (c cachingProcess) Close() error {
+func (c *cachingProcess) Close() error {
 	return c.proc.Close()
 }
 
-func (c cachingProcess) String() string {
+func (c *cachingProcess) String() string {
 	return c.proc.String()
 }
 
-func (c cachingProcess) PID() int {
+func (c *cachingProcess) PID() int {
 	return c.proc.PID()
 }
 
-func (c cachingProcess) Handle() interface{} {
+func (c *cachingProcess) Handle() interface{} {
 	return c.proc.Handle()
 }
 
-func (c cachingProcess) Suspend() error {
+func (c *cachingProcess) Suspend() error {
 	return c.proc.Suspend()
 }
 
-func (c cachingProcess) Resume() error {
+func (c *cachingProcess) Resume() error {
 	return c.proc.Resume()
 }
 
-func (c cachingProcess) MemorySegments() ([]*MemorySegmentInfo, error) {
+func (c *cachingProcess) MemorySegments() ([]*MemorySegmentInfo, error) {
 	var err error
 	if c.cache == nil {
 		c.cache, err = c.proc.MemorySegments()
@@ -70,6 +70,6 @@ func (c cachingProcess) MemorySegments() ([]*MemorySegmentInfo, error) {
 	return c.cache, err
 }
 
-func (c cachingProcess) InvalidateCache() {
+func (c *cachingProcess) InvalidateCache() {
 	c.cache = nil
 }
