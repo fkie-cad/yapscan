@@ -1,0 +1,26 @@
+FROM golang:buster
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+WORKDIR /opt
+
+RUN apt-get clean
+RUN apt-get update
+RUN apt-get install -y build-essential pkg-config \
+    git gcc-multilib gcc-mingw-w64 autoconf automake \
+    libtool libjansson-dev libmagic-dev libssl-dev
+
+ARG yaraVersion=v4.0.2
+ENV YARA_VERSION=$yaraVersion
+
+RUN git clone --depth=1 --branch $YARA_VERSION https://github.com/VirusTotal/yara.git /opt/yara
+
+RUN mkdir /opt/docker
+
+COPY docker/buildYara.sh /opt/docker
+RUN /opt/docker/buildYara.sh
+
+#RUN /opt/buildGoYara.sh
+
+ENTRYPOINT /bin/bash
+CMD ["-"]
