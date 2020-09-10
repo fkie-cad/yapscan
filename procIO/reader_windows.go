@@ -2,6 +2,9 @@ package procIO
 
 import (
 	"io"
+	"syscall"
+
+	"github.com/sirupsen/logrus"
 
 	"fraunhofer/fkie/yapscan/procIO/customWin32"
 
@@ -42,6 +45,16 @@ func (rdr *copyReader) Read(data []byte) (n int, err error) {
 	}
 
 	n, err = customWin32.ReadProcessMemory(procHandle, win32.LPCVOID(rdr.seg.BaseAddress+rdr.position), data[:l])
+	if err != nil && err.(syscall.Errno) == 299 {
+		logrus.WithFields(logrus.Fields{
+			"segBaseAddress":   rdr.seg.BaseAddress,
+			"segSize":          rdr.seg.Size,
+			"rdrPos":           rdr.position,
+			"bufferSize":       len(data),
+			"bufferSizeCap":    cap(data),
+			"passedBufferSize": l,
+		}).Debug("Got ERROR_PARTIAL_COPY.")
+	}
 	rdr.position += uint64(n)
 	return
 }
