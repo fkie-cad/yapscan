@@ -51,15 +51,18 @@ func (s *ProcessScanner) Scan() (<-chan *ScanProgress, error) {
 	go func() {
 		defer close(progress)
 		for _, segment := range segments {
-			matches, err := s.scanSegment(segment)
-			progress <- &ScanProgress{
-				Process:       s.proc,
-				MemorySegment: segment,
-				Matches:       matches,
-				Error:         err,
-			}
-			if errors.Is(err, os.ErrPermission) {
-				return
+			if len(segment.SubSegments) == 0 {
+				// Only scan leaf segments
+				matches, err := s.scanSegment(segment)
+				progress <- &ScanProgress{
+					Process:       s.proc,
+					MemorySegment: segment,
+					Matches:       matches,
+					Error:         err,
+				}
+				if errors.Is(err, os.ErrPermission) {
+					return
+				}
 			}
 
 			for _, subSegment := range segment.SubSegments {

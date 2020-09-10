@@ -28,7 +28,15 @@ func (r *stdoutReporter) Receive(progress *ScanProgress) error {
 	if r.pid != progress.Process.PID() {
 		r.pid = progress.Process.PID()
 		segments, _ := progress.Process.MemorySegments()
-		r.procSegmentCount = len(segments)
+		r.procSegmentCount = 0
+		for _, seg := range segments {
+			l := len(seg.SubSegments)
+			if l > 0 {
+				r.procSegmentCount += l
+			} else {
+				r.procSegmentCount += 1
+			}
+		}
 		r.procSegmentIndex = 0
 	}
 	r.procSegmentIndex += 1
