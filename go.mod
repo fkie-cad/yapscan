@@ -10,6 +10,7 @@ require (
 	github.com/dustin/go-humanize v1.0.0
 	github.com/hillu/go-yara/v4 v4.0.2
 	github.com/sirupsen/logrus v1.6.0
+	github.com/smartystreets/goconvey v1.6.4
 	github.com/stretchr/testify v1.4.0 // indirect
 	github.com/targodan/go-errors v1.0.0
 	github.com/urfave/cli/v2 v2.2.0

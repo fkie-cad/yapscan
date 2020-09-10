@@ -63,7 +63,11 @@ var PermRW = Permissions{
 	Read:  true,
 	Write: true,
 }
-var PermnRC = Permissions{
+var PermRX = Permissions{
+	Read:    true,
+	Execute: true,
+}
+var PermRC = Permissions{
 	Read:  true,
 	Write: true,
 	COW:   true,
