@@ -13,8 +13,9 @@ import (
 )
 
 var (
-	kernel32          = syscall.NewLazyDLL("kernel32.dll")
-	readProcessMemory = kernel32.NewProc("ReadProcessMemory")
+	kernel32             = syscall.NewLazyDLL("kernel32.dll")
+	readProcessMemory    = kernel32.NewProc("ReadProcessMemory")
+	globalMemoryStatusEx = kernel32.NewProc("GlobalMemoryStatusEx")
 )
 
 func ReadProcessMemory(hProcess win32.HANDLE, lpBaseAddress win32.LPCVOID, buffer []byte) (int, error) {
@@ -31,4 +32,15 @@ func ReadProcessMemory(hProcess win32.HANDLE, lpBaseAddress win32.LPCVOID, buffe
 	} else {
 		return int(numberOfBytesRead), nil
 	}
+}
+
+func GlobalMemoryStatusEx() (*MemoryStatusEx, error) {
+	memStat := new(MemoryStatusEx)
+	memStat.Length = win32.DWORD(unsafe.Sizeof(*memStat))
+	print("LEN: ", memStat.Length)
+	r1, _, err := globalMemoryStatusEx.Call(uintptr(unsafe.Pointer(memStat)))
+	if r1 == 0 {
+		return nil, err
+	}
+	return memStat, nil
 }
