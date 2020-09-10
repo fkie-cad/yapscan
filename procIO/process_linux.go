@@ -62,7 +62,7 @@ func (p *processLinux) Suspend() error {
 	if err != nil {
 		var exitErr *exec.ExitError
 		if errors.As(err, exitErr) {
-			return errors.Errorf("could not suspend process, reason: %w", string(exitErr.Stderr))
+			return errors.Errorf("could not suspend process, reason: %w", errors.New(string(exitErr.Stderr)))
 		} else {
 			return errors.Errorf("could not suspend process, reason: %w", err)
 		}

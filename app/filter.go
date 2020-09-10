@@ -154,7 +154,7 @@ func ParseRelativeSize(s string) (uint64, error) {
 			err = errors.Errorf("could not get free RAM, reason: %w", err)
 		}
 	default:
-		err = errors.Newf("unknown relative definition \"%s\", must be \"[t]otal\" or \"[f]ree\"")
+		err = errors.Newf("unknown relative definition \"%s\", must be \"[t]otal\" or \"[f]ree\"", relToWhat)
 	}
 
 	if err != nil {
