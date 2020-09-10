@@ -71,7 +71,7 @@ func (p *processWindows) Suspend() error {
 	if p.pid == os.Getppid() {
 		return ErrProcIsParent
 	}
-	_, err := kernel32.SuspendThread(p.procHandle)
+	err := customWin32.SuspendProcess(p.pid)
 	if err == nil {
 		p.suspended = true
 	}
@@ -81,7 +81,7 @@ func (p *processWindows) Suspend() error {
 func (p *processWindows) Resume() error {
 	var err error
 	if p.suspended {
-		_, err = kernel32.SuspendThread(p.procHandle)
+		err = customWin32.ResumeProcess(p.pid)
 	}
 	if err == nil {
 		p.suspended = false

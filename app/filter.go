@@ -8,6 +8,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/sirupsen/logrus"
+
 	"github.com/dustin/go-humanize"
 
 	"github.com/targodan/go-errors"
@@ -96,6 +98,8 @@ func BuildFilterSizeMin(fStr string) (yapscan.MemorySegmentFilter, error) {
 		return nil, errors.Errorf("could not parse size \"%s\", reason: %w", fStr, err)
 	}
 
+	logrus.Info("Filtering for minimum size %s", humanize.Bytes(size))
+
 	return yapscan.NewMinSizeFilter(size), nil
 }
 
@@ -108,6 +112,8 @@ func BuildFilterSizeMax(fStr string) (yapscan.MemorySegmentFilter, error) {
 	if err != nil {
 		return nil, errors.Errorf("could not parse size \"%s\", reason: %w", fStr, err)
 	}
+
+	logrus.Info("Filtering for maximum size %s", humanize.Bytes(size))
 
 	return yapscan.NewMaxSizeFilter(size), nil
 }

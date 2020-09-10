@@ -55,3 +55,34 @@ func Process32NextW(hSnapshot win32.HANDLE, lpte k32.LPPROCESSENTRY32W) error {
 	}
 	return lastErr
 }
+
+func SuspendProcess(pid int) error {
+	for tid := range k32.ListThreads(pid) {
+		hThread, err := k32.OpenThread(k32.THREAD_SUSPEND_RESUME, win32.FALSE, win32.DWORD(tid))
+		if err != nil {
+			return err
+		}
+		_, err = k32.SuspendThread(hThread)
+		k32.CloseHandle(hThread)
+
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func ResumeProcess(pid int) error {
+	for tid := range k32.ListThreads(pid) {
+		hThread, err := k32.OpenThread(k32.THREAD_SUSPEND_RESUME, win32.FALSE, win32.DWORD(tid))
+		if err != nil {
+			return err
+		}
+		_, err = k32.ResumeThread(hThread)
+		k32.CloseHandle(hThread)
+		if err != nil {
+			return err
+		}
+	}
+	return nil
+}
