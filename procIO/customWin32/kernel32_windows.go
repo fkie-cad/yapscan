@@ -10,12 +10,14 @@ import (
 	"unsafe"
 
 	"github.com/0xrawsec/golang-win32/win32"
+	k32 "github.com/0xrawsec/golang-win32/win32/kernel32"
 )
 
 var (
 	kernel32             = syscall.NewLazyDLL("kernel32.dll")
 	readProcessMemory    = kernel32.NewProc("ReadProcessMemory")
 	globalMemoryStatusEx = kernel32.NewProc("GlobalMemoryStatusEx")
+	process32NextW       = kernel32.NewProc("Process32NextW")
 )
 
 func ReadProcessMemory(hProcess win32.HANDLE, lpBaseAddress win32.LPCVOID, buffer []byte) (int, error) {
@@ -37,10 +39,19 @@ func ReadProcessMemory(hProcess win32.HANDLE, lpBaseAddress win32.LPCVOID, buffe
 func GlobalMemoryStatusEx() (*MemoryStatusEx, error) {
 	memStat := new(MemoryStatusEx)
 	memStat.Length = win32.DWORD(unsafe.Sizeof(*memStat))
-	print("LEN: ", memStat.Length)
 	r1, _, err := globalMemoryStatusEx.Call(uintptr(unsafe.Pointer(memStat)))
 	if r1 == 0 {
 		return nil, err
 	}
 	return memStat, nil
+}
+
+func Process32NextW(hSnapshot win32.HANDLE, lpte k32.LPPROCESSENTRY32W) error {
+	_, _, lastErr := process32NextW.Call(
+		uintptr(hSnapshot),
+		uintptr(unsafe.Pointer(lpte)))
+	if lastErr.(syscall.Errno) == 0 {
+		return nil
+	}
+	return lastErr
 }

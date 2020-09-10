@@ -1,7 +1,7 @@
 package procIO
 
 import (
-	"errors"
+	"fraunhofer/fkie/yapscan/procIO/customWin32"
 	"os"
 	"syscall"
 
@@ -10,17 +10,42 @@ import (
 )
 
 func GetRunningPIDs() ([]int, error) {
-	return nil, errors.New("not implemented")
+	snap, err := kernel32.CreateToolhelp32Snapshot(kernel32.TH32CS_SNAPPROCESS, 0)
+	if err != nil {
+		return nil, err
+	}
+
+	pids := make([]int, 0)
+
+	procEntry := kernel32.NewProcessEntry32W()
+
+	_, err = kernel32.Process32FirstW(snap, &procEntry)
+	if err != nil && err.(syscall.Errno) != win32.ERROR_NO_MORE_FILES {
+		return nil, err
+	}
+	pids = append(pids, int(procEntry.Th32ProcessID))
+	for {
+		err = customWin32.Process32NextW(snap, &procEntry)
+		if err != nil {
+			break
+		}
+		pids = append(pids, int(procEntry.Th32ProcessID))
+	}
+	if err.(syscall.Errno) != win32.ERROR_NO_MORE_FILES {
+		return nil, err
+	}
+	return pids, nil
 }
 
 type processWindows struct {
 	pid        int
 	procHandle win32.HANDLE
+	suspended  bool
 }
 
 func open(pid int) (Process, error) {
 	handle, err := kernel32.OpenProcess(
-		kernel32.PROCESS_VM_READ|kernel32.PROCESS_QUERY_INFORMATION,
+		kernel32.PROCESS_VM_READ|kernel32.PROCESS_QUERY_INFORMATION|kernel32.PROCESS_SUSPEND_RESUME,
 		win32.FALSE,
 		win32.DWORD(pid),
 	)
@@ -46,12 +71,22 @@ func (p *processWindows) Suspend() error {
 	if p.pid == os.Getppid() {
 		return ErrProcIsParent
 	}
-	return errors.New("not implemented")
+	_, err := kernel32.SuspendThread(p.procHandle)
+	if err == nil {
+		p.suspended = true
+	}
+	return err
 }
 
 func (p *processWindows) Resume() error {
-	// TODO: implement and call from Close()
-	return errors.New("not implemented")
+	var err error
+	if p.suspended {
+		_, err = kernel32.SuspendThread(p.procHandle)
+	}
+	if err == nil {
+		p.suspended = false
+	}
+	return err
 }
 
 func (p *processWindows) Close() error {
