@@ -1,6 +1,11 @@
 #!/bin/bash
 
+go mod tidy
+go mod vendor
+
 go get github.com/abice/go-enum
+go mod tidy
+
 go generate ./...
 mkdir -p build/ &>/dev/null
 
