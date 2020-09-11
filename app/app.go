@@ -374,7 +374,7 @@ func scan(c *cli.Context) error {
 		}
 	}
 
-	reporter := yapscan.NewStdoutReporter(yapscan.NewPrettyFormatter())
+	reporter := yapscan.NewProgressReporter(os.Stdout, yapscan.NewPrettyFormatter())
 
 	err = reporter.ReportSystemInfos()
 	logrus.WithError(err).Error("Could not report on system infos.")

@@ -19,7 +19,8 @@ type Reporter interface {
 	io.Closer
 }
 
-type stdoutReporter struct {
+type progressReporter struct {
+	out       io.Writer
 	formatter ProgressFormatter
 
 	pid              int
@@ -27,30 +28,34 @@ type stdoutReporter struct {
 	procSegmentIndex int
 }
 
-func NewStdoutReporter(formatter ProgressFormatter) Reporter {
-	return &stdoutReporter{formatter: formatter, pid: -1}
+func NewProgressReporter(out io.Writer, formatter ProgressFormatter) Reporter {
+	return &progressReporter{out: out, formatter: formatter, pid: -1}
 }
 
-func (r *stdoutReporter) ReportSystemInfos() error {
+func (r *progressReporter) ReportSystemInfos() error {
 	// Don't report systeminfo to stdout
 	return nil
 }
 
-func (r *stdoutReporter) ReportRules(rules *yara.Rules) error {
+func (r *progressReporter) ReportRules(rules *yara.Rules) error {
 	// Don't report rules to stdout
 	return nil
 }
 
-func (r *stdoutReporter) Close() error {
+func (r *progressReporter) Close() error {
+	closer, ok := r.out.(io.Closer)
+	if ok {
+		return closer.Close()
+	}
 	return nil
 }
 
-func (r *stdoutReporter) reportProcess(proc procIO.Process) error {
-	_, err := fmt.Printf("\nScanning process %d...\n", proc.PID())
+func (r *progressReporter) reportProcess(proc procIO.Process) error {
+	_, err := fmt.Fprintf(r.out, "\nScanning process %d...\n", proc.PID())
 	return err
 }
 
-func (r *stdoutReporter) receive(progress *ScanProgress) {
+func (r *progressReporter) receive(progress *ScanProgress) {
 	if r.pid != progress.Process.PID() {
 		r.pid = progress.Process.PID()
 		segments, _ := progress.Process.MemorySegments()
@@ -74,7 +79,7 @@ func (r *stdoutReporter) receive(progress *ScanProgress) {
 	}
 	r.procSegmentIndex += 1
 	percent := int(float64(r.procSegmentIndex)/float64(r.procSegmentCount)*100. + 0.5)
-	fmt.Printf("\r%-64s", fmt.Sprintf("Scanning %d: %3d %%", progress.Process.PID(), percent))
+	fmt.Fprintf(r.out, "\r%-64s", fmt.Sprintf("Scanning %d: %3d %%", progress.Process.PID(), percent))
 
 	if progress.Error == nil {
 		logrus.WithFields(logrus.Fields{
@@ -90,16 +95,16 @@ func (r *stdoutReporter) receive(progress *ScanProgress) {
 	}
 
 	if (progress.Error != nil && progress.Error != ErrSkipped) || (progress.Matches != nil && len(progress.Matches) > 0) {
-		fmt.Println()
-		fmt.Println(r.formatter.FormatScanProgress(progress))
+		fmt.Sprintln(r.out)
+		fmt.Sprintln(r.out, r.formatter.FormatScanProgress(progress))
 	}
 }
 
-func (r *stdoutReporter) ConsumeScanProgress(progress <-chan *ScanProgress) error {
+func (r *progressReporter) ConsumeScanProgress(progress <-chan *ScanProgress) error {
 	for prog := range progress {
 		r.receive(prog)
 	}
-	fmt.Println()
+	fmt.Sprintln(r.out)
 	return nil
 }
 
