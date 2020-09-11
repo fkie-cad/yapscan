@@ -385,6 +385,7 @@ func scan(c *cli.Context) error {
 			return errors.Errorf("could not initialize analysis reporter, reason: %w", err)
 		}
 		gatherRep.ZIP = gatherRep.SuggestZIPName()
+		//gatherRep.DeleteAfterZipping = true
 		fmt.Printf("Full report will be written to \"%s\".\n", gatherRep.ZIP)
 		if c.Bool("store-dumps") {
 			err = gatherRep.WithFileDumpStorage("dumps")
@@ -393,14 +394,24 @@ func scan(c *cli.Context) error {
 			}
 			gatherRep.ZIPPassword = c.String("password")
 		}
+		reporter = &yapscan.MultiReporter{
+			Reporters: []yapscan.Reporter{
+				reporter,
+				gatherRep,
+			},
+		}
 	}
 	defer reporter.Close()
 
 	err = reporter.ReportSystemInfo()
-	logrus.WithError(err).Error("Could not report on system infos.")
+	if err != nil {
+		logrus.WithError(err).Error("Could not report on system infos.")
+	}
 
 	err = reporter.ReportRules(rules)
-	logrus.WithError(err).Error("Could not report on yara rules.")
+	if err != nil {
+		logrus.WithError(err).Error("Could not report on yara rules.")
+	}
 
 	alwaysSuspend := c.Bool("force")
 	alwaysDumpWithoutSuspend := false

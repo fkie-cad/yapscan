@@ -97,7 +97,7 @@ func isDirEmpty(dir string) (bool, error) {
 	fInfo, err := os.Stat(dir)
 	if err != nil {
 		if os.IsNotExist(err) {
-			os.MkdirAll(dir, os.ModeDir)
+			os.MkdirAll(dir, 0777)
 			return true, nil
 		} else {
 			return false, err
@@ -111,7 +111,7 @@ func isDirEmpty(dir string) (bool, error) {
 		if err != nil {
 			return false, err
 		}
-		return len(contents) > 0, nil
+		return len(contents) == 0, nil
 	}
 }
 
@@ -341,6 +341,12 @@ func tryFlush(w io.Writer) error {
 	return nil
 }
 
+type ScanProgressReport struct {
+	ProcessInfo   *procIO.ProcessInfo       `json:"process"`
+	MemorySegment *procIO.MemorySegmentInfo `json:"memorySegment"`
+	Error         error                     `json:"error"`
+}
+
 // AnalysisReporter implements a Reporter, which is
 // specifically intended for later analysis of the report
 // in order to determine rule quality.
@@ -393,7 +399,12 @@ func (r *AnalysisReporter) ReportRules(rules *yara.Rules) error {
 
 func (r *AnalysisReporter) ConsumeScanProgress(progress <-chan *ScanProgress) error {
 	for prog := range progress {
-		err := json.NewEncoder(r.ProgressOut).Encode(prog)
+		// TODO: Add matches!
+		err := json.NewEncoder(r.ProgressOut).Encode(&ScanProgressReport{
+			ProcessInfo:   prog.Process.Info(),
+			MemorySegment: prog.MemorySegment,
+			Error:         prog.Error,
+		})
 		if err != nil {
 			logrus.WithError(err).Error("Could not report progress.")
 		}

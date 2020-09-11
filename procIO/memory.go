@@ -9,23 +9,23 @@ import (
 
 type MemorySegmentInfo struct {
 	// On windows: _MEMORY_BASIC_INFORMATION->AllocationBase
-	ParentBaseAddress uint64
+	ParentBaseAddress uint64 `json:"parentBaseAddress"`
 	// On windows: _MEMORY_BASIC_INFORMATION->BaseAddress
-	BaseAddress uint64
+	BaseAddress uint64 `json:"baseAddress"`
 	// On windows: _MEMORY_BASIC_INFORMATION->AllocationProtect
-	AllocatedPermissions Permissions
+	AllocatedPermissions Permissions `json:"allocatedPermissions"`
 	// On windows: _MEMORY_BASIC_INFORMATION->Protect
-	CurrentPermissions Permissions
+	CurrentPermissions Permissions `json:"currentPermissions"`
 	// On windows: _MEMORY_BASIC_INFORMATION->RegionSize
-	Size uint64
+	Size uint64 `json:"size"`
 	// On windows: _MEMORY_BASIC_INFORMATION->State
-	State State
+	State State `json:"state"`
 	// On windows: _MEMORY_BASIC_INFORMATION->Type
-	Type Type
+	Type Type `json:"type"`
 
-	FilePath string
+	FilePath string `json:"filePath"`
 
-	SubSegments []*MemorySegmentInfo
+	SubSegments []*MemorySegmentInfo `json:"subSegments"`
 }
 
 func (s *MemorySegmentInfo) String() string {
