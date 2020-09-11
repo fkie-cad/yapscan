@@ -3,6 +3,9 @@ package yapscan
 import (
 	"fmt"
 	"fraunhofer/fkie/yapscan/procIO"
+	"io"
+
+	"github.com/hillu/go-yara/v4"
 
 	"github.com/sirupsen/logrus"
 
@@ -10,8 +13,10 @@ import (
 )
 
 type Reporter interface {
-	Receive(progress *ScanProgress) error
-	Consume(progress <-chan *ScanProgress) error
+	ReportSystemInfos() error
+	ReportRules(rules *yara.Rules) error
+	ConsumeScanProgress(progress <-chan *ScanProgress) error
+	io.Closer
 }
 
 type stdoutReporter struct {
@@ -26,7 +31,26 @@ func NewStdoutReporter(formatter ProgressFormatter) Reporter {
 	return &stdoutReporter{formatter: formatter, pid: -1}
 }
 
-func (r *stdoutReporter) Receive(progress *ScanProgress) error {
+func (r *stdoutReporter) ReportSystemInfos() error {
+	// Don't report systeminfo to stdout
+	return nil
+}
+
+func (r *stdoutReporter) ReportRules(rules *yara.Rules) error {
+	// Don't report rules to stdout
+	return nil
+}
+
+func (r *stdoutReporter) Close() error {
+	return nil
+}
+
+func (r *stdoutReporter) reportProcess(proc procIO.Process) error {
+	_, err := fmt.Printf("\nScanning process %d...\n", proc.PID())
+	return err
+}
+
+func (r *stdoutReporter) receive(progress *ScanProgress) {
 	if r.pid != progress.Process.PID() {
 		r.pid = progress.Process.PID()
 		segments, _ := progress.Process.MemorySegments()
@@ -40,6 +64,13 @@ func (r *stdoutReporter) Receive(progress *ScanProgress) error {
 			}
 		}
 		r.procSegmentIndex = 0
+		err := r.reportProcess(progress.Process)
+		if err != nil {
+			logrus.WithFields(logrus.Fields{
+				"process":       progress.Process.PID(),
+				logrus.ErrorKey: err,
+			}).Error("Could not report on process.")
+		}
 	}
 	r.procSegmentIndex += 1
 	percent := int(float64(r.procSegmentIndex)/float64(r.procSegmentCount)*100. + 0.5)
@@ -60,21 +91,20 @@ func (r *stdoutReporter) Receive(progress *ScanProgress) error {
 
 	if (progress.Error != nil && progress.Error != ErrSkipped) || (progress.Matches != nil && len(progress.Matches) > 0) {
 		fmt.Println()
-		fmt.Println(r.formatter.Format(progress))
+		fmt.Println(r.formatter.FormatScanProgress(progress))
 	}
-	return nil
 }
 
-func (r *stdoutReporter) Consume(progress <-chan *ScanProgress) error {
+func (r *stdoutReporter) ConsumeScanProgress(progress <-chan *ScanProgress) error {
 	for prog := range progress {
-		r.Receive(prog)
+		r.receive(prog)
 	}
 	fmt.Println()
 	return nil
 }
 
 type ProgressFormatter interface {
-	Format(progress *ScanProgress) string
+	FormatScanProgress(progress *ScanProgress) string
 }
 
 type prettyFormatter struct{}
@@ -83,7 +113,7 @@ func NewPrettyFormatter() ProgressFormatter {
 	return &prettyFormatter{}
 }
 
-func (p prettyFormatter) Format(progress *ScanProgress) string {
+func (p prettyFormatter) FormatScanProgress(progress *ScanProgress) string {
 	if progress.Error != nil {
 		msg := ""
 		if progress.Error == ErrSkipped {

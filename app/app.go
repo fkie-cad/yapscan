@@ -376,6 +376,12 @@ func scan(c *cli.Context) error {
 
 	reporter := yapscan.NewStdoutReporter(yapscan.NewPrettyFormatter())
 
+	err = reporter.ReportSystemInfos()
+	logrus.WithError(err).Error("Could not report on system infos.")
+
+	err = reporter.ReportRules(rules)
+	logrus.WithError(err).Error("Could not report on yara rules.")
+
 	alwaysSuspend := c.Bool("force")
 	alwaysDumpWithoutSuspend := false
 	neverDumpWithoutSuspend := false
@@ -427,7 +433,7 @@ func scan(c *cli.Context) error {
 			logrus.WithError(err).Errorf("an error occurred during scanning of process %d", pid)
 			continue
 		}
-		err = reporter.Consume(progress)
+		err = reporter.ConsumeScanProgress(progress)
 		if err != nil {
 			logrus.WithError(err).Error("an error occurred during progress report, there may be no other output")
 			continue
