@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"fraunhofer/fkie/yapscan/procIO"
 
+	"github.com/sirupsen/logrus"
+
 	"github.com/doun/terminal/color"
 )
 
@@ -42,6 +44,19 @@ func (r *stdoutReporter) Receive(progress *ScanProgress) error {
 	r.procSegmentIndex += 1
 	percent := int(float64(r.procSegmentIndex)/float64(r.procSegmentCount)*100. + 0.5)
 	fmt.Printf("\r%-64s", fmt.Sprintf("Scanning %d: %3d %%", progress.Process.PID(), percent))
+
+	if progress.Error == nil {
+		logrus.WithFields(logrus.Fields{
+			"process": progress.Process.PID(),
+			"segment": progress.MemorySegment,
+		}).Info("Scan of segment complete.")
+	} else if progress.Error != ErrSkipped {
+		logrus.WithFields(logrus.Fields{
+			"process":       progress.Process.PID(),
+			"segment":       progress.MemorySegment,
+			logrus.ErrorKey: progress.Error,
+		}).Error("Scan of segment failed.")
+	}
 
 	if (progress.Error != nil && progress.Error != ErrSkipped) || (progress.Matches != nil && len(progress.Matches) > 0) {
 		fmt.Println()

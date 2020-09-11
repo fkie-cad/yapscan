@@ -41,6 +41,7 @@ func initAppAction(c *cli.Context) (func(), error) {
 			logfile.Close()
 		}, nil
 	}
+	logrus.WithField("arguments", os.Args).Debug("Program started.")
 	return nil, nil
 }
 
