@@ -109,7 +109,7 @@ func (s *ProcessScanner) scanSegment(seg *procIO.MemorySegmentInfo) ([]yara.Matc
 			"process":       s.proc,
 			"segment":       seg,
 			logrus.ErrorKey: err,
-		}).Info("Could not read memory from process.")
+		}).Error("Could not read memory from process.")
 		return nil, err
 	}
 
