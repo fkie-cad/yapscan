@@ -1,0 +1,67 @@
+package system
+
+import (
+	"encoding/csv"
+	"os"
+	"os/exec"
+	"strings"
+
+	"github.com/targodan/go-errors"
+)
+
+func getOSInfo() (name, version, flavour string, bitness Bitness, err error) {
+	_, exists := os.LookupEnv("ProgramFiles(x86)")
+	if exists {
+		// Is 64bit OS
+		bitness = Bitness64Bit
+	} else {
+		// Is not 64bit OS, assume 32bit
+		bitness = Bitness32Bit
+	}
+	cmd := exec.Command("systeminfo", "/FO", "CSV")
+	buf, err := cmd.Output()
+	if err != nil {
+		err = errors.Errorf("could not execute systeminfo, reason: %s", err)
+		return
+	}
+
+	info := csv.NewReader(strings.NewReader(string(buf)))
+	headings, err := info.Read()
+	if err != nil {
+		err = errors.Errorf("could not parse systeminfo output, reason: %s", err)
+		return
+	}
+	data, err := info.Read()
+	if err != nil {
+		err = errors.Errorf("could not parse systeminfo output, reason: %s", err)
+		return
+	}
+
+	var iOSName, iOSVersion int
+	for i, heading := range headings {
+		if strings.ToLower(heading) == "os name" {
+			iOSName = i
+		}
+		if strings.ToLower(heading) == "os version" {
+			iOSVersion = i
+		}
+		if iOSName != 0 && iOSVersion != 0 {
+			break
+		}
+	}
+
+	parts := strings.Split(strings.TrimSpace(data[iOSName]), " ")
+	if len(parts) < 3 {
+		err = errors.Errorf("invalid OS name \"%s\"", data[iOSName])
+		return
+	}
+	// Examples:
+	// Microsoft Windows 7 Professional
+	// Microsoft Windows XP Professional
+	// Microsoft Windows 10 Pro
+	name = strings.Join(parts[:3], " ")
+	flavour = strings.Join(parts[3:], " ")
+	version = strings.TrimSpace(data[iOSVersion])
+
+	return
+}
