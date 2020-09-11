@@ -20,19 +20,37 @@ import (
 
 const yaraRulesNamespace = ""
 
-func initAppAction(c *cli.Context) error {
+func initAppAction(c *cli.Context) (func(), error) {
 	lvl, err := logrus.ParseLevel(c.String("log-level"))
 	if err != nil {
-		return err
+		return nil, err
 	}
 	logrus.SetLevel(lvl)
-	return nil
+	switch c.String("log-path") {
+	case "-":
+		logrus.SetOutput(os.Stdout)
+	case "--":
+		logrus.SetOutput(os.Stderr)
+	default:
+		logfile, err := os.OpenFile(c.String("log-path"), os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0666)
+		if err != nil {
+			return nil, errors.Errorf("could not open logfile for writing, reason: %w", err)
+		}
+		logrus.SetOutput(logfile)
+		return func() {
+			logfile.Close()
+		}, nil
+	}
+	return nil, nil
 }
 
 func listProcesses(c *cli.Context) error {
-	err := initAppAction(c)
+	onClose, err := initAppAction(c)
 	if err != nil {
 		return err
+	}
+	if onClose != nil {
+		defer onClose()
 	}
 
 	pids, err := procIO.GetRunningPIDs()
@@ -88,9 +106,12 @@ func filterFromArgs(c *cli.Context) (yapscan.MemorySegmentFilter, error) {
 }
 
 func listMemory(c *cli.Context) error {
-	err := initAppAction(c)
+	onClose, err := initAppAction(c)
 	if err != nil {
 		return err
+	}
+	if onClose != nil {
+		defer onClose()
 	}
 
 	if c.NArg() != 1 {
@@ -144,9 +165,12 @@ func listMemory(c *cli.Context) error {
 }
 
 func dumpMemory(c *cli.Context) error {
-	err := initAppAction(c)
+	onClose, err := initAppAction(c)
 	if err != nil {
 		return err
+	}
+	if onClose != nil {
+		defer onClose()
 	}
 
 	var dumper io.WriteCloser
@@ -270,9 +294,12 @@ func askYesNoAlwaysNever(msg string) (yes bool, always bool, never bool) {
 }
 
 func scan(c *cli.Context) error {
-	err := initAppAction(c)
+	onClose, err := initAppAction(c)
 	if err != nil {
 		return err
+	}
+	if onClose != nil {
+		defer onClose()
 	}
 
 	f, err := filterFromArgs(c)
@@ -476,8 +503,13 @@ func RunApp(args []string) {
 			&cli.StringFlag{
 				Name:    "log-level",
 				Aliases: []string{"l"},
-				Usage:   "one of [trace, debug, info, warn, error, fatal]",
-				Value:   "warn",
+				Usage:   "one of [trace, debug, info, warn, error, fatal, panic]",
+				Value:   "panic",
+			},
+			&cli.StringFlag{
+				Name:  "log-path",
+				Usage: "path to the logfile, or \"-\" for stdout, or \"--\" for stderr",
+				Value: "--",
 			},
 		},
 		Commands: []*cli.Command{
