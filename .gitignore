@@ -23,3 +23,6 @@ vendor/
 
 # Generated files
 *_enum.go
+
+# Logfiles
+*.log
