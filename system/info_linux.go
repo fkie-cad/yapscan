@@ -35,12 +35,12 @@ func getOSInfo() (name, version, flavour string, bitness Bitness, err error) {
 	case "amd64":
 		fallthrough
 	case "x86_64":
-		info.Bitness = Bitness64Bit
+		bitness = Bitness64Bit
 
 	case "i686":
 		fallthrough
 	case "x86":
-		info.Bitness = Bitness32Bit
+		bitness = Bitness32Bit
 
 	default:
 		err = errors.Errorf("unknown architecture \"%s\"", arch)

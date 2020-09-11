@@ -9,11 +9,16 @@ import (
 var ErrProcIsSelf = errors.New("not supported on self")
 var ErrProcIsParent = errors.New("not supported on parent")
 
+type ProcessInfo struct {
+	PID int
+}
+
 type Process interface {
 	io.Closer
 	fmt.Stringer
 
 	PID() int
+	Info() *ProcessInfo
 	Handle() interface{}
 	MemorySegments() ([]*MemorySegmentInfo, error)
 	Suspend() error
@@ -48,6 +53,10 @@ func (c *cachingProcess) String() string {
 
 func (c *cachingProcess) PID() int {
 	return c.proc.PID()
+}
+
+func (c *cachingProcess) Info() *ProcessInfo {
+	return c.proc.Info()
 }
 
 func (c *cachingProcess) Handle() interface{} {

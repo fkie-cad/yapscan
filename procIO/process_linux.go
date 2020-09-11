@@ -41,6 +41,12 @@ func (p *processLinux) PID() int {
 	return p.pid
 }
 
+func (p *processLinux) Info() *ProcessInfo {
+	return &ProcessInfo{
+		PID: p.pid,
+	}
+}
+
 func (p *processLinux) String() string {
 	return FormatPID(p.pid)
 }

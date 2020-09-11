@@ -60,6 +60,12 @@ func (p *processWindows) PID() int {
 	return p.pid
 }
 
+func (p *processWindows) Info() *ProcessInfo {
+	return &ProcessInfo{
+		PID: p.pid,
+	}
+}
+
 func (p *processWindows) String() string {
 	return FormatPID(p.pid)
 }

@@ -8,6 +8,7 @@ import (
 	"fraunhofer/fkie/yapscan/procIO"
 	"io"
 	"os"
+	"path"
 	"strconv"
 	"strings"
 
@@ -375,8 +376,27 @@ func scan(c *cli.Context) error {
 	}
 
 	reporter := yapscan.NewProgressReporter(os.Stdout, yapscan.NewPrettyFormatter())
+	if c.Bool("full-report") || c.Bool("store-dumps") {
+		tmpDir := path.Join(os.TempDir(), "yapscan")
+		fmt.Println("Full report temp dir: ", tmpDir)
+		logrus.Debug("Full report temp dir: ", tmpDir)
+		gatherRep, err := yapscan.NewGatheredAnalysisReporter(tmpDir)
+		if err != nil {
+			return errors.Errorf("could not initialize analysis reporter, reason: %w", err)
+		}
+		gatherRep.ZIP = gatherRep.SuggestZIPName()
+		fmt.Printf("Full report will be written to \"%s\".\n", gatherRep.ZIP)
+		if c.Bool("store-dumps") {
+			err = gatherRep.WithFileDumpStorage("dumps")
+			if err != nil {
+				return errors.Errorf("could not initialize analysis reporter, reason: %w", err)
+			}
+			gatherRep.ZIPPassword = c.String("password")
+		}
+	}
+	defer reporter.Close()
 
-	err = reporter.ReportSystemInfos()
+	err = reporter.ReportSystemInfo()
 	logrus.WithError(err).Error("Could not report on system infos.")
 
 	err = reporter.ReportRules(rules)
@@ -579,6 +599,21 @@ func RunApp(args []string) {
 						Name:  "all",
 						Usage: "scan all running processes",
 						Value: false,
+					},
+					&cli.BoolFlag{
+						Name:  "full-report",
+						Usage: "create a full report",
+						Value: false,
+					},
+					&cli.BoolFlag{
+						Name:  "store-dumps",
+						Usage: "store dumps of memory regions that match rules, implies --full-report, the report will be encrypted with --password",
+						Value: false,
+					},
+					&cli.StringFlag{
+						Name:  "password",
+						Usage: "the password of the encrypted report, ignored unless --store-dumps is set",
+						Value: yapscan.DefaultZIPPassword,
 					},
 				}, segmentFilterFlags...), suspendFlags...),
 			},

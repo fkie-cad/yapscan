@@ -32,6 +32,7 @@ var ErrSkipped = errors.New("skipped memory segment")
 type ScanProgress struct {
 	Process       procIO.Process
 	MemorySegment *procIO.MemorySegmentInfo
+	Dump          []byte
 	Matches       []yara.MatchRule
 	Error         error
 }
@@ -53,10 +54,11 @@ func (s *ProcessScanner) Scan() (<-chan *ScanProgress, error) {
 		for _, segment := range segments {
 			if len(segment.SubSegments) == 0 {
 				// Only scan leaf segments
-				matches, err := s.scanSegment(segment)
+				matches, data, err := s.scanSegment(segment)
 				progress <- &ScanProgress{
 					Process:       s.proc,
 					MemorySegment: segment,
+					Dump:          data,
 					Matches:       matches,
 					Error:         err,
 				}
@@ -66,10 +68,11 @@ func (s *ProcessScanner) Scan() (<-chan *ScanProgress, error) {
 			}
 
 			for _, subSegment := range segment.SubSegments {
-				matches, err := s.scanSegment(subSegment)
+				matches, data, err := s.scanSegment(subSegment)
 				progress <- &ScanProgress{
 					Process:       s.proc,
 					MemorySegment: subSegment,
+					Dump:          data,
 					Matches:       matches,
 					Error:         err,
 				}
@@ -83,14 +86,14 @@ func (s *ProcessScanner) Scan() (<-chan *ScanProgress, error) {
 	return progress, nil
 }
 
-func (s *ProcessScanner) scanSegment(seg *procIO.MemorySegmentInfo) ([]yara.MatchRule, error) {
+func (s *ProcessScanner) scanSegment(seg *procIO.MemorySegmentInfo) ([]yara.MatchRule, []byte, error) {
 	match := s.filter.Filter(seg)
 	if !match.Result {
 		logrus.WithFields(logrus.Fields{
 			"segment": seg,
 			"reason":  match.Reason,
 		}).Debug("Memory segment skipped.")
-		return nil, ErrSkipped
+		return nil, nil, ErrSkipped
 	}
 
 	logrus.WithFields(logrus.Fields{
@@ -99,7 +102,7 @@ func (s *ProcessScanner) scanSegment(seg *procIO.MemorySegmentInfo) ([]yara.Matc
 
 	rdr, err := procIO.NewMemoryReader(s.proc, seg)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	defer rdr.Close()
 
@@ -110,8 +113,9 @@ func (s *ProcessScanner) scanSegment(seg *procIO.MemorySegmentInfo) ([]yara.Matc
 			"segment":       seg,
 			logrus.ErrorKey: err,
 		}).Error("Could not read memory of process.")
-		return nil, err
+		return nil, nil, err
 	}
 
-	return s.scanner.ScanMem(data)
+	matches, err := s.scanner.ScanMem(data)
+	return matches, data, err
 }

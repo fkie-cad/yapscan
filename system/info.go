@@ -17,34 +17,40 @@ ENUM(
 type Bitness int
 
 type Info struct {
-	OSName    string
-	OSVersion string
-	OSFlavour string
-	Bitness   Bitness
-	Hostname  string
-	IPs       []string
+	OSName    string   `json:"osName"`
+	OSVersion string   `json:"osVersion"`
+	OSFlavour string   `json:"osFlavour"`
+	OSBitness Bitness  `json:"osBitness"`
+	Hostname  string   `json:"hostname"`
+	IPs       []string `json:"ips"`
 }
 
-func GetInfo() (info *Info, err error) {
-	info = new(Info)
-	info.OSName, info.OSVersion, info.OSFlavour, info.Bitness, err = getOSInfo()
-	if err != nil {
-		err = errors.Errorf("could not determine OS info", err)
-		return
+var info *Info
+
+func GetInfo() (*Info, error) {
+	if info == nil {
+		var err error
+
+		info = new(Info)
+		info.OSName, info.OSVersion, info.OSFlavour, info.OSBitness, err = getOSInfo()
+		if err != nil {
+			err = errors.Errorf("could not determine OS info, reason: %w", err)
+			return info, err
+		}
+		info.Hostname, err = os.Hostname()
+		if err != nil {
+			err = errors.Errorf("could not determine hostname, reason: %w", err)
+			return info, err
+		}
+		addrs, err := net.InterfaceAddrs()
+		if err != nil {
+			err = errors.Errorf("could not determine IPs, reason: %w", err)
+			return info, err
+		}
+		info.IPs = make([]string, len(addrs))
+		for i := range addrs {
+			info.IPs[i] = addrs[i].String()
+		}
 	}
-	info.Hostname, err = os.Hostname()
-	if err != nil {
-		err = errors.Errorf("could not determine hostname", err)
-		return
-	}
-	addrs, err := net.InterfaceAddrs()
-	if err != nil {
-		err = errors.Errorf("could not determine IPs", err)
-		return
-	}
-	info.IPs = make([]string, len(addrs))
-	for i := range addrs {
-		info.IPs[i] = addrs[i].String()
-	}
-	return
+	return info, nil
 }
