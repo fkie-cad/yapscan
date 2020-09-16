@@ -21,10 +21,12 @@ import (
 
 const yaraRulesNamespace = ""
 
-func initAppAction(c *cli.Context) (func(), error) {
+var onExit func()
+
+func initAppAction(c *cli.Context) error {
 	lvl, err := logrus.ParseLevel(c.String("log-level"))
 	if err != nil {
-		return nil, err
+		return err
 	}
 	logrus.SetLevel(lvl)
 	switch c.String("log-path") {
@@ -35,24 +37,27 @@ func initAppAction(c *cli.Context) (func(), error) {
 	default:
 		logfile, err := os.OpenFile(c.String("log-path"), os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0666)
 		if err != nil {
-			return nil, errors.Errorf("could not open logfile for writing, reason: %w", err)
+			return errors.Errorf("could not open logfile for writing, reason: %w", err)
 		}
 		logrus.SetOutput(logfile)
-		return func() {
+		logrus.StandardLogger().ExitFunc = func(code int) {
+			if onExit != nil {
+				onExit()
+			}
+			os.Exit(code)
+		}
+		onExit = func() {
 			logfile.Close()
-		}, nil
+		}
 	}
 	logrus.WithField("arguments", os.Args).Debug("Program started.")
-	return nil, nil
+	return nil
 }
 
 func listProcesses(c *cli.Context) error {
-	onClose, err := initAppAction(c)
+	err := initAppAction(c)
 	if err != nil {
 		return err
-	}
-	if onClose != nil {
-		defer onClose()
 	}
 
 	pids, err := procIO.GetRunningPIDs()
@@ -108,12 +113,9 @@ func filterFromArgs(c *cli.Context) (yapscan.MemorySegmentFilter, error) {
 }
 
 func listMemory(c *cli.Context) error {
-	onClose, err := initAppAction(c)
+	err := initAppAction(c)
 	if err != nil {
 		return err
-	}
-	if onClose != nil {
-		defer onClose()
 	}
 
 	if c.NArg() != 1 {
@@ -167,12 +169,9 @@ func listMemory(c *cli.Context) error {
 }
 
 func dumpMemory(c *cli.Context) error {
-	onClose, err := initAppAction(c)
+	err := initAppAction(c)
 	if err != nil {
 		return err
-	}
-	if onClose != nil {
-		defer onClose()
 	}
 
 	var dumper io.WriteCloser
@@ -296,12 +295,9 @@ func askYesNoAlwaysNever(msg string) (yes bool, always bool, never bool) {
 }
 
 func scan(c *cli.Context) error {
-	onClose, err := initAppAction(c)
+	err := initAppAction(c)
 	if err != nil {
 		return err
-	}
-	if onClose != nil {
-		defer onClose()
 	}
 
 	f, err := filterFromArgs(c)
@@ -314,7 +310,7 @@ func scan(c *cli.Context) error {
 	}
 
 	var rules *yara.Rules
-	{
+	err = func() error {
 		rulesFile, err := os.OpenFile(c.String("rules"), os.O_RDONLY, 0644)
 		if err != nil {
 			return errors.Newf("could not open rules file, reason: %w", err)
@@ -352,6 +348,10 @@ func scan(c *cli.Context) error {
 				return errors.Newf("could not compile yara rules, reason: %w", err)
 			}
 		}
+		return nil
+	}()
+	if err != nil {
+		return err
 	}
 
 	yaraScanner, err := yapscan.NewYaraMemoryScanner(rules)
@@ -385,7 +385,7 @@ func scan(c *cli.Context) error {
 			return errors.Errorf("could not initialize analysis reporter, reason: %w", err)
 		}
 		gatherRep.ZIP = gatherRep.SuggestZIPName()
-		//gatherRep.DeleteAfterZipping = true
+		gatherRep.DeleteAfterZipping = !c.Bool("keep")
 		fmt.Printf("Full report will be written to \"%s\".\n", gatherRep.ZIP)
 		if c.Bool("store-dumps") {
 			err = gatherRep.WithFileDumpStorage("dumps")
@@ -401,7 +401,13 @@ func scan(c *cli.Context) error {
 			},
 		}
 	}
-	defer reporter.Close()
+	defer func() {
+		err := reporter.Close()
+		if err != nil {
+			fmt.Println(err)
+			logrus.WithError(err).Error("Error closing reporter.")
+		}
+	}()
 
 	err = reporter.ReportSystemInfo()
 	if err != nil {
@@ -429,6 +435,7 @@ func scan(c *cli.Context) error {
 			}
 		}()
 
+		resume := func() {}
 		if c.Bool("suspend") {
 			var suspend bool
 			if alwaysSuspend {
@@ -447,8 +454,16 @@ func scan(c *cli.Context) error {
 			if suspend {
 				err = proc.Suspend()
 				if err != nil {
+					fmt.Println("Could not suspend process: ", err)
 					logrus.WithError(err).Errorf("could not suspend process %d", pid)
 					continue
+				}
+				resume = func() {
+					err := proc.Resume()
+					if err != nil {
+						fmt.Println("Could not resume process: ", err)
+						logrus.WithError(err).Errorf("could not resume process %d", pid)
+					}
 				}
 			} else {
 				if neverDumpWithoutSuspend {
@@ -462,13 +477,16 @@ func scan(c *cli.Context) error {
 		progress, err := scanner.Scan()
 		if err != nil {
 			logrus.WithError(err).Errorf("an error occurred during scanning of process %d", pid)
+			resume()
 			continue
 		}
 		err = reporter.ConsumeScanProgress(progress)
 		if err != nil {
 			logrus.WithError(err).Error("an error occurred during progress report, there may be no other output")
+			resume()
 			continue
 		}
+		resume()
 	}
 
 	return nil
@@ -621,6 +639,11 @@ func RunApp(args []string) {
 						Usage: "store dumps of memory regions that match rules, implies --full-report, the report will be encrypted with --password",
 						Value: false,
 					},
+					&cli.BoolFlag{
+						Name:  "keep",
+						Usage: "keep the temporary report directory, by default it will be deleted; ignored without --full-report",
+						Value: false,
+					},
 					&cli.StringFlag{
 						Name:  "password",
 						Usage: "the password of the encrypted report, ignored unless --store-dumps is set",
@@ -633,6 +656,11 @@ func RunApp(args []string) {
 
 	err := app.Run(args)
 	if err != nil {
-		logrus.Fatal(err)
+		fmt.Println(err)
+		logrus.Error(err)
+		logrus.Fatal("Aborting.")
+	}
+	if onExit != nil {
+		onExit()
 	}
 }
