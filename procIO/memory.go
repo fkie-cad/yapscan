@@ -9,15 +9,15 @@ import (
 
 type MemorySegmentInfo struct {
 	// On windows: _MEMORY_BASIC_INFORMATION->AllocationBase
-	ParentBaseAddress uint64 `json:"parentBaseAddress"`
+	ParentBaseAddress uintptr `json:"parentBaseAddress"`
 	// On windows: _MEMORY_BASIC_INFORMATION->BaseAddress
-	BaseAddress uint64 `json:"baseAddress"`
+	BaseAddress uintptr `json:"baseAddress"`
 	// On windows: _MEMORY_BASIC_INFORMATION->AllocationProtect
 	AllocatedPermissions Permissions `json:"allocatedPermissions"`
 	// On windows: _MEMORY_BASIC_INFORMATION->Protect
 	CurrentPermissions Permissions `json:"currentPermissions"`
 	// On windows: _MEMORY_BASIC_INFORMATION->RegionSize
-	Size uint64 `json:"size"`
+	Size uintptr `json:"size"`
 	// On windows: _MEMORY_BASIC_INFORMATION->State
 	State State `json:"state"`
 	// On windows: _MEMORY_BASIC_INFORMATION->Type

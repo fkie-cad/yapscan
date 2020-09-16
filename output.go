@@ -390,7 +390,7 @@ func FilterMatches(mr []yara.MatchRule) []*Match {
 
 type ScanProgressReport struct {
 	PID           int      `json:"pid"`
-	MemorySegment uint64   `json:"memorySegment"`
+	MemorySegment uintptr  `json:"memorySegment"`
 	Matches       []*Match `json:"match"`
 	Error         error    `json:"error"`
 }

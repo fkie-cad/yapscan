@@ -98,7 +98,7 @@ func BuildFilterSizeMin(fStr string) (yapscan.MemorySegmentFilter, error) {
 		return nil, errors.Errorf("could not parse size \"%s\", reason: %w", fStr, err)
 	}
 
-	logrus.Infof("Filtering for minimum size %s", humanize.Bytes(size))
+	logrus.Infof("Filtering for minimum size %s", humanize.Bytes(uint64(size)))
 
 	return yapscan.NewMinSizeFilter(size), nil
 }
@@ -113,12 +113,12 @@ func BuildFilterSizeMax(fStr string) (yapscan.MemorySegmentFilter, error) {
 		return nil, errors.Errorf("could not parse size \"%s\", reason: %w", fStr, err)
 	}
 
-	logrus.Infof("Filtering for maximum size %s", humanize.Bytes(size))
+	logrus.Infof("Filtering for maximum size %s", humanize.Bytes(uint64(size)))
 
 	return yapscan.NewMaxSizeFilter(size), nil
 }
 
-func ParseSizeArgument(s string) (uint64, error) {
+func ParseSizeArgument(s string) (uintptr, error) {
 	if strings.Contains(s, "%") {
 		return ParseRelativeSize(s)
 	} else {
@@ -126,7 +126,7 @@ func ParseSizeArgument(s string) (uint64, error) {
 	}
 }
 
-func ParseRelativeSize(s string) (uint64, error) {
+func ParseRelativeSize(s string) (uintptr, error) {
 	var err error
 
 	parts := strings.Split(s, "%")
@@ -142,7 +142,7 @@ func ParseRelativeSize(s string) (uint64, error) {
 		return 0, err
 	}
 
-	max := uint64(0)
+	max := uintptr(0)
 
 	switch strings.ToLower(relToWhat) {
 	case "t":
@@ -167,7 +167,7 @@ func ParseRelativeSize(s string) (uint64, error) {
 		return 0, err
 	}
 
-	return uint64(value*float64(max)/100. + 0.5), nil
+	return uintptr(value*float64(max)/100. + 0.5), nil
 }
 
 func ParseByteUnit(s string) (uint64, error) {
@@ -212,7 +212,7 @@ func ParseByteUnit(s string) (uint64, error) {
 	return 0, errors.Newf("unknown size unit \"%s\"", s)
 }
 
-func ParseAbsoluteSize(s string) (uint64, error) {
+func ParseAbsoluteSize(s string) (uintptr, error) {
 	s = strings.Trim(s, " \t")
 
 	numReg := regexp.MustCompile(`[0-9]*\.?[0-9]+`)
@@ -227,5 +227,5 @@ func ParseAbsoluteSize(s string) (uint64, error) {
 		return 0, err
 	}
 
-	return uint64(float64(mult)*value + 0.5), nil
+	return uintptr(float64(mult)*value + 0.5), nil
 }

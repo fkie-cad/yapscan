@@ -36,9 +36,9 @@ func memorySegmentFromLine(line string) (*MemorySegmentInfo, error) {
 	if err != nil {
 		return nil, errors.Errorf("addr is not of format \"<hex>-<hex>\", %w", err)
 	}
-	ret.BaseAddress = addrStart
-	ret.ParentBaseAddress = addrStart
-	ret.Size = addrEnd - addrStart
+	ret.BaseAddress = uintptr(addrStart)
+	ret.ParentBaseAddress = uintptr(addrStart)
+	ret.Size = uintptr(addrEnd - addrStart)
 
 	if len(parts[fieldPerm]) != 4 {
 		return nil, errors.New("permissions have invalid format")

@@ -33,7 +33,11 @@ func (f *baseFilter) renderReason(info *procIO.MemorySegmentInfo) string {
 	t := template.New("filterReason")
 
 	t.Funcs(template.FuncMap{
-		"bytes": humanize.Bytes,
+		"bytes": func(val interface{}) string {
+			n := reflect.ValueOf(val)
+			num := n.Uint()
+			return humanize.Bytes(uint64(num))
+		},
 		"join": func(glue string, slice interface{}) string {
 			s := reflect.ValueOf(slice)
 			if s.Kind() != reflect.Slice {
@@ -95,7 +99,7 @@ func NewFilterFromFunc(filter MemorySegmentFilterFunc, parameter interface{}, re
 	}
 }
 
-func NewMaxSizeFilter(size uint64) MemorySegmentFilter {
+func NewMaxSizeFilter(size uintptr) MemorySegmentFilter {
 	return NewFilterFromFunc(
 		func(info *procIO.MemorySegmentInfo) bool {
 			return info.Size <= size
@@ -105,7 +109,7 @@ func NewMaxSizeFilter(size uint64) MemorySegmentFilter {
 	)
 }
 
-func NewMinSizeFilter(size uint64) MemorySegmentFilter {
+func NewMinSizeFilter(size uintptr) MemorySegmentFilter {
 	return NewFilterFromFunc(
 		func(info *procIO.MemorySegmentInfo) bool {
 			return info.Size >= size

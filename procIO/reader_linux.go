@@ -14,7 +14,7 @@ type memfileReader struct {
 
 	memfile *os.File
 
-	position uint64
+	position uintptr
 }
 
 func NewMemoryReader(proc Process, seg *MemorySegmentInfo) (MemoryReader, error) {
@@ -45,13 +45,13 @@ func (rdr *memfileReader) Read(data []byte) (int, error) {
 		return 0, io.EOF
 	}
 
-	l := uint64(len(data))
+	l := uintptr(len(data))
 	if rdr.position+l > rdr.seg.Size {
 		l = rdr.seg.Size - rdr.position
 	}
 
 	n, err := io.LimitReader(rdr.memfile, int64(l)).Read(data)
-	rdr.position += uint64(n)
+	rdr.position += uintptr(n)
 	return n, err
 }
 

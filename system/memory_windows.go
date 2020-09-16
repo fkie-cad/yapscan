@@ -4,18 +4,18 @@ import (
 	"fraunhofer/fkie/yapscan/procIO/customWin32"
 )
 
-func GetTotalRAM() (uint64, error) {
+func GetTotalRAM() (uintptr, error) {
 	status, err := customWin32.GlobalMemoryStatusEx()
 	if err != nil {
 		return 0, err
 	}
-	return uint64(status.TotalPhys), nil
+	return uintptr(status.TotalPhys), nil
 }
 
-func GetFreeRAM() (uint64, error) {
+func GetFreeRAM() (uintptr, error) {
 	status, err := customWin32.GlobalMemoryStatusEx()
 	if err != nil {
 		return 0, err
 	}
-	return uint64(status.AvailPhys), nil
+	return uintptr(status.AvailPhys), nil
 }

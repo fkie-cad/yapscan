@@ -4,11 +4,11 @@ import "github.com/0xrawsec/golang-win32/win32"
 
 func SegmentFromMemoryBasicInformation(info win32.MemoryBasicInformation) *MemorySegmentInfo {
 	return &MemorySegmentInfo{
-		ParentBaseAddress:    uint64(info.AllocationBase),
-		BaseAddress:          uint64(info.BaseAddress),
+		ParentBaseAddress:    uintptr(info.AllocationBase),
+		BaseAddress:          uintptr(info.BaseAddress),
 		AllocatedPermissions: permissionsFromProtectDWORD(info.AllocationProtect),
 		CurrentPermissions:   permissionsFromProtectDWORD(info.Protect),
-		Size:                 uint64(info.RegionSize),
+		Size:                 uintptr(info.RegionSize),
 		State:                stateFromDWORD(info.State),
 		Type:                 typeFromDWORD(info.Type),
 		SubSegments:          make([]*MemorySegmentInfo, 0),

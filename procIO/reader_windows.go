@@ -15,7 +15,7 @@ type copyReader struct {
 	proc Process
 	seg  *MemorySegmentInfo
 
-	position uint64
+	position uintptr
 }
 
 func NewMemoryReader(proc Process, seg *MemorySegmentInfo) (MemoryReader, error) {
@@ -39,7 +39,7 @@ func (rdr *copyReader) Read(data []byte) (n int, err error) {
 		return 0, io.EOF
 	}
 
-	l := uint64(len(data))
+	l := uintptr(len(data))
 	if rdr.position+l > rdr.seg.Size {
 		l = rdr.seg.Size - rdr.position
 	}
@@ -55,7 +55,7 @@ func (rdr *copyReader) Read(data []byte) (n int, err error) {
 			"passedBufferSize": l,
 		}).Debug("Got ERROR_PARTIAL_COPY.")
 	}
-	rdr.position += uint64(n)
+	rdr.position += uintptr(n)
 	return
 }
 

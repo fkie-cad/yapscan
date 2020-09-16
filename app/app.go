@@ -149,7 +149,7 @@ func listMemory(c *cli.Context) error {
 
 		format := "%19s %8s %3s %7s %7s %s\n"
 
-		fmt.Printf(format, procIO.FormatMemorySegmentAddress(seg), humanize.Bytes(seg.Size), seg.CurrentPermissions, seg.Type, seg.State, seg.FilePath)
+		fmt.Printf(format, procIO.FormatMemorySegmentAddress(seg), humanize.Bytes(uint64(seg.Size)), seg.CurrentPermissions, seg.Type, seg.State, seg.FilePath)
 
 		if c.Bool("list-subdivided") {
 			for i, sseg := range seg.SubSegments {
@@ -160,7 +160,7 @@ func listMemory(c *cli.Context) error {
 					addr = "└" + addr
 				}
 
-				fmt.Printf(format, addr, humanize.Bytes(sseg.Size), sseg.CurrentPermissions, sseg.Type, sseg.State, sseg.FilePath)
+				fmt.Printf(format, addr, humanize.Bytes(uint64(sseg.Size)), sseg.CurrentPermissions, sseg.Type, sseg.State, sseg.FilePath)
 			}
 		}
 	}
@@ -212,7 +212,7 @@ func dumpMemory(c *cli.Context) error {
 	readContiguous := c.Int("contiguous")
 	found := false
 	for i, seg := range segments {
-		if seg.BaseAddress == addr {
+		if seg.BaseAddress == uintptr(addr) {
 			found = true
 		}
 		if found {
