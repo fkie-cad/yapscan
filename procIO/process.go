@@ -14,11 +14,12 @@ var ErrProcIsSelf = errors.New("not supported on self")
 var ErrProcIsParent = errors.New("not supported on parent")
 
 type ProcessInfo struct {
-	PID              int    `json:"pid"`
-	ExecutablePath   string `json:"executablePath"`
-	ExecutableMD5    string `json:"executableMD5"`
-	ExecutableSHA256 string `json:"executableSHA256"`
-	Username         string `json:"username"`
+	PID              int                  `json:"pid"`
+	ExecutablePath   string               `json:"executablePath"`
+	ExecutableMD5    string               `json:"executableMD5"`
+	ExecutableSHA256 string               `json:"executableSHA256"`
+	Username         string               `json:"username"`
+	MemorySegments   []*MemorySegmentInfo `json:"memorySegments"`
 }
 
 type Process interface {

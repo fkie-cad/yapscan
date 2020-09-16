@@ -68,6 +68,11 @@ func (p *processWindows) Info() (*ProcessInfo, error) {
 		PID: p.pid,
 	}
 
+	info.MemorySegments, tmpErr = p.MemorySegments()
+	if tmpErr != nil {
+		err = errors.NewMultiError(err, errors.Errorf("could not retrieve memory segments info, reason: %w", tmpErr))
+	}
+
 	info.ExecutablePath, tmpErr = kernel32.GetModuleFilenameExW(p.procHandle, 0)
 	if tmpErr != nil {
 		err = errors.NewMultiError(err, errors.Errorf("could not retrieve executable path, reason: %w", tmpErr))

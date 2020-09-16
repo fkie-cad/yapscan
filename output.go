@@ -389,10 +389,10 @@ func FilterMatches(mr []yara.MatchRule) []*Match {
 }
 
 type ScanProgressReport struct {
-	PID           int                       `json:"pid"`
-	MemorySegment *procIO.MemorySegmentInfo `json:"memorySegment"`
-	Matches       []*Match                  `json:"match"`
-	Error         error                     `json:"error"`
+	PID           int      `json:"pid"`
+	MemorySegment uint64   `json:"memorySegment"`
+	Matches       []*Match `json:"match"`
+	Error         error    `json:"error"`
 }
 
 // AnalysisReporter implements a Reporter, which is
@@ -469,12 +469,14 @@ func (r *AnalysisReporter) ConsumeScanProgress(progress <-chan *ScanProgress) er
 		if !seen {
 			r.seen[info.PID] = true
 			err = r.reportProcess(info)
-			logrus.WithError(err).Error("Could not report process info.")
+			if err != nil {
+				logrus.WithError(err).Error("Could not report process info.")
+			}
 		}
 
 		err = json.NewEncoder(r.ProgressOut).Encode(&ScanProgressReport{
 			PID:           info.PID,
-			MemorySegment: prog.MemorySegment,
+			MemorySegment: prog.MemorySegment.BaseAddress,
 			Matches:       FilterMatches(prog.Matches),
 			Error:         prog.Error,
 		})
