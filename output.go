@@ -16,6 +16,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"sync"
 
 	"github.com/alexmullins/zip"
 	"github.com/doun/terminal/color"
@@ -59,19 +60,26 @@ func (r *MultiReporter) ReportRules(rules *yara.Rules) error {
 }
 
 func (r *MultiReporter) ConsumeScanProgress(progress <-chan *ScanProgress) error {
+	wg := &sync.WaitGroup{}
 	chans := make([]chan *ScanProgress, len(r.Reporters))
+	wg.Add(len(chans))
 	for i := range chans {
 		chans[i] = make(chan *ScanProgress)
-		// intentional: called when function exists, not when loop is done
-		defer close(chans[i])
 
-		go r.Reporters[i].ConsumeScanProgress(chans[i])
+		go func(i int) {
+			r.Reporters[i].ConsumeScanProgress(chans[i])
+			wg.Done()
+		}(i)
 	}
 	for prog := range progress {
 		for i := range chans {
 			chans[i] <- prog
 		}
 	}
+	for i := range chans {
+		close(chans[i])
+	}
+	wg.Wait()
 	return nil
 }
 
@@ -310,10 +318,16 @@ func (r *GatheredAnalysisReporter) Close() error {
 		}
 
 		if r.DeleteAfterZipping {
-			err = os.RemoveAll(r.directory)
-			if err != nil {
-				return err
-			}
+			defer func() {
+				err := os.RemoveAll(r.directory)
+				if err != nil {
+					fmt.Printf("Could not delete temporary directory \"%s\".\n", r.directory)
+					logrus.WithFields(logrus.Fields{
+						"dir":           r.directory,
+						logrus.ErrorKey: err,
+					}).Error("Could not delete temporary directory.")
+				}
+			}()
 		}
 	}
 
