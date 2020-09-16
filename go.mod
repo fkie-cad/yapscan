@@ -15,6 +15,7 @@ require (
 	github.com/stretchr/testify v1.4.0 // indirect
 	github.com/targodan/go-errors v1.0.0
 	github.com/urfave/cli/v2 v2.2.0
-	golang.org/x/sys v0.0.0-20200831180312-196b9ba8737a // indirect
+	golang.org/x/crypto v0.0.0-20200820211705-5c72a883971a // indirect
+	golang.org/x/sys v0.0.0-20200916030750-2334cc1a136f // indirect
 	gopkg.in/yaml.v2 v2.2.7 // indirect
 )
