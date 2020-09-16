@@ -25,7 +25,5 @@ RUN git clone --depth=1 --branch $YARA_VERSION https://github.com/VirusTotal/yar
 COPY docker/buildYara.sh /opt/docker
 RUN /opt/docker/buildYara.sh
 
-#RUN /opt/buildGoYara.sh
-
 ENTRYPOINT /bin/bash
 CMD ["-"]
