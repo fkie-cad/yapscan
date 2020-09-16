@@ -355,9 +355,42 @@ func tryFlush(w io.Writer) error {
 	return nil
 }
 
+type Match struct {
+	Rule      string         `json:"rule"`
+	Namespace string         `json:"namespace"`
+	Strings   []*MatchString `json:"strings"`
+}
+
+// A MatchString represents a string declared and matched in a rule.
+type MatchString struct {
+	Name   string `json:"name"`
+	Base   uint64 `json:"base"`
+	Offset uint64 `json:"offset"`
+}
+
+func FilterMatches(mr []yara.MatchRule) []*Match {
+	ret := make([]*Match, len(mr))
+	for i, match := range mr {
+		ret[i] = &Match{
+			Rule:      match.Rule,
+			Namespace: match.Namespace,
+			Strings:   make([]*MatchString, len(match.Strings)),
+		}
+		for j, s := range match.Strings {
+			ret[i].Strings[j] = &MatchString{
+				Name:   s.Name,
+				Base:   s.Base,
+				Offset: s.Offset,
+			}
+		}
+	}
+	return ret
+}
+
 type ScanProgressReport struct {
 	ProcessInfo   *procIO.ProcessInfo       `json:"process"`
 	MemorySegment *procIO.MemorySegmentInfo `json:"memorySegment"`
+	Matches       []*Match                  `json:"match"`
 	Error         error                     `json:"error"`
 }
 
@@ -413,10 +446,10 @@ func (r *AnalysisReporter) ReportRules(rules *yara.Rules) error {
 
 func (r *AnalysisReporter) ConsumeScanProgress(progress <-chan *ScanProgress) error {
 	for prog := range progress {
-		// TODO: Add matches!
 		err := json.NewEncoder(r.ProgressOut).Encode(&ScanProgressReport{
 			ProcessInfo:   prog.Process.Info(),
 			MemorySegment: prog.MemorySegment,
+			Matches:       FilterMatches(prog.Matches),
 			Error:         prog.Error,
 		})
 		if err != nil {
