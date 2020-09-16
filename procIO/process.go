@@ -1,16 +1,24 @@
 package procIO
 
 import (
+	"crypto/md5"
+	"crypto/sha256"
+	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
+	"os"
 )
 
 var ErrProcIsSelf = errors.New("not supported on self")
 var ErrProcIsParent = errors.New("not supported on parent")
 
 type ProcessInfo struct {
-	PID int `json:"pid"`
+	PID              int    `json:"pid"`
+	ExecutablePath   string `json:"executablePath"`
+	ExecutableMD5    string `json:"executableMD5"`
+	ExecutableSHA256 string `json:"executableSHA256"`
+	Username         string `json:"username"`
 }
 
 type Process interface {
@@ -18,7 +26,7 @@ type Process interface {
 	fmt.Stringer
 
 	PID() int
-	Info() *ProcessInfo
+	Info() (*ProcessInfo, error)
 	Handle() interface{}
 	MemorySegments() ([]*MemorySegmentInfo, error)
 	Suspend() error
@@ -33,14 +41,14 @@ type CachingProcess interface {
 func OpenProcess(pid int) (CachingProcess, error) {
 	proc, err := open(pid)
 	return &cachingProcess{
-		proc:  proc,
-		cache: nil,
+		proc: proc,
 	}, err
 }
 
 type cachingProcess struct {
-	proc  Process
-	cache []*MemorySegmentInfo
+	proc         Process
+	segmentCache []*MemorySegmentInfo
+	infoCache    *ProcessInfo
 }
 
 func (c *cachingProcess) Close() error {
@@ -55,8 +63,12 @@ func (c *cachingProcess) PID() int {
 	return c.proc.PID()
 }
 
-func (c *cachingProcess) Info() *ProcessInfo {
-	return c.proc.Info()
+func (c *cachingProcess) Info() (*ProcessInfo, error) {
+	var err error
+	if c.infoCache == nil {
+		c.infoCache, err = c.proc.Info()
+	}
+	return c.infoCache, err
 }
 
 func (c *cachingProcess) Handle() interface{} {
@@ -73,12 +85,36 @@ func (c *cachingProcess) Resume() error {
 
 func (c *cachingProcess) MemorySegments() ([]*MemorySegmentInfo, error) {
 	var err error
-	if c.cache == nil {
-		c.cache, err = c.proc.MemorySegments()
+	if c.segmentCache == nil {
+		c.segmentCache, err = c.proc.MemorySegments()
 	}
-	return c.cache, err
+	return c.segmentCache, err
 }
 
 func (c *cachingProcess) InvalidateCache() {
-	c.cache = nil
+	c.segmentCache = nil
+	c.infoCache = nil
+}
+
+func ComputeHashes(file string) (md5sum, sha256sum string, err error) {
+	var f *os.File
+	f, err = os.OpenFile(file, os.O_RDONLY, 0666)
+	if err != nil {
+		return
+	}
+	defer f.Close()
+
+	h5 := md5.New()
+	h256 := sha256.New()
+
+	teeH5 := io.TeeReader(f, h5)
+	_, err = io.Copy(h256, teeH5)
+	if err != nil {
+		return
+	}
+
+	md5sum = hex.EncodeToString(h5.Sum(nil))
+	sha256sum = hex.EncodeToString(h256.Sum(nil))
+
+	return
 }

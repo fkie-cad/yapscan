@@ -5,6 +5,8 @@ import (
 	"os"
 	"syscall"
 
+	"github.com/targodan/go-errors"
+
 	"github.com/0xrawsec/golang-win32/win32"
 	"github.com/0xrawsec/golang-win32/win32/kernel32"
 )
@@ -60,10 +62,45 @@ func (p *processWindows) PID() int {
 	return p.pid
 }
 
-func (p *processWindows) Info() *ProcessInfo {
-	return &ProcessInfo{
+func (p *processWindows) Info() (*ProcessInfo, error) {
+	var tmpErr, err error
+	info := &ProcessInfo{
 		PID: p.pid,
 	}
+
+	info.ExecutablePath, tmpErr = kernel32.GetModuleFilenameExW(p.procHandle, 0)
+	if tmpErr != nil {
+		err = errors.NewMultiError(err, errors.Errorf("could not retrieve executable path, reason: %w", tmpErr))
+	} else {
+		info.ExecutableMD5, info.ExecutableSHA256, tmpErr = ComputeHashes(info.ExecutablePath)
+		if tmpErr != nil {
+			err = errors.NewMultiError(err, errors.Errorf("could not compute hashes of executable, reason: %w", tmpErr))
+		}
+	}
+
+	tokenHandle, tmpErr := customWin32.OpenProcessToken(syscall.Handle(p.procHandle), syscall.TOKEN_QUERY)
+	if tmpErr != nil {
+		err = errors.NewMultiError(err, errors.Errorf("could not retrieve process token, reason: %w", tmpErr))
+	} else {
+		sid, tmpErr := customWin32.GetTokenOwner(tokenHandle)
+		if tmpErr != nil {
+			err = errors.NewMultiError(err, errors.Errorf("could not get process token owner, reason: %w", tmpErr))
+		} else {
+			accout, domain, _, tmpErr := sid.LookupAccount("")
+			if tmpErr == nil {
+				info.Username = domain + "\\" + accout
+			} else {
+				err = errors.NewMultiError(err, errors.Errorf("could not lookup username from SID, reason: %w", tmpErr))
+
+				info.Username, tmpErr = customWin32.ConvertSidToStringSid(sid)
+				if tmpErr != nil {
+					err = errors.NewMultiError(err, errors.Errorf("could not convert SID to string, reason: %w", tmpErr))
+				}
+			}
+		}
+	}
+
+	return info, err
 }
 
 func (p *processWindows) String() string {

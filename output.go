@@ -157,6 +157,7 @@ func NewGatheredAnalysisReporter(outPath string) (*GatheredAnalysisReporter, err
 			ProcessInfoOut: process,
 			ProgressOut:    progress,
 			DumpStorage:    nil,
+			seen:           make(map[int]bool),
 		},
 	}, nil
 }
@@ -388,7 +389,7 @@ func FilterMatches(mr []yara.MatchRule) []*Match {
 }
 
 type ScanProgressReport struct {
-	ProcessInfo   *procIO.ProcessInfo       `json:"process"`
+	PID           int                       `json:"pid"`
 	MemorySegment *procIO.MemorySegmentInfo `json:"memorySegment"`
 	Matches       []*Match                  `json:"match"`
 	Error         error                     `json:"error"`
@@ -403,6 +404,8 @@ type AnalysisReporter struct {
 	ProcessInfoOut io.WriteCloser
 	ProgressOut    io.WriteCloser
 	DumpStorage    DumpStorage
+
+	seen map[int]bool
 }
 
 func (r *AnalysisReporter) ReportSystemInfo() error {
@@ -444,10 +447,33 @@ func (r *AnalysisReporter) ReportRules(rules *yara.Rules) error {
 	return nil
 }
 
+func (r *AnalysisReporter) reportProcess(info *procIO.ProcessInfo) error {
+	if r.ProcessInfoOut == nil {
+		return nil
+	}
+
+	return json.NewEncoder(r.ProcessInfoOut).Encode(info)
+}
+
 func (r *AnalysisReporter) ConsumeScanProgress(progress <-chan *ScanProgress) error {
+	if r.seen == nil {
+		r.seen = make(map[int]bool)
+	}
+
 	for prog := range progress {
-		err := json.NewEncoder(r.ProgressOut).Encode(&ScanProgressReport{
-			ProcessInfo:   prog.Process.Info(),
+		info, err := prog.Process.Info()
+		if err != nil {
+			logrus.WithError(err).Warn("Could not retrieve complete process info.")
+		}
+		_, seen := r.seen[info.PID]
+		if !seen {
+			r.seen[info.PID] = true
+			err = r.reportProcess(info)
+			logrus.WithError(err).Error("Could not report process info.")
+		}
+
+		err = json.NewEncoder(r.ProgressOut).Encode(&ScanProgressReport{
+			PID:           info.PID,
 			MemorySegment: prog.MemorySegment,
 			Matches:       FilterMatches(prog.Matches),
 			Error:         prog.Error,
@@ -457,7 +483,7 @@ func (r *AnalysisReporter) ConsumeScanProgress(progress <-chan *ScanProgress) er
 		}
 		if r.DumpStorage != nil && prog.Error == nil && prog.Matches != nil && len(prog.Matches) > 0 {
 			err = r.DumpStorage.Store(&Dump{
-				Process: prog.Process.Info(),
+				PID:     info.PID,
 				Segment: prog.MemorySegment,
 				Data:    ioutil.NopCloser(bytes.NewReader(prog.Dump)),
 			})

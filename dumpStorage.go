@@ -12,13 +12,13 @@ import (
 )
 
 type Dump struct {
-	Process *procIO.ProcessInfo
+	PID     int
 	Segment *procIO.MemorySegmentInfo
 	Data    io.ReadCloser
 }
 
 func (d *Dump) Filename() string {
-	return fmt.Sprintf("%d_0x%s.bin", d.Process.PID, d.Segment.String())
+	return fmt.Sprintf("%d_0x%s.bin", d.PID, d.Segment.String())
 }
 
 type DumpOrError struct {
@@ -95,7 +95,7 @@ func (s *fileDumpStorage) Retrieve(ctx context.Context) <-chan *DumpOrError {
 				out.Err = err
 			} else {
 				out.Dump = &Dump{
-					Process: dump.Process,
+					PID:     dump.Process.PID,
 					Segment: dump.Segment,
 					Data:    f,
 				}

@@ -41,10 +41,10 @@ func (p *processLinux) PID() int {
 	return p.pid
 }
 
-func (p *processLinux) Info() *ProcessInfo {
+func (p *processLinux) Info() (*ProcessInfo, error) {
 	return &ProcessInfo{
 		PID: p.pid,
-	}
+	}, nil
 }
 
 func (p *processLinux) String() string {
