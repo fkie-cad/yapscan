@@ -19,7 +19,7 @@ import (
 	"strings"
 	"sync"
 
-	"github.com/doun/terminal/color"
+	"github.com/fatih/color"
 	"github.com/hillu/go-yara/v4"
 	"github.com/sirupsen/logrus"
 	"github.com/targodan/go-errors"
@@ -515,10 +515,11 @@ type progressReporter struct {
 	procMatched      bool
 	procSegmentCount int
 	procSegmentIndex int
+	allClean         bool
 }
 
 func NewProgressReporter(out io.WriteCloser, formatter ProgressFormatter) Reporter {
-	return &progressReporter{out: out, formatter: formatter, pid: -1}
+	return &progressReporter{out: out, formatter: formatter, pid: -1, allClean: true}
 }
 
 func (r *progressReporter) ReportSystemInfo() error {
@@ -532,6 +533,12 @@ func (r *progressReporter) ReportRules(rules *yara.Rules) error {
 }
 
 func (r *progressReporter) Close() error {
+	fmt.Fprintln(r.out)
+	if r.allClean {
+		fmt.Fprintln(r.out, color.GreenString("No matches were found."))
+	} else {
+		fmt.Fprintln(r.out, color.RedString("Some processes matched the provided rules, see above."))
+	}
 	return r.out.Close()
 }
 
@@ -566,6 +573,7 @@ func (r *progressReporter) receive(progress *ScanProgress) {
 
 	if progress.Matches != nil && len(progress.Matches) > 0 {
 		r.procMatched = true
+		r.allClean = false
 	}
 
 	matchOut := r.formatter.FormatScanProgress(progress)
@@ -578,11 +586,11 @@ func (r *progressReporter) receive(progress *ScanProgress) {
 
 	var format string
 	if r.procMatched {
-		format = "Scanning @r%d@|: %3d %%"
+		format = "Scanning " + color.RedString("%d") + ": %3d %%"
 	} else {
 		format = "Scanning %d: %3d %%"
 	}
-	fmt.Fprintf(r.out, "\r%-64s", color.Sprintf(format, progress.Process.PID(), percent))
+	fmt.Fprintf(r.out, "\r%-64s", fmt.Sprintf(format, progress.Process.PID(), percent))
 
 	if progress.Error == nil {
 		logrus.WithFields(logrus.Fields{
@@ -639,7 +647,7 @@ func (p prettyFormatter) FormatScanProgress(progress *ScanProgress) string {
 
 	txt := make([]string, len(progress.Matches))
 	for i, match := range progress.Matches {
-		txt[i] = color.Sprintf("@rMATCH:@| Rule \"%s\" matches segment %s.", match.Rule, procIO.FormatMemorySegmentAddress(progress.MemorySegment))
+		txt[i] = fmt.Sprintf(color.RedString("MATCH:")+" Rule \"%s\" matches segment %s.", match.Rule, procIO.FormatMemorySegmentAddress(progress.MemorySegment))
 	}
 	return strings.Join(txt, "\n")
 }

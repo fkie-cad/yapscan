@@ -6,8 +6,8 @@ require (
 	github.com/0xrawsec/golang-utils v1.1.8 // indirect
 	github.com/0xrawsec/golang-win32 v1.0.6
 	github.com/cpuguy83/go-md2man/v2 v2.0.0 // indirect
-	github.com/doun/terminal v0.0.0-20121006134212-44529d95bd71
 	github.com/dustin/go-humanize v1.0.0
+	github.com/fatih/color v1.9.0
 	github.com/hillu/go-yara/v4 v4.0.2
 	github.com/sirupsen/logrus v1.6.0
 	github.com/smartystreets/goconvey v1.6.4

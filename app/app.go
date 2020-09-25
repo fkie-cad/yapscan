@@ -424,6 +424,11 @@ func scan(c *cli.Context) error {
 	neverDumpWithoutSuspend := false
 
 	for _, pid := range pids {
+		if pid == os.Getpid() {
+			// Don't scan yourself as that will cause unwanted matches.
+			continue
+		}
+
 		proc, err := procIO.OpenProcess(pid)
 		if err != nil {
 			logrus.WithError(err).Errorf("could not open process %d for scanning", pid)
