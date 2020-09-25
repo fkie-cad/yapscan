@@ -34,10 +34,10 @@ func main() {
 	defer proc.Close()
 	segments, err := proc.MemorySegments()
 	for _, seg := range segments {
-		fmt.Printf("0x%016x : %8s : %7v : %7v : %v : %v\n", seg.BaseAddress, humanize.Bytes(seg.Size), seg.Type, seg.State, seg.AllocatedPermissions, seg.CurrentPermissions)
+		fmt.Printf("0x%016x : %8s : %7v : %7v : %v : %v\n", seg.BaseAddress, humanize.Bytes(uint64(seg.Size)), seg.Type, seg.State, seg.AllocatedPermissions, seg.CurrentPermissions)
 		if all {
 			for _, subSeg := range seg.SubSegments {
-				fmt.Printf("    0x%016x : %8s : %7v : %7v : %v : %v\n", subSeg.BaseAddress, humanize.Bytes(subSeg.Size), subSeg.Type, subSeg.State, subSeg.AllocatedPermissions, subSeg.CurrentPermissions)
+				fmt.Printf("    0x%016x : %8s : %7v : %7v : %v : %v\n", subSeg.BaseAddress, humanize.Bytes(uint64(subSeg.Size)), subSeg.Type, subSeg.State, subSeg.AllocatedPermissions, subSeg.CurrentPermissions)
 			}
 		}
 	}
