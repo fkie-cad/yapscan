@@ -22,7 +22,6 @@ vendor/
 .idea/
 
 # Generated files
-*_enum.go
 
 # Logfiles
 *.log
