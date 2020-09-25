@@ -16,6 +16,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"strings"
 	"sync"
 
 	"github.com/doun/terminal/color"
@@ -511,6 +512,7 @@ type progressReporter struct {
 	formatter ProgressFormatter
 
 	pid              int
+	procMatched      bool
 	procSegmentCount int
 	procSegmentIndex int
 }
@@ -541,6 +543,7 @@ func (r *progressReporter) reportProcess(proc procIO.Process) error {
 func (r *progressReporter) receive(progress *ScanProgress) {
 	if r.pid != progress.Process.PID() {
 		r.pid = progress.Process.PID()
+		r.procMatched = false
 		segments, _ := progress.Process.MemorySegments()
 		r.procSegmentCount = 0
 		for _, seg := range segments {
@@ -560,9 +563,26 @@ func (r *progressReporter) receive(progress *ScanProgress) {
 			}).Error("Could not report on process.")
 		}
 	}
+
+	if progress.Matches != nil && len(progress.Matches) > 0 {
+		r.procMatched = true
+	}
+
+	matchOut := r.formatter.FormatScanProgress(progress)
+	if matchOut != "" {
+		fmt.Fprintln(r.out, "\r", matchOut)
+	}
+
 	r.procSegmentIndex += 1
 	percent := int(float64(r.procSegmentIndex)/float64(r.procSegmentCount)*100. + 0.5)
-	fmt.Fprintf(r.out, "\r%-64s", fmt.Sprintf("Scanning %d: %3d %%", progress.Process.PID(), percent))
+
+	var format string
+	if r.procMatched {
+		format = "Scanning @r%d@|: %3d %%"
+	} else {
+		format = "Scanning %d: %3d %%"
+	}
+	fmt.Fprintf(r.out, "\r%-64s", color.Sprintf(format, progress.Process.PID(), percent))
 
 	if progress.Error == nil {
 		logrus.WithFields(logrus.Fields{
@@ -604,11 +624,12 @@ func NewPrettyFormatter() ProgressFormatter {
 func (p prettyFormatter) FormatScanProgress(progress *ScanProgress) string {
 	if progress.Error != nil {
 		msg := ""
-		if progress.Error == ErrSkipped {
-			msg = "Skipped " + procIO.FormatMemorySegmentAddress(progress.MemorySegment)
-		} else {
-			msg = "Error during scan of segment " + procIO.FormatMemorySegmentAddress(progress.MemorySegment) + ": " + progress.Error.Error()
-		}
+		// TODO: Maybe enable via a verbose flag
+		//if progress.Error == ErrSkipped {
+		//	msg = "Skipped " + procIO.FormatMemorySegmentAddress(progress.MemorySegment)
+		//} else {
+		//	msg = "Error during scan of segment " + procIO.FormatMemorySegmentAddress(progress.MemorySegment) + ": " + progress.Error.Error()
+		//}
 		return msg
 	}
 
@@ -616,15 +637,9 @@ func (p prettyFormatter) FormatScanProgress(progress *ScanProgress) string {
 		return ""
 	}
 
-	ret := ""
-
-	for _, match := range progress.Matches {
-		ret += color.Sprintf("@rMATCH:@| Rule \"%s\" matches segment %s at ", match.Rule, procIO.FormatMemorySegmentAddress(progress.MemorySegment))
-		for _, str := range match.Strings {
-			ret += fmt.Sprintf("0x%X (%s), ", str.Offset, str.Name)
-		}
-		ret = ret[:len(ret)-2] + "\n"
+	txt := make([]string, len(progress.Matches))
+	for i, match := range progress.Matches {
+		txt[i] = color.Sprintf("@rMATCH:@| Rule \"%s\" matches segment %s.", match.Rule, procIO.FormatMemorySegmentAddress(progress.MemorySegment))
 	}
-
-	return ret[:len(ret)-1]
+	return strings.Join(txt, "\n")
 }
