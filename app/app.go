@@ -533,7 +533,7 @@ func RunApp(args []string) {
 			Name:    "filter-state",
 			Aliases: []string{"f-state"},
 			Usage:   "comma separated list of considered states, supported states: free, commit, reserve",
-			Value:   cli.NewStringSlice("commit", "reserve"),
+			Value:   cli.NewStringSlice("commit"),
 		},
 		&cli.StringFlag{
 			Name:    "filter-size-max",
