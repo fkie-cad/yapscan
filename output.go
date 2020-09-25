@@ -18,11 +18,11 @@ import (
 	"path/filepath"
 	"sync"
 
-	"github.com/alexmullins/zip"
 	"github.com/doun/terminal/color"
 	"github.com/hillu/go-yara/v4"
 	"github.com/sirupsen/logrus"
 	"github.com/targodan/go-errors"
+	"github.com/yeka/zip"
 )
 
 type Reporter interface {
@@ -219,7 +219,7 @@ func (r *GatheredAnalysisReporter) zip() error {
 		}
 	} else {
 		zipper = func(name string) (io.Writer, error) {
-			return z.Encrypt(name, r.ZIPPassword)
+			return z.Encrypt(name, r.ZIPPassword, zip.AES256Encryption)
 		}
 	}
 
