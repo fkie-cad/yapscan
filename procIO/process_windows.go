@@ -16,6 +16,7 @@ func GetRunningPIDs() ([]int, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer kernel32.CloseHandle(snap)
 
 	pids := make([]int, 0)
 
