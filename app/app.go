@@ -174,6 +174,11 @@ func dumpMemory(c *cli.Context) error {
 		return err
 	}
 
+	filter, err := filterFromArgs(c)
+	if err != nil {
+		return err
+	}
+
 	var dumper io.WriteCloser
 	if c.Bool("raw") {
 		dumper = os.Stdout
@@ -182,8 +187,8 @@ func dumpMemory(c *cli.Context) error {
 		defer dumper.Close()
 	}
 
-	if c.NArg() != 2 {
-		return errors.Newf("expected exactly two arguments, got %d", c.NArg())
+	if c.NArg() != 1 && c.NArg() != 2 {
+		return errors.Newf("expected exactly one or two arguments, got %d", c.NArg())
 	}
 	pid_, err := strconv.ParseUint(c.Args().Get(0), 10, 64)
 	if err != nil {
@@ -191,13 +196,13 @@ func dumpMemory(c *cli.Context) error {
 	}
 	pid := int(pid_)
 
-	addrS := c.Args().Get(1)
-	if strings.Index(addrS, "0x") == 0 {
-		addrS = addrS[2:]
-	}
-	addr, err := strconv.ParseUint(addrS, 16, 64)
-	if err != nil {
-		return errors.Newf("\"%s\" is not an address", c.Args().Get(1))
+	var addr uintptr
+	allSegments := c.NArg() < 2
+	if !allSegments {
+		_, err = fmt.Sscan(c.Args().Get(1), &addr)
+		if err != nil {
+			return errors.Newf("\"%s\" is not an address", c.Args().Get(1))
+		}
 	}
 
 	proc, err := procIO.OpenProcess(pid)
@@ -205,30 +210,61 @@ func dumpMemory(c *cli.Context) error {
 		return errors.Newf("could not open process %d, reason: %w", pid, err)
 	}
 
-	segments, err := proc.MemorySegments()
+	baseSegments, err := proc.MemorySegments()
 	if err != nil {
 		return errors.Newf("could not retrieve memory segments of process %d, reason: %w", pid, err)
 	}
+	// Unpack segments
+	segments := make([]*procIO.MemorySegmentInfo, 0, len(baseSegments))
+	for _, seg := range baseSegments {
+		if seg.SubSegments == nil || len(seg.SubSegments) == 0 {
+			segments = append(segments, seg)
+		} else {
+			segments = append(segments, seg.SubSegments...)
+		}
+	}
+
 	readContiguous := c.Int("contiguous")
 	found := false
 	for i, seg := range segments {
-		if seg.BaseAddress == uintptr(addr) {
+		if seg.BaseAddress == addr || allSegments {
 			found = true
+		}
+		match := filter.Filter(seg)
+		if allSegments && !match.Result {
+			continue
 		}
 		if found {
 			rdr, err := procIO.NewMemoryReader(proc, seg)
 			if err != nil {
 				return errors.Newf("could not read memory of process %d at address 0x%016X, reason %w", pid, seg.BaseAddress, err)
 			}
-			_, err = io.Copy(dumper, rdr)
-			if err != nil {
-				return errors.Newf("could not read memory of process %d at address 0x%016X, reason %w", pid, seg.BaseAddress, err)
+
+			if c.Bool("store") {
+				fname := fmt.Sprintf("%d_%s_0x%X.bin", pid, seg.CurrentPermissions.String(), seg.BaseAddress)
+				path := path.Join(c.String("storage-dir"), fname)
+				outfile, err := os.OpenFile(path, os.O_CREATE|os.O_RDWR, 0666)
+				if err != nil {
+					return errors.Newf("could not create dump file \"%s\", reason: %w", path, err)
+				}
+				_, err = io.Copy(outfile, rdr)
+				outfile.Close()
+				if err != nil {
+					return errors.Newf("could not dump segment to file \"%s\", reason: %w", path, err)
+				}
+			} else {
+				_, err = io.Copy(dumper, rdr)
+				if err != nil {
+					return errors.Newf("could not read memory of process %d at address 0x%016X, reason %w", pid, seg.BaseAddress, err)
+				}
 			}
 
-			if readContiguous == 0 || (i+1 < len(segments) && segments[i+1].BaseAddress != seg.BaseAddress+seg.Size) {
+			if !allSegments &&
+				(readContiguous == 0 || (i+1 < len(segments) && segments[i+1].BaseAddress != seg.BaseAddress+seg.Size)) {
 				// Next segment is not contiguous
 				break
 			}
+			readContiguous--
 		}
 	}
 	if !found {
@@ -602,12 +638,12 @@ func RunApp(args []string) {
 				Name:      "dump",
 				Usage:     "dumps memory of a process",
 				Action:    dumpMemory,
-				ArgsUsage: "<pid> <address_of_section>",
-				Flags: append([]cli.Flag{
+				ArgsUsage: "<pid> [address_of_section]",
+				Flags: append(append([]cli.Flag{
 					&cli.IntFlag{
 						Name:    "contiguous",
 						Aliases: []string{"c"},
-						Usage:   "also dump the following <value> contiguous sections, -1 for all contiguous sections",
+						Usage:   "also dump the following <value> contiguous sections, -1 for all contiguous sections, only relevant if [address_of_section] is given",
 					},
 					&cli.BoolFlag{
 						Name:    "raw",
@@ -615,7 +651,18 @@ func RunApp(args []string) {
 						Usage:   "dump the raw memory as opposed to a hex view of the memory",
 						Value:   false,
 					},
-				}, suspendFlags...),
+					&cli.BoolFlag{
+						Name:  "store",
+						Usage: "don't output, but store raw matching segments in --storage-dir",
+						Value: false,
+					},
+					&cli.StringFlag{
+						Name:    "storage-dir",
+						Aliases: []string{"d"},
+						Usage:   "directory for stored segments, ignored unless --store is given",
+						Value:   ".",
+					},
+				}, suspendFlags...), segmentFilterFlags...),
 			},
 			&cli.Command{
 				Name:      "scan",
