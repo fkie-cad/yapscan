@@ -17,7 +17,7 @@ type memfileReader struct {
 	position uintptr
 }
 
-func NewMemoryReader(proc Process, seg *MemorySegmentInfo) (MemoryReader, error) {
+func newMemoryReader(proc Process, seg *MemorySegmentInfo) (memoryReaderImpl, error) {
 	memfile, err := os.OpenFile(fmt.Sprintf("/proc/%d/mem", proc.PID()), os.O_RDONLY, 0600)
 	if err != nil {
 		return nil, errors.Errorf("could not open process memory for reading, reason: %w", err)
@@ -53,6 +53,14 @@ func (rdr *memfileReader) Read(data []byte) (int, error) {
 	n, err := io.LimitReader(rdr.memfile, int64(l)).Read(data)
 	rdr.position += uintptr(n)
 	return n, err
+}
+
+func (rdr *memfileReader) Process() Process {
+	return rdr.proc
+}
+
+func (rdr *memfileReader) Segment() *MemorySegmentInfo {
+	return rdr.seg
 }
 
 func (rdr *memfileReader) Close() error {

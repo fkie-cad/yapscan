@@ -1,6 +1,7 @@
 package procIO
 
 import (
+	"errors"
 	"io"
 	"syscall"
 
@@ -18,7 +19,7 @@ type copyReader struct {
 	position uintptr
 }
 
-func NewMemoryReader(proc Process, seg *MemorySegmentInfo) (MemoryReader, error) {
+func newMemoryReader(proc Process, seg *MemorySegmentInfo) (memoryReaderImpl, error) {
 	// TODO: Maybe modify non-readable segments here and restore perms on close
 	rdr := &copyReader{
 		proc: proc,
@@ -57,6 +58,31 @@ func (rdr *copyReader) Read(data []byte) (n int, err error) {
 	}
 	rdr.position += uintptr(n)
 	return
+}
+
+func (rdr *copyReader) Seek(offset int64, whence int) (pos int64, err error) {
+	switch whence {
+	case io.SeekStart:
+		pos = offset
+	case io.SeekCurrent:
+		pos = int64(rdr.position) + offset
+	case io.SeekEnd:
+		pos = int64(rdr.seg.Size) + offset
+	}
+	if pos < 0 {
+		pos = 0
+		err = errors.New("cannot seek before start of segment")
+	}
+	rdr.position = uintptr(pos)
+	return
+}
+
+func (rdr *copyReader) Process() Process {
+	return rdr.proc
+}
+
+func (rdr *copyReader) Segment() *MemorySegmentInfo {
+	return rdr.seg
 }
 
 func (rdr *copyReader) Close() error {
