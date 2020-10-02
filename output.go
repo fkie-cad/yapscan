@@ -647,12 +647,14 @@ func (p prettyFormatter) FormatScanProgress(progress *ScanProgress) string {
 
 	txt := make([]string, len(progress.Matches))
 	for i, match := range progress.Matches {
-		addrs := FormatSlice("0x%X", AddressesFromMatches(match.Strings, uint64(progress.MemorySegment.BaseAddress)))
 		txt[i] = fmt.Sprintf(
-			color.RedString("MATCH:")+" Rule \"%s\" matches segment %s.\n\tRule-strings matched at %s.",
+			color.RedString("MATCH:")+" Rule \"%s\" matches segment %s.",
 			match.Rule, procIO.FormatMemorySegmentAddress(progress.MemorySegment),
-			Join(addrs, ", ", " and "),
 		)
+		if len(match.Strings) > 0 {
+			addrs := FormatSlice("0x%X", AddressesFromMatches(match.Strings, uint64(progress.MemorySegment.BaseAddress)))
+			txt[i] += fmt.Sprintf("\n\tRule-strings matched at %s.", Join(addrs, ", ", " and "))
+		}
 	}
 	return strings.Join(txt, "\n")
 }
