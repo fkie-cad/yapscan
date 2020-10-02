@@ -225,6 +225,13 @@ func RunApp(args []string) {
 				Aliases: []string{"ps", "lsproc"},
 				Usage:   "lists all running processes",
 				Action:  listProcesses,
+				Flags: []cli.Flag{
+					&cli.BoolFlag{
+						Name:    "verbose",
+						Aliases: []string{"v"},
+						Usage:   "output errors if any are encountered",
+					},
+				},
 			},
 			&cli.Command{
 				Name:      "list-process-memory",

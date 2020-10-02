@@ -6,6 +6,7 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
+	"fraunhofer/fkie/yapscan/arch"
 	"io"
 	"os"
 )
@@ -15,6 +16,7 @@ var ErrProcIsParent = errors.New("not supported on parent")
 
 type ProcessInfo struct {
 	PID              int                  `json:"pid"`
+	Bitness          arch.Bitness         `json:"bitness"`
 	ExecutablePath   string               `json:"executablePath"`
 	ExecutableMD5    string               `json:"executableMD5"`
 	ExecutableSHA256 string               `json:"executableSHA256"`

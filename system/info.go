@@ -1,26 +1,18 @@
-//go:generate go-enum -f=$GOFILE --marshal
 package system
 
 import (
+	"fraunhofer/fkie/yapscan/arch"
 	"net"
 	"os"
 
 	"github.com/targodan/go-errors"
 )
 
-/*
-ENUM(
-32Bit
-64Bit
-)
-*/
-type Bitness int
-
 type Info struct {
 	OSName    string   `json:"osName"`
 	OSVersion string   `json:"osVersion"`
 	OSFlavour string   `json:"osFlavour"`
-	OSBitness Bitness  `json:"osBitness"`
+	OSArch    arch.T   `json:"osArch"`
 	Hostname  string   `json:"hostname"`
 	IPs       []string `json:"ips"`
 }
@@ -32,7 +24,8 @@ func GetInfo() (*Info, error) {
 		var err error
 
 		info = new(Info)
-		info.OSName, info.OSVersion, info.OSFlavour, info.OSBitness, err = getOSInfo()
+		info.OSArch = arch.Native()
+		info.OSName, info.OSVersion, info.OSFlavour, err = getOSInfo()
 		if err != nil {
 			err = errors.Errorf("could not determine OS info, reason: %w", err)
 			return info, err

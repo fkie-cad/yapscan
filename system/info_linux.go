@@ -3,11 +3,9 @@ package system
 import (
 	"os/exec"
 	"strings"
-
-	"github.com/targodan/go-errors"
 )
 
-func getOSInfo() (name, version, flavour string, bitness Bitness, err error) {
+func getOSInfo() (name, version, flavour string, err error) {
 	var buf []byte
 
 	cmd := exec.Command("uname", "-s")
@@ -30,22 +28,6 @@ func getOSInfo() (name, version, flavour string, bitness Bitness, err error) {
 		return
 	}
 	arch := strings.TrimSpace(string(buf))
-
-	switch arch {
-	case "amd64":
-		fallthrough
-	case "x86_64":
-		bitness = Bitness64Bit
-
-	case "i686":
-		fallthrough
-	case "x86":
-		bitness = Bitness32Bit
-
-	default:
-		err = errors.Errorf("unknown architecture \"%s\"", arch)
-		return
-	}
 
 	cmd = exec.Command("uname", "-o")
 	buf, err = cmd.Output()

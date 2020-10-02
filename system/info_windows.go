@@ -2,22 +2,13 @@ package system
 
 import (
 	"encoding/csv"
-	"os"
 	"os/exec"
 	"strings"
 
 	"github.com/targodan/go-errors"
 )
 
-func getOSInfo() (name, version, flavour string, bitness Bitness, err error) {
-	_, exists := os.LookupEnv("ProgramFiles(x86)")
-	if exists {
-		// Is 64bit OS
-		bitness = Bitness64Bit
-	} else {
-		// Is not 64bit OS, assume 32bit
-		bitness = Bitness32Bit
-	}
+func getOSInfo() (name, version, flavour string, err error) {
 	cmd := exec.Command("systeminfo", "/FO", "CSV")
 	buf, err := cmd.Output()
 	if err != nil {

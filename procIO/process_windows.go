@@ -1,15 +1,39 @@
 package procIO
 
 import (
+	"fraunhofer/fkie/yapscan/arch"
 	"fraunhofer/fkie/yapscan/procIO/customWin32"
 	"os"
 	"syscall"
+
+	"golang.org/x/sys/windows"
 
 	"github.com/targodan/go-errors"
 
 	"github.com/0xrawsec/golang-win32/win32"
 	"github.com/0xrawsec/golang-win32/win32/kernel32"
 )
+
+var specialPIDs = map[int]*ProcessInfo{
+	0: &ProcessInfo{
+		PID:              0,
+		Bitness:          arch.Native().Bitness(),
+		ExecutablePath:   "IdleProcess",
+		ExecutableMD5:    "",
+		ExecutableSHA256: "",
+		Username:         "System",
+		MemorySegments:   []*MemorySegmentInfo{},
+	},
+	4: &ProcessInfo{
+		PID:              4,
+		Bitness:          arch.Native().Bitness(),
+		ExecutablePath:   "PsInitialSystemProcess",
+		ExecutableMD5:    "",
+		ExecutableSHA256: "",
+		Username:         "System",
+		MemorySegments:   []*MemorySegmentInfo{},
+	},
+}
 
 func GetRunningPIDs() ([]int, error) {
 	snap, err := kernel32.CreateToolhelp32Snapshot(kernel32.TH32CS_SNAPPROCESS, 0)
@@ -47,6 +71,11 @@ type processWindows struct {
 }
 
 func open(pid int) (Process, error) {
+	if pid <= 4 {
+		// We'll create special processes without handle, so the info can at least be retreived
+		return &processWindows{pid: pid, procHandle: 0}, nil
+	}
+
 	handle, err := kernel32.OpenProcess(
 		kernel32.PROCESS_VM_READ|kernel32.PROCESS_QUERY_INFORMATION|kernel32.PROCESS_SUSPEND_RESUME,
 		win32.FALSE,
@@ -64,6 +93,11 @@ func (p *processWindows) PID() int {
 }
 
 func (p *processWindows) Info() (*ProcessInfo, error) {
+	special, ok := specialPIDs[p.pid]
+	if ok {
+		return special, nil
+	}
+
 	var tmpErr, err error
 	info := &ProcessInfo{
 		PID: p.pid,
@@ -72,6 +106,19 @@ func (p *processWindows) Info() (*ProcessInfo, error) {
 	info.MemorySegments, tmpErr = p.MemorySegments()
 	if tmpErr != nil {
 		err = errors.NewMultiError(err, errors.Errorf("could not retrieve memory segments info, reason: %w", tmpErr))
+	}
+
+	var isWow64 bool
+	err = windows.IsWow64Process(windows.Handle(p.procHandle), &isWow64)
+	if tmpErr != nil {
+		err = errors.NewMultiError(err, errors.Errorf("could not determine process bitness, reason: %w", tmpErr))
+	}
+	// Note: This is good for windows on x86 and x86_64.
+	// Docs: https://docs.microsoft.com/en-us/windows/win32/api/wow64apiset/nf-wow64apiset-iswow64process?redirectedfrom=MSDN
+	if isWow64 {
+		info.Bitness = arch.Bitness32Bit
+	} else {
+		info.Bitness = arch.Bitness64Bit
 	}
 
 	info.ExecutablePath, tmpErr = kernel32.GetModuleFilenameExW(p.procHandle, 0)
