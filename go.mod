@@ -8,6 +8,7 @@ require (
 	github.com/cpuguy83/go-md2man/v2 v2.0.0 // indirect
 	github.com/dustin/go-humanize v1.0.0
 	github.com/fatih/color v1.9.0
+	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510
 	github.com/hillu/go-yara/v4 v4.0.2
 	github.com/sirupsen/logrus v1.6.0
 	github.com/smartystreets/goconvey v1.6.4

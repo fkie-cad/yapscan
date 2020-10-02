@@ -32,11 +32,16 @@ func initAppAction(c *cli.Context) error {
 			return errors.Errorf("could not open logfile for writing, reason: %w", err)
 		}
 		logrus.SetOutput(logfile)
+		oldExit := logrus.StandardLogger().ExitFunc
 		logrus.StandardLogger().ExitFunc = func(code int) {
 			if onExit != nil {
 				onExit()
 			}
-			os.Exit(code)
+			if oldExit != nil {
+				oldExit(code)
+			} else {
+				os.Exit(code)
+			}
 		}
 		onExit = func() {
 			logfile.Close()

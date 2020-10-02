@@ -3,10 +3,12 @@
 if [[ "$#" == "0" ]]; then
     # Build all by default
     buildYapscan=1
+    buildYapscanDll=1
     buildMemtest=1
 else
     # Build depends on arguments
     buildYapscan=0
+    buildYapscanDll=0
     buildMemtest=0
 fi
 
@@ -14,6 +16,9 @@ for arg in "$@"; do
     case "$arg" in
     yapscan)
         buildYapscan=1
+        ;;
+    yapscan-dll)
+        buildYapscanDll=1
         ;;
     memtest)
         buildMemtest=1
@@ -58,12 +63,22 @@ if [[ "$buildMemtest" == "1" ]]; then
     popd &>/dev/null
 fi
 
-export CGO_CFLAGS="-I/opt/yara/libyara/include \$(pkg-config --static --cflags openssl)"
-export CGO_LDFLAGS="-L/opt/yara/libyara/.libs -lyara -static \$(pkg-config --static --libs openssl)"
-
 if [[ "$buildYapscan" == "1" ]]; then
+    export CGO_CFLAGS="-I/opt/yara/libyara/include \$(pkg-config --static --cflags openssl)"
+    export CGO_LDFLAGS="-L/opt/yara/libyara/.libs -lyara -static \$(pkg-config --static --libs openssl)"
+
     pushd yapscan/cmd/yapscan
     go build -trimpath -o /opt/yapscan/build/yapscan.exe -tags yara_no_pkg_config
     popd &>/dev/null
 fi
+
+if [[ "$buildYapscanDll" == "1" ]]; then
+    export CGO_CFLAGS="-I/opt/yara/libyara/include \$(pkg-config --static --cflags openssl) -fvisibility=hidden"
+    export CGO_LDFLAGS="-L/opt/yara/libyara/.libs -lyara -static \$(pkg-config --static --libs openssl)"
+
+    pushd yapscan/cmd/yapscan-dll
+    go build -trimpath -o /opt/yapscan/build/yapscan.dll -tags yara_no_pkg_config -buildmode=c-shared
+    popd &>/dev/null
+fi
+
 EOF
