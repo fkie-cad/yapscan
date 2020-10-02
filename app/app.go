@@ -290,8 +290,14 @@ func RunApp(args []string) {
 					&cli.StringFlag{
 						Name:     "rules",
 						Aliases:  []string{"r", "C"},
-						Usage:    "path to yara rules file, can be compiled or uncompiled",
+						Usage:    "path to yara rules file or directory",
 						Required: true,
+					},
+					&cli.BoolFlag{
+						Name:    "rules-recurse",
+						Aliases: []string{"R"},
+						Usage:   "if --rules specifies a directory, compile rules recursively",
+						Value:   false,
 					},
 					&cli.BoolFlag{
 						Name:  "all",

@@ -1,16 +1,13 @@
 package app
 
 import (
-	"bytes"
 	"fmt"
 	"fraunhofer/fkie/yapscan"
 	"fraunhofer/fkie/yapscan/procIO"
-	"io"
 	"os"
 	"path"
 	"strconv"
 
-	"github.com/hillu/go-yara/v4"
 	"github.com/sirupsen/logrus"
 	"github.com/targodan/go-errors"
 	"github.com/urfave/cli/v2"
@@ -31,47 +28,7 @@ func scan(c *cli.Context) error {
 		return errors.Newf("expected at least one argument or flag \"--all\", got zero")
 	}
 
-	var rules *yara.Rules
-	err = func() error {
-		rulesFile, err := os.OpenFile(c.String("rules"), os.O_RDONLY, 0644)
-		if err != nil {
-			return errors.Newf("could not open rules file, reason: %w", err)
-		}
-		defer rulesFile.Close()
-
-		buff := make([]byte, 4)
-		_, err = io.ReadFull(rulesFile, buff)
-		if err != nil {
-			return errors.Newf("could not read rules file, reason: %w", err)
-		}
-		rulesFile.Seek(0, io.SeekStart)
-
-		if bytes.Equal(buff, []byte("YARA")) {
-			logrus.Debug("Yara rules file contains compiled rules.")
-
-			rules, err = yara.ReadRules(rulesFile)
-			if err != nil {
-				return errors.Newf("could not read rules file, reason: %w", err)
-			}
-		} else {
-			logrus.Debug("Yara rules file needs to be compiled.")
-
-			compiler, err := yara.NewCompiler()
-			if err != nil {
-				return errors.Newf("could not create yara compiler, reason: %w", err)
-			}
-			err = compiler.AddFile(rulesFile, yaraRulesNamespace)
-			if err != nil {
-				return errors.Newf("could not compile yara rules, reason: %w", err)
-			}
-
-			rules, err = compiler.GetRules()
-			if err != nil {
-				return errors.Newf("could not compile yara rules, reason: %w", err)
-			}
-		}
-		return nil
-	}()
+	rules, err := yapscan.LoadYaraRules(c.String("rules"), c.Bool("rules-recurse"))
 	if err != nil {
 		return err
 	}
