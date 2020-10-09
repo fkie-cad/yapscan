@@ -54,8 +54,7 @@ func (p *processLinux) Info() (*ProcessInfo, error) {
 	procInfo, tmpErr := os.Stat(fmt.Sprintf("/proc/%d", p.pid))
 	if tmpErr != nil {
 		err = errors.NewMultiError(err, fmt.Errorf("could not determine process owner, reason: %w", tmpErr))
-	}
-	if stat, ok := procInfo.Sys().(*syscall.Stat_t); ok {
+	} else if stat, ok := procInfo.Sys().(*syscall.Stat_t); ok {
 		u, tmpErr := user.LookupId(fmt.Sprintf("%v", stat.Uid))
 		if tmpErr != nil {
 			err = errors.NewMultiError(err, fmt.Errorf("could not determine process owner, reason: %w", tmpErr))
