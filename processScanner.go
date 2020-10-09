@@ -13,6 +13,10 @@ import (
 	"github.com/targodan/go-errors"
 )
 
+type MemoryScanner interface {
+	ScanMem(buf []byte) (results []yara.MatchRule, err error)
+}
+
 type ProcessScanner struct {
 	proc    procIO.Process
 	filter  MemorySegmentFilter
@@ -29,7 +33,7 @@ func NewProcessScanner(proc procIO.Process, filter MemorySegmentFilter, scanner 
 
 var ErrSkipped = errors.New("skipped memory segment")
 
-type ScanProgress struct {
+type MemoryScanProgress struct {
 	Process       procIO.Process
 	MemorySegment *procIO.MemorySegmentInfo
 	Dump          []byte
@@ -37,7 +41,7 @@ type ScanProgress struct {
 	Error         error
 }
 
-func (s *ProcessScanner) Scan() (<-chan *ScanProgress, error) {
+func (s *ProcessScanner) Scan() (<-chan *MemoryScanProgress, error) {
 	segments, err := s.proc.MemorySegments()
 	if err != nil {
 		logrus.WithFields(logrus.Fields{
@@ -47,7 +51,7 @@ func (s *ProcessScanner) Scan() (<-chan *ScanProgress, error) {
 		return nil, err
 	}
 
-	progress := make(chan *ScanProgress)
+	progress := make(chan *MemoryScanProgress)
 
 	go func() {
 		defer close(progress)
@@ -55,7 +59,7 @@ func (s *ProcessScanner) Scan() (<-chan *ScanProgress, error) {
 			if len(segment.SubSegments) == 0 {
 				// Only scan leaf segments
 				matches, data, err := s.scanSegment(segment)
-				progress <- &ScanProgress{
+				progress <- &MemoryScanProgress{
 					Process:       s.proc,
 					MemorySegment: segment,
 					Dump:          data,
@@ -69,7 +73,7 @@ func (s *ProcessScanner) Scan() (<-chan *ScanProgress, error) {
 
 			for _, subSegment := range segment.SubSegments {
 				matches, data, err := s.scanSegment(subSegment)
-				progress <- &ScanProgress{
+				progress <- &MemoryScanProgress{
 					Process:       s.proc,
 					MemorySegment: subSegment,
 					Dump:          data,

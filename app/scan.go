@@ -33,7 +33,7 @@ func scan(c *cli.Context) error {
 		return err
 	}
 
-	yaraScanner, err := yapscan.NewYaraMemoryScanner(rules)
+	yaraScanner, err := yapscan.NewYaraScanner(rules)
 	if err != nil {
 		return errors.Newf("could not initialize yara scanner, reason: %w", err)
 	}

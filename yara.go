@@ -17,19 +17,21 @@ var YaraRulesFileExtensions = []string{
 	".yara",
 }
 
-type MemoryScanner interface {
-	ScanMem(buf []byte) (results []yara.MatchRule, err error)
-}
-
-type yaraScanner struct {
+type YaraScanner struct {
 	rules *yara.Rules
 }
 
-func NewYaraMemoryScanner(rules *yara.Rules) (MemoryScanner, error) {
-	return &yaraScanner{rules}, nil
+func NewYaraScanner(rules *yara.Rules) (*YaraScanner, error) {
+	return &YaraScanner{rules}, nil
 }
 
-func (s *yaraScanner) ScanMem(buf []byte) ([]yara.MatchRule, error) {
+func (s *YaraScanner) ScanFile(filename string) ([]yara.MatchRule, error) {
+	var matches yara.MatchRules
+	err := s.rules.ScanFile(filename, 0, 0, &matches)
+	return matches, err
+}
+
+func (s *YaraScanner) ScanMem(buf []byte) ([]yara.MatchRule, error) {
 	var matches yara.MatchRules
 	err := s.rules.ScanMem(buf, 0, 0, &matches)
 	return matches, err

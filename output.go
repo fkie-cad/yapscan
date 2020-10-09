@@ -29,7 +29,7 @@ import (
 type Reporter interface {
 	ReportSystemInfo() error
 	ReportRules(rules *yara.Rules) error
-	ConsumeScanProgress(progress <-chan *ScanProgress) error
+	ConsumeScanProgress(progress <-chan *MemoryScanProgress) error
 	io.Closer
 }
 
@@ -60,12 +60,12 @@ func (r *MultiReporter) ReportRules(rules *yara.Rules) error {
 	return err
 }
 
-func (r *MultiReporter) ConsumeScanProgress(progress <-chan *ScanProgress) error {
+func (r *MultiReporter) ConsumeScanProgress(progress <-chan *MemoryScanProgress) error {
 	wg := &sync.WaitGroup{}
-	chans := make([]chan *ScanProgress, len(r.Reporters))
+	chans := make([]chan *MemoryScanProgress, len(r.Reporters))
 	wg.Add(len(chans))
 	for i := range chans {
-		chans[i] = make(chan *ScanProgress)
+		chans[i] = make(chan *MemoryScanProgress)
 
 		go func(i int) {
 			r.Reporters[i].ConsumeScanProgress(chans[i])
@@ -176,7 +176,7 @@ func (r *GatheredAnalysisReporter) ReportRules(rules *yara.Rules) error {
 	return r.reporter.ReportRules(rules)
 }
 
-func (r *GatheredAnalysisReporter) ConsumeScanProgress(progress <-chan *ScanProgress) error {
+func (r *GatheredAnalysisReporter) ConsumeScanProgress(progress <-chan *MemoryScanProgress) error {
 	return r.reporter.ConsumeScanProgress(progress)
 }
 
@@ -456,7 +456,7 @@ func (r *AnalysisReporter) reportProcess(info *procIO.ProcessInfo) error {
 	return json.NewEncoder(r.ProcessInfoOut).Encode(info)
 }
 
-func (r *AnalysisReporter) ConsumeScanProgress(progress <-chan *ScanProgress) error {
+func (r *AnalysisReporter) ConsumeScanProgress(progress <-chan *MemoryScanProgress) error {
 	if r.seen == nil {
 		r.seen = make(map[int]bool)
 	}
@@ -547,7 +547,7 @@ func (r *progressReporter) reportProcess(proc procIO.Process) error {
 	return err
 }
 
-func (r *progressReporter) receive(progress *ScanProgress) {
+func (r *progressReporter) receive(progress *MemoryScanProgress) {
 	if r.pid != progress.Process.PID() {
 		r.pid = progress.Process.PID()
 		r.procMatched = false
@@ -611,7 +611,7 @@ func (r *progressReporter) receive(progress *ScanProgress) {
 	}
 }
 
-func (r *progressReporter) ConsumeScanProgress(progress <-chan *ScanProgress) error {
+func (r *progressReporter) ConsumeScanProgress(progress <-chan *MemoryScanProgress) error {
 	for prog := range progress {
 		r.receive(prog)
 	}
@@ -620,7 +620,7 @@ func (r *progressReporter) ConsumeScanProgress(progress <-chan *ScanProgress) er
 }
 
 type ProgressFormatter interface {
-	FormatScanProgress(progress *ScanProgress) string
+	FormatScanProgress(progress *MemoryScanProgress) string
 }
 
 type prettyFormatter struct{}
@@ -629,7 +629,7 @@ func NewPrettyFormatter() ProgressFormatter {
 	return &prettyFormatter{}
 }
 
-func (p prettyFormatter) FormatScanProgress(progress *ScanProgress) string {
+func (p prettyFormatter) FormatScanProgress(progress *MemoryScanProgress) string {
 	if progress.Error != nil {
 		msg := ""
 		// TODO: Maybe enable via a verbose flag
