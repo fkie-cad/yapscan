@@ -27,7 +27,6 @@ func getOSInfo() (name, version, flavour string, err error) {
 	if err != nil {
 		return
 	}
-	arch := strings.TrimSpace(string(buf))
 
 	cmd = exec.Command("uname", "-o")
 	buf, err = cmd.Output()
