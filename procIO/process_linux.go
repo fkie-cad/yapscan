@@ -3,12 +3,15 @@ package procIO
 import (
 	"bufio"
 	"fmt"
+	"fraunhofer/fkie/yapscan/arch"
 	"io"
 	"os"
 	"os/exec"
+	"os/user"
 	"path/filepath"
 	"strconv"
 	"strings"
+	"syscall"
 
 	"github.com/targodan/go-errors"
 )
@@ -42,9 +45,58 @@ func (p *processLinux) PID() int {
 }
 
 func (p *processLinux) Info() (*ProcessInfo, error) {
-	return &ProcessInfo{
+	var err error
+
+	info := &ProcessInfo{
 		PID: p.pid,
-	}, nil
+	}
+
+	procInfo, tmpErr := os.Stat(fmt.Sprintf("/proc/%d", p.pid))
+	if tmpErr != nil {
+		err = errors.NewMultiError(err, fmt.Errorf("could not determine process owner, reason: %w", tmpErr))
+	}
+	if stat, ok := procInfo.Sys().(*syscall.Stat_t); ok {
+		u, tmpErr := user.LookupId(fmt.Sprintf("%v", stat.Uid))
+		if tmpErr != nil {
+			err = errors.NewMultiError(err, fmt.Errorf("could not determine process owner, reason: %w", tmpErr))
+		}
+		info.Username = u.Username
+	}
+
+	info.ExecutablePath, tmpErr = os.Readlink(fmt.Sprintf("/proc/%d/exe", p.pid))
+	if tmpErr != nil {
+		err = errors.NewMultiError(err, fmt.Errorf("could not determine executable path, reason: %w", tmpErr))
+	} else {
+		info.ExecutableMD5, info.ExecutableSHA256, tmpErr = ComputeHashes(info.ExecutablePath)
+		if tmpErr != nil {
+			err = errors.NewMultiError(err, fmt.Errorf("could not determine executable hashes, reason: %w", tmpErr))
+		}
+
+		exe, tmpErr := os.OpenFile(info.ExecutablePath, os.O_RDONLY, 0666)
+		if tmpErr != nil {
+			err = errors.NewMultiError(err, fmt.Errorf("could not determine bitness, reason: %w", tmpErr))
+		}
+		magic := make([]byte, 5)
+		_, tmpErr = io.ReadFull(exe, magic)
+		if tmpErr != nil {
+			err = errors.NewMultiError(err, fmt.Errorf("could not determine bitness, reason: %w", tmpErr))
+		}
+		switch string(magic) {
+		case "\x7FELF\x01":
+			info.Bitness = arch.Bitness32Bit
+		case "\x7FELF\x02":
+			info.Bitness = arch.Bitness64Bit
+		default:
+			err = errors.NewMultiError(err, fmt.Errorf("could not determine bitness, reason: unknown magic number of executable %v", magic))
+		}
+	}
+
+	info.MemorySegments, tmpErr = p.MemorySegments()
+	if tmpErr != nil {
+		err = errors.NewMultiError(err, fmt.Errorf("could not query memory segments, reason: %w", tmpErr))
+	}
+
+	return info, err
 }
 
 func (p *processLinux) String() string {
