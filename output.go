@@ -543,7 +543,13 @@ func (r *progressReporter) Close() error {
 }
 
 func (r *progressReporter) reportProcess(proc procIO.Process) error {
-	_, err := fmt.Fprintf(r.out, "\nScanning process %d...\n", proc.PID())
+	info, err := proc.Info()
+	if err != nil {
+		logrus.WithError(err).Warn("Could not retrieve complete process info.")
+	}
+	procname := filepath.Base(info.ExecutablePath)
+	username := info.Username
+	_, err = fmt.Fprintf(r.out, "\nScanning process \"%s\" (%d) by user \"%s\"...\n", procname, proc.PID(), username)
 	return err
 }
 
