@@ -212,9 +212,15 @@ func scan(c *cli.Context) error {
 		}
 	}
 
+	if len(paths) > 0 {
+		fmt.Println("Going to scan the following paths:")
+	}
+
 	iteratorCtx := context.Background()
 	var pathIterator fileIO.Iterator
 	for _, path := range paths {
+		fmt.Printf("- %s\n", path)
+
 		pIt, err := fileIO.IteratePath(path, fileExtensions, iteratorCtx)
 		if err != nil {
 			return fmt.Errorf("could not initialize filesystem iterator for path \"%s\", reason: %w", path, err)
