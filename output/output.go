@@ -427,16 +427,16 @@ func FilterMatches(mr []yara.MatchRule) []*Match {
 }
 
 type MemoryScanProgressReport struct {
-	PID           int      `json:"pid"`
-	MemorySegment uintptr  `json:"memorySegment"`
-	Matches       []*Match `json:"match"`
-	Error         error    `json:"error"`
+	PID           int         `json:"pid"`
+	MemorySegment uintptr     `json:"memorySegment"`
+	Matches       []*Match    `json:"match"`
+	Error         interface{} `json:"error"`
 }
 
 type FSScanProgressReport struct {
-	Path    string   `json:"path"`
-	Matches []*Match `json:"match"`
-	Error   error    `json:"error"`
+	Path    string      `json:"path"`
+	Matches []*Match    `json:"match"`
+	Error   interface{} `json:"error"`
 }
 
 // AnalysisReporter implements a Reporter, which is
@@ -519,11 +519,15 @@ func (r *AnalysisReporter) ConsumeMemoryScanProgress(progress <-chan *yapscan.Me
 			}
 		}
 
+		var jsonErr interface{}
+		if prog.Error != nil {
+			jsonErr = prog.Error.Error()
+		}
 		err = json.NewEncoder(r.MemoryScanProgressOut).Encode(&MemoryScanProgressReport{
 			PID:           info.PID,
 			MemorySegment: prog.MemorySegment.BaseAddress,
 			Matches:       FilterMatches(prog.Matches),
-			Error:         prog.Error,
+			Error:         jsonErr,
 		})
 		if err != nil {
 			logrus.WithError(err).Error("Could not report progress.")
@@ -548,10 +552,14 @@ func (r *AnalysisReporter) ConsumeFSScanProgress(progress <-chan *fileIO.FSScanP
 	}
 
 	for prog := range progress {
+		var jsonErr interface{}
+		if prog.Error != nil {
+			jsonErr = prog.Error.Error()
+		}
 		err := json.NewEncoder(r.FSScanProgressOut).Encode(&FSScanProgressReport{
 			Path:    prog.File.Path(),
 			Matches: FilterMatches(prog.Matches),
-			Error:   prog.Error,
+			Error:   jsonErr,
 		})
 		if err != nil {
 			logrus.WithError(err).Error("Could not report progress.")
