@@ -39,7 +39,8 @@ type Reporter interface {
 const SystemInfoFileName = "systeminfo.json"
 const RulesFileName = "rules.yarc"
 const ProcessFileName = "processes.json"
-const ProgressFileName = "scans.json"
+const MemoryProgressFileName = "memory-scans.json"
+const FSProgressFileName = "file-scans.json"
 
 const DefaultZIPPassword = "infected"
 
@@ -172,9 +173,13 @@ func NewGatheredAnalysisReporter(outPath string) (*GatheredAnalysisReporter, err
 	if err != nil {
 		return nil, errors.Errorf("could not open processes file, reason: %w", err)
 	}
-	progress, err := os.OpenFile(path.Join(outPath, ProgressFileName), os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0666)
+	memProgress, err := os.OpenFile(path.Join(outPath, MemoryProgressFileName), os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0666)
 	if err != nil {
-		return nil, errors.Errorf("could not open progress file, reason: %w", err)
+		return nil, errors.Errorf("could not open memory progress file, reason: %w", err)
+	}
+	fileProgress, err := os.OpenFile(path.Join(outPath, FSProgressFileName), os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0666)
+	if err != nil {
+		return nil, errors.Errorf("could not open filesystem progress file, reason: %w", err)
 	}
 
 	return &GatheredAnalysisReporter{
@@ -183,7 +188,8 @@ func NewGatheredAnalysisReporter(outPath string) (*GatheredAnalysisReporter, err
 			SystemInfoOut:         sysinfo,
 			RulesOut:              rules,
 			ProcessInfoOut:        process,
-			MemoryScanProgressOut: progress,
+			MemoryScanProgressOut: memProgress,
+			FSScanProgressOut:     fileProgress,
 			DumpStorage:           nil,
 			seen:                  make(map[int]bool),
 		},
@@ -299,7 +305,7 @@ func (r *GatheredAnalysisReporter) zip() error {
 		return errors.Errorf("could not write to zip file, reason: %w", err)
 	}
 
-	out, err = zipper(path.Join(hostname, ProgressFileName))
+	out, err = zipper(path.Join(hostname, MemoryProgressFileName))
 	if err != nil {
 		return errors.Errorf("could not write to zip file, reason: %w", err)
 	}
