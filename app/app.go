@@ -366,6 +366,25 @@ func RunApp(args []string) {
 				}, segmentFilterFlags...), suspendFlags...),
 			},
 			&cli.Command{
+				Name:      "zip-rules",
+				Usage:     "creates an encrypted zip containing compiled yara rules",
+				Action:    zipRules,
+				ArgsUsage: "<path_to_rules>",
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:    "output",
+						Aliases: []string{"o"},
+						Usage:   "name of the output file, \"<path_to_rules>.zip\" by default",
+					},
+					&cli.BoolFlag{
+						Name:    "rules-recurse",
+						Aliases: []string{"recurse-rules", "rr"},
+						Usage:   "if --rules specifies a directory, compile rules recursively",
+						Value:   false,
+					},
+				},
+			},
+			&cli.Command{
 				Name:      "join",
 				Usage:     "joins dumps with padding",
 				Action:    join,
