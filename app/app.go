@@ -297,7 +297,7 @@ func RunApp(args []string) {
 					&cli.StringFlag{
 						Name:     "rules",
 						Aliases:  []string{"r", "C"},
-						Usage:    "path to yara rules file or directory",
+						Usage:    "path to yara rules file or directory, if it's a file it can be a yara rules file or a zip containing a rules file encrypted with password \"infected\"",
 						Required: true,
 					},
 					&cli.BoolFlag{
