@@ -164,7 +164,7 @@ func scan(c *cli.Context) error {
 			resume()
 			continue
 		}
-		err = reporter.ConsumeScanProgress(progress)
+		err = reporter.ConsumeMemoryScanProgress(progress)
 		if err != nil {
 			logrus.WithError(err).Error("an error occurred during progress report, there may be no other output")
 			resume()

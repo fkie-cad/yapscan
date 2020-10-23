@@ -29,7 +29,7 @@ import (
 type Reporter interface {
 	ReportSystemInfo() error
 	ReportRules(rules *yara.Rules) error
-	ConsumeScanProgress(progress <-chan *MemoryScanProgress) error
+	ConsumeMemoryScanProgress(progress <-chan *MemoryScanProgress) error
 	io.Closer
 }
 
@@ -60,7 +60,7 @@ func (r *MultiReporter) ReportRules(rules *yara.Rules) error {
 	return err
 }
 
-func (r *MultiReporter) ConsumeScanProgress(progress <-chan *MemoryScanProgress) error {
+func (r *MultiReporter) ConsumeMemoryScanProgress(progress <-chan *MemoryScanProgress) error {
 	wg := &sync.WaitGroup{}
 	chans := make([]chan *MemoryScanProgress, len(r.Reporters))
 	wg.Add(len(chans))
@@ -68,7 +68,7 @@ func (r *MultiReporter) ConsumeScanProgress(progress <-chan *MemoryScanProgress)
 		chans[i] = make(chan *MemoryScanProgress)
 
 		go func(i int) {
-			r.Reporters[i].ConsumeScanProgress(chans[i])
+			r.Reporters[i].ConsumeMemoryScanProgress(chans[i])
 			wg.Done()
 		}(i)
 	}
@@ -153,12 +153,12 @@ func NewGatheredAnalysisReporter(outPath string) (*GatheredAnalysisReporter, err
 	return &GatheredAnalysisReporter{
 		directory: outPath,
 		reporter: &AnalysisReporter{
-			SystemInfoOut:  sysinfo,
-			RulesOut:       rules,
-			ProcessInfoOut: process,
-			ProgressOut:    progress,
-			DumpStorage:    nil,
-			seen:           make(map[int]bool),
+			SystemInfoOut:         sysinfo,
+			RulesOut:              rules,
+			ProcessInfoOut:        process,
+			MemoryScanProgressOut: progress,
+			DumpStorage:           nil,
+			seen:                  make(map[int]bool),
 		},
 	}, nil
 }
@@ -176,8 +176,8 @@ func (r *GatheredAnalysisReporter) ReportRules(rules *yara.Rules) error {
 	return r.reporter.ReportRules(rules)
 }
 
-func (r *GatheredAnalysisReporter) ConsumeScanProgress(progress <-chan *MemoryScanProgress) error {
-	return r.reporter.ConsumeScanProgress(progress)
+func (r *GatheredAnalysisReporter) ConsumeMemoryScanProgress(progress <-chan *MemoryScanProgress) error {
+	return r.reporter.ConsumeMemoryScanProgress(progress)
 }
 
 func (r *GatheredAnalysisReporter) SuggestZIPName() string {
@@ -272,7 +272,7 @@ func (r *GatheredAnalysisReporter) zip() error {
 	if err != nil {
 		return errors.Errorf("could not write to zip file, reason: %w", err)
 	}
-	in = r.reporter.ProgressOut.(*os.File)
+	in = r.reporter.MemoryScanProgressOut.(*os.File)
 	_, err = in.Seek(0, io.SeekStart)
 	if err != nil {
 		return errors.Errorf("could not write to zip file, reason: %w", err)
@@ -389,7 +389,7 @@ func FilterMatches(mr []yara.MatchRule) []*Match {
 	return ret
 }
 
-type ScanProgressReport struct {
+type MemoryScanProgressReport struct {
 	PID           int      `json:"pid"`
 	MemorySegment uintptr  `json:"memorySegment"`
 	Matches       []*Match `json:"match"`
@@ -400,11 +400,11 @@ type ScanProgressReport struct {
 // specifically intended for later analysis of the report
 // in order to determine rule quality.
 type AnalysisReporter struct {
-	SystemInfoOut  io.WriteCloser
-	RulesOut       io.WriteCloser
-	ProcessInfoOut io.WriteCloser
-	ProgressOut    io.WriteCloser
-	DumpStorage    DumpStorage
+	SystemInfoOut         io.WriteCloser
+	RulesOut              io.WriteCloser
+	ProcessInfoOut        io.WriteCloser
+	MemoryScanProgressOut io.WriteCloser
+	DumpStorage           DumpStorage
 
 	seen map[int]bool
 }
@@ -456,7 +456,7 @@ func (r *AnalysisReporter) reportProcess(info *procIO.ProcessInfo) error {
 	return json.NewEncoder(r.ProcessInfoOut).Encode(info)
 }
 
-func (r *AnalysisReporter) ConsumeScanProgress(progress <-chan *MemoryScanProgress) error {
+func (r *AnalysisReporter) ConsumeMemoryScanProgress(progress <-chan *MemoryScanProgress) error {
 	if r.seen == nil {
 		r.seen = make(map[int]bool)
 	}
@@ -475,7 +475,7 @@ func (r *AnalysisReporter) ConsumeScanProgress(progress <-chan *MemoryScanProgre
 			}
 		}
 
-		err = json.NewEncoder(r.ProgressOut).Encode(&ScanProgressReport{
+		err = json.NewEncoder(r.MemoryScanProgressOut).Encode(&MemoryScanProgressReport{
 			PID:           info.PID,
 			MemorySegment: prog.MemorySegment.BaseAddress,
 			Matches:       FilterMatches(prog.Matches),
@@ -503,7 +503,7 @@ func (r *AnalysisReporter) Close() error {
 	err = errors.NewMultiError(err, r.SystemInfoOut.Close())
 	err = errors.NewMultiError(err, r.ProcessInfoOut.Close())
 	err = errors.NewMultiError(err, r.RulesOut.Close())
-	err = errors.NewMultiError(err, r.ProgressOut.Close())
+	err = errors.NewMultiError(err, r.MemoryScanProgressOut.Close())
 	return err
 }
 
@@ -582,7 +582,7 @@ func (r *progressReporter) receive(progress *MemoryScanProgress) {
 		r.allClean = false
 	}
 
-	matchOut := r.formatter.FormatScanProgress(progress)
+	matchOut := r.formatter.FormatMemoryScanProgress(progress)
 	if matchOut != "" {
 		fmt.Fprintln(r.out, "\r", matchOut)
 	}
@@ -613,11 +613,11 @@ func (r *progressReporter) receive(progress *MemoryScanProgress) {
 
 	if (progress.Error != nil && progress.Error != ErrSkipped) || (progress.Matches != nil && len(progress.Matches) > 0) {
 		fmt.Sprintln(r.out)
-		fmt.Sprintln(r.out, r.formatter.FormatScanProgress(progress))
+		fmt.Sprintln(r.out, r.formatter.FormatMemoryScanProgress(progress))
 	}
 }
 
-func (r *progressReporter) ConsumeScanProgress(progress <-chan *MemoryScanProgress) error {
+func (r *progressReporter) ConsumeMemoryScanProgress(progress <-chan *MemoryScanProgress) error {
 	for prog := range progress {
 		r.receive(prog)
 	}
@@ -626,7 +626,7 @@ func (r *progressReporter) ConsumeScanProgress(progress <-chan *MemoryScanProgre
 }
 
 type ProgressFormatter interface {
-	FormatScanProgress(progress *MemoryScanProgress) string
+	FormatMemoryScanProgress(progress *MemoryScanProgress) string
 }
 
 type prettyFormatter struct{}
@@ -635,7 +635,7 @@ func NewPrettyFormatter() ProgressFormatter {
 	return &prettyFormatter{}
 }
 
-func (p prettyFormatter) FormatScanProgress(progress *MemoryScanProgress) string {
+func (p prettyFormatter) FormatMemoryScanProgress(progress *MemoryScanProgress) string {
 	if progress.Error != nil {
 		msg := ""
 		// TODO: Maybe enable via a verbose flag
