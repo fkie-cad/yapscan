@@ -300,7 +300,7 @@ func RunApp(args []string) {
 					},
 					&cli.BoolFlag{
 						Name:    "rules-recurse",
-						Aliases: []string{"R"},
+						Aliases: []string{"recurse-rules", "R"},
 						Usage:   "if --rules specifies a directory, compile rules recursively",
 						Value:   false,
 					},
