@@ -3,9 +3,11 @@ package fileIO
 import (
 	"context"
 	"errors"
+	"fraunhofer/fkie/yapscan"
 	"io"
 	"os"
 	"path/filepath"
+	"strings"
 )
 
 var (
@@ -13,12 +15,13 @@ var (
 )
 
 type nextEntry struct {
-	File *File
+	File File
 	Err  error
 }
 
 type fsIterator struct {
-	root string
+	root            string
+	validExtensions []string
 
 	ctx    context.Context
 	cancel context.CancelFunc
@@ -28,7 +31,7 @@ type fsIterator struct {
 	next chan *nextEntry
 }
 
-func IteratePath(path string, ctx context.Context) (*fsIterator, error) {
+func IteratePath(path string, validExtensions []string, ctx context.Context) (Iterator, error) {
 	stat, err := os.Stat(path)
 	if err != nil {
 		return nil, err
@@ -37,12 +40,20 @@ func IteratePath(path string, ctx context.Context) (*fsIterator, error) {
 		return nil, errors.New("path must be a directory")
 	}
 
-	it := &fsIterator{
-		root:   path,
-		closed: false,
-		dirs:   make([]string, 0, 16),
-		next:   make(chan *nextEntry, FilesBuffer),
+	if validExtensions != nil {
+		for i := range validExtensions {
+			validExtensions[i] = strings.ToLower(validExtensions[i])
+		}
 	}
+
+	it := &fsIterator{
+		root:            path,
+		validExtensions: validExtensions,
+		closed:          false,
+		dirs:            make([]string, 1, 16),
+		next:            make(chan *nextEntry, FilesBuffer),
+	}
+	it.dirs[0] = path
 	it.ctx, it.cancel = context.WithCancel(ctx)
 
 	go it.dirScanner()
@@ -52,6 +63,26 @@ func IteratePath(path string, ctx context.Context) (*fsIterator, error) {
 
 func (it *fsIterator) Root() string {
 	return it.root
+}
+
+func (it *fsIterator) doesExtensionMatch(path string) bool {
+	if it.validExtensions == nil || len(it.validExtensions) == 0 {
+		return true
+	}
+	_, file := filepath.Split(path)
+	parts := strings.Split(file, ".")
+	var ext string
+	if len(parts) > 1 {
+		ext = parts[len(parts)-1]
+	}
+	ext = strings.ToLower(ext)
+
+	for _, vExt := range it.validExtensions {
+		if ext == vExt {
+			return true
+		}
+	}
+	return false
 }
 
 func (it *fsIterator) dirScanner() {
@@ -75,7 +106,7 @@ func (it *fsIterator) dirScanner() {
 			f, err := os.Open(dir)
 			if err != nil {
 				it.next <- &nextEntry{
-					File: &File{dir},
+					File: &file{dir},
 					Err:  err,
 				}
 				return
@@ -89,7 +120,7 @@ func (it *fsIterator) dirScanner() {
 					break
 				} else if err != nil {
 					it.next <- &nextEntry{
-						File: &File{dir},
+						File: &file{dir},
 						Err:  err,
 					}
 					return
@@ -101,8 +132,15 @@ func (it *fsIterator) dirScanner() {
 						it.dirs = append(it.dirs, path)
 					}
 				} else {
-					it.next <- &nextEntry{
-						File: &File{path},
+					if it.doesExtensionMatch(path) {
+						it.next <- &nextEntry{
+							File: &file{path},
+						}
+					} else {
+						it.next <- &nextEntry{
+							File: &file{path},
+							Err:  yapscan.ErrSkipped,
+						}
 					}
 				}
 			}
@@ -110,7 +148,7 @@ func (it *fsIterator) dirScanner() {
 	}
 }
 
-func (it *fsIterator) Next() (*File, error) {
+func (it *fsIterator) Next() (File, error) {
 	if it.closed {
 		return nil, io.EOF
 	}

@@ -1,4 +1,4 @@
-package yapscan
+package output
 
 import (
 	"bytes"
@@ -8,6 +8,8 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
+	"fraunhofer/fkie/yapscan"
+	"fraunhofer/fkie/yapscan/fileIO"
 	"fraunhofer/fkie/yapscan/procIO"
 	"fraunhofer/fkie/yapscan/system"
 	"io"
@@ -29,7 +31,8 @@ import (
 type Reporter interface {
 	ReportSystemInfo() error
 	ReportRules(rules *yara.Rules) error
-	ConsumeMemoryScanProgress(progress <-chan *MemoryScanProgress) error
+	ConsumeMemoryScanProgress(progress <-chan *yapscan.MemoryScanProgress) error
+	ConsumeFSScanProgress(progress <-chan *fileIO.FSScanProgress) error
 	io.Closer
 }
 
@@ -60,15 +63,39 @@ func (r *MultiReporter) ReportRules(rules *yara.Rules) error {
 	return err
 }
 
-func (r *MultiReporter) ConsumeMemoryScanProgress(progress <-chan *MemoryScanProgress) error {
+func (r *MultiReporter) ConsumeMemoryScanProgress(progress <-chan *yapscan.MemoryScanProgress) error {
 	wg := &sync.WaitGroup{}
-	chans := make([]chan *MemoryScanProgress, len(r.Reporters))
+	chans := make([]chan *yapscan.MemoryScanProgress, len(r.Reporters))
 	wg.Add(len(chans))
 	for i := range chans {
-		chans[i] = make(chan *MemoryScanProgress)
+		chans[i] = make(chan *yapscan.MemoryScanProgress)
 
 		go func(i int) {
 			r.Reporters[i].ConsumeMemoryScanProgress(chans[i])
+			wg.Done()
+		}(i)
+	}
+	for prog := range progress {
+		for i := range chans {
+			chans[i] <- prog
+		}
+	}
+	for i := range chans {
+		close(chans[i])
+	}
+	wg.Wait()
+	return nil
+}
+
+func (r *MultiReporter) ConsumeFSScanProgress(progress <-chan *fileIO.FSScanProgress) error {
+	wg := &sync.WaitGroup{}
+	chans := make([]chan *fileIO.FSScanProgress, len(r.Reporters))
+	wg.Add(len(chans))
+	for i := range chans {
+		chans[i] = make(chan *fileIO.FSScanProgress)
+
+		go func(i int) {
+			r.Reporters[i].ConsumeFSScanProgress(chans[i])
 			wg.Done()
 		}(i)
 	}
@@ -176,8 +203,12 @@ func (r *GatheredAnalysisReporter) ReportRules(rules *yara.Rules) error {
 	return r.reporter.ReportRules(rules)
 }
 
-func (r *GatheredAnalysisReporter) ConsumeMemoryScanProgress(progress <-chan *MemoryScanProgress) error {
+func (r *GatheredAnalysisReporter) ConsumeMemoryScanProgress(progress <-chan *yapscan.MemoryScanProgress) error {
 	return r.reporter.ConsumeMemoryScanProgress(progress)
+}
+
+func (r *GatheredAnalysisReporter) ConsumeFSScanProgress(progress <-chan *fileIO.FSScanProgress) error {
+	return r.reporter.ConsumeFSScanProgress(progress)
 }
 
 func (r *GatheredAnalysisReporter) SuggestZIPName() string {
@@ -396,6 +427,12 @@ type MemoryScanProgressReport struct {
 	Error         error    `json:"error"`
 }
 
+type FSScanProgressReport struct {
+	Path    string   `json:"path"`
+	Matches []*Match `json:"match"`
+	Error   error    `json:"error"`
+}
+
 // AnalysisReporter implements a Reporter, which is
 // specifically intended for later analysis of the report
 // in order to determine rule quality.
@@ -404,6 +441,7 @@ type AnalysisReporter struct {
 	RulesOut              io.WriteCloser
 	ProcessInfoOut        io.WriteCloser
 	MemoryScanProgressOut io.WriteCloser
+	FSScanProgressOut     io.WriteCloser
 	DumpStorage           DumpStorage
 
 	seen map[int]bool
@@ -456,7 +494,7 @@ func (r *AnalysisReporter) reportProcess(info *procIO.ProcessInfo) error {
 	return json.NewEncoder(r.ProcessInfoOut).Encode(info)
 }
 
-func (r *AnalysisReporter) ConsumeMemoryScanProgress(progress <-chan *MemoryScanProgress) error {
+func (r *AnalysisReporter) ConsumeMemoryScanProgress(progress <-chan *yapscan.MemoryScanProgress) error {
 	if r.seen == nil {
 		r.seen = make(map[int]bool)
 	}
@@ -498,12 +536,32 @@ func (r *AnalysisReporter) ConsumeMemoryScanProgress(progress <-chan *MemoryScan
 	return nil
 }
 
+func (r *AnalysisReporter) ConsumeFSScanProgress(progress <-chan *fileIO.FSScanProgress) error {
+	if r.seen == nil {
+		r.seen = make(map[int]bool)
+	}
+
+	for prog := range progress {
+		err := json.NewEncoder(r.FSScanProgressOut).Encode(&FSScanProgressReport{
+			Path:    prog.File.Path(),
+			Matches: FilterMatches(prog.Matches),
+			Error:   prog.Error,
+		})
+		if err != nil {
+			logrus.WithError(err).Error("Could not report progress.")
+		}
+		// TODO: Maybe add dumping capability by copying the offending file.
+	}
+	return nil
+}
+
 func (r *AnalysisReporter) Close() error {
 	var err error
 	err = errors.NewMultiError(err, r.SystemInfoOut.Close())
 	err = errors.NewMultiError(err, r.ProcessInfoOut.Close())
 	err = errors.NewMultiError(err, r.RulesOut.Close())
 	err = errors.NewMultiError(err, r.MemoryScanProgressOut.Close())
+	err = errors.NewMultiError(err, r.FSScanProgressOut.Close())
 	return err
 }
 
@@ -553,7 +611,7 @@ func (r *progressReporter) reportProcess(proc procIO.Process) error {
 	return err
 }
 
-func (r *progressReporter) receive(progress *MemoryScanProgress) {
+func (r *progressReporter) receiveMem(progress *yapscan.MemoryScanProgress) {
 	if r.pid != progress.Process.PID() {
 		r.pid = progress.Process.PID()
 		r.procMatched = false
@@ -603,7 +661,7 @@ func (r *progressReporter) receive(progress *MemoryScanProgress) {
 			"process": progress.Process.PID(),
 			"segment": progress.MemorySegment,
 		}).Info("Scan of segment complete.")
-	} else if progress.Error != ErrSkipped {
+	} else if progress.Error != yapscan.ErrSkipped {
 		logrus.WithFields(logrus.Fields{
 			"process":       progress.Process.PID(),
 			"segment":       progress.MemorySegment,
@@ -611,22 +669,62 @@ func (r *progressReporter) receive(progress *MemoryScanProgress) {
 		}).Error("Scan of segment failed.")
 	}
 
-	if (progress.Error != nil && progress.Error != ErrSkipped) || (progress.Matches != nil && len(progress.Matches) > 0) {
+	if (progress.Error != nil && progress.Error != yapscan.ErrSkipped) || (progress.Matches != nil && len(progress.Matches) > 0) {
 		fmt.Sprintln(r.out)
 		fmt.Sprintln(r.out, r.formatter.FormatMemoryScanProgress(progress))
 	}
 }
 
-func (r *progressReporter) ConsumeMemoryScanProgress(progress <-chan *MemoryScanProgress) error {
+func (r *progressReporter) ConsumeMemoryScanProgress(progress <-chan *yapscan.MemoryScanProgress) error {
 	for prog := range progress {
-		r.receive(prog)
+		r.receiveMem(prog)
+	}
+	fmt.Sprintln(r.out)
+	return nil
+}
+
+func (r *progressReporter) receiveFS(progress *fileIO.FSScanProgress) {
+	if progress.Matches != nil && len(progress.Matches) > 0 {
+		r.allClean = false
+	}
+
+	matchOut := r.formatter.FormatFSScanProgress(progress)
+	if matchOut != "" {
+		fmt.Fprintln(r.out, "\r", matchOut)
+	}
+
+	if progress.Error == nil {
+		format := "Scanning \"%s\""
+		fmt.Fprintf(r.out, "\r%-128s", fmt.Sprintf(format, r.formatter.FormatPath(progress.File.Path(), 117)))
+
+		logrus.WithFields(logrus.Fields{
+			"file": progress.File.Path(),
+		}).Info("Scan of file complete.")
+	} else if progress.Error != yapscan.ErrSkipped {
+		logrus.WithFields(logrus.Fields{
+			"file":          progress.File.Path(),
+			logrus.ErrorKey: progress.Error,
+		}).Error("Scan of file failed.")
+	}
+
+	if (progress.Error != nil && progress.Error != yapscan.ErrSkipped) || (progress.Matches != nil && len(progress.Matches) > 0) {
+		fmt.Sprintln(r.out)
+		fmt.Sprintln(r.out, r.formatter.FormatFSScanProgress(progress))
+	}
+}
+
+func (r *progressReporter) ConsumeFSScanProgress(progress <-chan *fileIO.FSScanProgress) error {
+	for prog := range progress {
+		r.receiveFS(prog)
 	}
 	fmt.Sprintln(r.out)
 	return nil
 }
 
 type ProgressFormatter interface {
-	FormatMemoryScanProgress(progress *MemoryScanProgress) string
+	FormatMemoryScanProgress(progress *yapscan.MemoryScanProgress) string
+	FormatFSScanProgress(progress *fileIO.FSScanProgress) string
+	FormatPath(path string, maxlen int) string
 }
 
 type prettyFormatter struct{}
@@ -635,7 +733,7 @@ func NewPrettyFormatter() ProgressFormatter {
 	return &prettyFormatter{}
 }
 
-func (p prettyFormatter) FormatMemoryScanProgress(progress *MemoryScanProgress) string {
+func (p prettyFormatter) FormatMemoryScanProgress(progress *yapscan.MemoryScanProgress) string {
 	if progress.Error != nil {
 		msg := ""
 		// TODO: Maybe enable via a verbose flag
@@ -658,8 +756,56 @@ func (p prettyFormatter) FormatMemoryScanProgress(progress *MemoryScanProgress) 
 			match.Rule, procIO.FormatMemorySegmentAddress(progress.MemorySegment),
 		)
 		if len(match.Strings) > 0 {
-			addrs := FormatSlice("0x%X", AddressesFromMatches(match.Strings, uint64(progress.MemorySegment.BaseAddress)))
-			txt[i] += fmt.Sprintf("\n\tRule-strings matched at %s.", Join(addrs, ", ", " and "))
+			addrs := yapscan.FormatSlice("0x%X", yapscan.AddressesFromMatches(match.Strings, uint64(progress.MemorySegment.BaseAddress)))
+			txt[i] += fmt.Sprintf("\n\tRule-strings matched at %s.", yapscan.Join(addrs, ", ", " and "))
+		}
+	}
+	return strings.Join(txt, "\n")
+}
+
+func (p prettyFormatter) FormatPath(path string, maxlen int) string {
+	if len(path) <= maxlen {
+		return path
+	}
+	parts := strings.Split(path, fmt.Sprintf("%c", filepath.Separator))
+	res := parts[0]
+	if len(parts) == 1 {
+		return "..." + res[len(res)-maxlen-3:]
+	}
+	if len(parts) == 2 {
+		return filepath.Join(res, parts[1][len(parts[1])-len(res)-1-maxlen-3:])
+	}
+	// TODO: This needs improvement.
+	res = filepath.Join(res, "...", parts[len(parts)-1])
+	if len(res) <= maxlen {
+		return res
+	}
+	dir, file := filepath.Split(res)
+	if len(dir) < maxlen {
+		return filepath.Join(dir, file[len(file)-1-maxlen:])
+	}
+	return "..." + res[len(res)-maxlen-3:]
+}
+
+func (p prettyFormatter) FormatFSScanProgress(progress *fileIO.FSScanProgress) string {
+	if progress.Error != nil {
+		// TODO: Maybe enable via a verbose flag
+		return ""
+	}
+
+	if progress.Matches == nil || len(progress.Matches) == 0 {
+		return ""
+	}
+
+	txt := make([]string, len(progress.Matches))
+	for i, match := range progress.Matches {
+		txt[i] = fmt.Sprintf(
+			color.RedString("MATCH:")+" Rule \"%s\" matches file %s.",
+			match.Rule, progress.File.Path(),
+		)
+		if len(match.Strings) > 0 {
+			addrs := yapscan.FormatSlice("0x%X", yapscan.AddressesFromMatches(match.Strings, 0))
+			txt[i] += fmt.Sprintf("\n\tRule-strings matched at %s.", yapscan.Join(addrs, ", ", " and "))
 		}
 	}
 	return strings.Join(txt, "\n")

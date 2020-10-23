@@ -1,8 +1,7 @@
-package yapscan
+package fileIO
 
 import (
 	"io"
-	"os"
 	"sync"
 
 	"github.com/hillu/go-yara/v4"
@@ -10,16 +9,6 @@ import (
 
 type FileScanner interface {
 	ScanFile(filename string) (results []yara.MatchRule, err error)
-}
-
-type File interface {
-	Path() string
-	Stat() (os.FileInfo, error)
-}
-
-type FSIterator interface {
-	Next() (File, error)
-	Close() error
 }
 
 type FSScanner struct {
@@ -39,7 +28,7 @@ type FSScanProgress struct {
 	Error   error
 }
 
-func (s *FSScanner) Scan(it FSIterator) (<-chan *FSScanProgress, error) {
+func (s *FSScanner) Scan(it Iterator) (<-chan *FSScanProgress, error) {
 	if s.NGoroutines <= 0 {
 		s.NGoroutines = 1
 	}
@@ -62,6 +51,7 @@ func (s *FSScanner) Scan(it FSIterator) (<-chan *FSScanProgress, error) {
 						Matches: nil,
 						Error:   err,
 					}
+					continue
 				}
 
 				matches, err := s.scanner.ScanFile(file.Path())

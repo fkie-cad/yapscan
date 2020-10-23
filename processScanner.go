@@ -31,7 +31,7 @@ func NewProcessScanner(proc procIO.Process, filter MemorySegmentFilter, scanner 
 	}
 }
 
-var ErrSkipped = errors.New("skipped memory segment")
+var ErrSkipped = errors.New("skipped")
 
 type MemoryScanProgress struct {
 	Process       procIO.Process

@@ -8,7 +8,7 @@ import (
 )
 
 type Iterator interface {
-	Next() (*File, error)
+	Next() (File, error)
 	Close() error
 }
 
@@ -52,7 +52,7 @@ func Concat(iterators ...Iterator) Iterator {
 	return ret
 }
 
-func (it *concatIterator) Next() (*File, error) {
+func (it *concatIterator) Next() (File, error) {
 	if it.i >= len(it.iterators) {
 		return nil, io.EOF
 	}
@@ -122,18 +122,11 @@ func concurrent(it1 Iterator, it2 Iterator) Iterator {
 }
 
 func Concurrent(iterators ...Iterator) Iterator {
-	it := &concurrentIterator{
-		iterators: iterators,
-		c:         make(chan *nextEntry),
-		wg:        new(sync.WaitGroup),
+	var cit Iterator
+	for _, it := range iterators {
+		cit = concurrent(cit, it)
 	}
-
-	it.wg.Add(len(iterators))
-	for i := range iterators {
-		go it.consume(i)
-	}
-
-	return it
+	return cit
 }
 
 func (it *concurrentIterator) consume(i int) {
@@ -152,7 +145,7 @@ func (it *concurrentIterator) consume(i int) {
 	}
 }
 
-func (it *concurrentIterator) Next() (*File, error) {
+func (it *concurrentIterator) Next() (File, error) {
 	if it.closed {
 		return nil, io.EOF
 	}

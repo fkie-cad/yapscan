@@ -1,4 +1,4 @@
-package yapscan
+package output
 
 import (
 	"context"

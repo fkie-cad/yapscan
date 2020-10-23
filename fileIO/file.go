@@ -2,14 +2,19 @@ package fileIO
 
 import "os"
 
-type File struct {
+type File interface {
+	Path() string
+	Stat() (os.FileInfo, error)
+}
+
+type file struct {
 	path string
 }
 
-func (f *File) Path() string {
+func (f *file) Path() string {
 	return f.path
 }
 
-func (f *File) Stat() (os.FileInfo, error) {
+func (f *file) Stat() (os.FileInfo, error) {
 	return os.Stat(f.path)
 }

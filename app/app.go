@@ -3,7 +3,9 @@ package app
 import (
 	"fmt"
 	"fraunhofer/fkie/yapscan"
+	"fraunhofer/fkie/yapscan/output"
 	"os"
+	"runtime"
 	"strings"
 
 	"github.com/sirupsen/logrus"
@@ -288,9 +290,9 @@ func RunApp(args []string) {
 			},
 			&cli.Command{
 				Name:      "scan",
-				Usage:     "scans processes with yara rules",
+				Usage:     "scans processes or paths with yara rules",
 				Action:    scan,
-				ArgsUsage: "[pid...]",
+				ArgsUsage: "[pid/path...]",
 				Flags: append(append([]cli.Flag{
 					&cli.StringFlag{
 						Name:     "rules",
@@ -300,14 +302,46 @@ func RunApp(args []string) {
 					},
 					&cli.BoolFlag{
 						Name:    "rules-recurse",
-						Aliases: []string{"recurse-rules", "R"},
+						Aliases: []string{"recurse-rules", "rr"},
 						Usage:   "if --rules specifies a directory, compile rules recursively",
 						Value:   false,
 					},
+					// TODO: Currently *always* recurses!
+					//&cli.BoolFlag{
+					//	Name:    "recurse",
+					//	Aliases: []string{"R"},
+					//	Usage:   "recursive scan of path",
+					//	Value:   false,
+					//},
 					&cli.BoolFlag{
-						Name:  "all",
-						Usage: "scan all running processes",
-						Value: false,
+						Name:    "all-processes",
+						Aliases: []string{"all-p"},
+						Usage:   "scan all running processes",
+						Value:   false,
+					},
+					&cli.BoolFlag{
+						Name:    "all-drives",
+						Aliases: []string{"all-d"},
+						Usage:   "scan all files in all local drives, implies --recurse",
+						Value:   false,
+					},
+					&cli.BoolFlag{
+						Name:    "all-shares",
+						Aliases: []string{"all-s"},
+						Usage:   "scan all files in all mounted net-shares, implies --recurse",
+						Value:   false,
+					},
+					&cli.StringSliceFlag{
+						Name:    "file-extensions",
+						Aliases: []string{"e"},
+						Usage:   "list of file extensions to scan, use special extension \"-\" as no extension, use --file-extensions \"\" to allow any",
+						Value:   cli.NewStringSlice("-", "so", "exe", "dll", "sys"),
+					},
+					&cli.IntFlag{
+						Name:    "threads",
+						Aliases: []string{"t"},
+						Usage:   "number of threads (goroutines) used for scanning files",
+						Value:   runtime.GOMAXPROCS(0),
 					},
 					&cli.BoolFlag{
 						Name:  "full-report",
@@ -327,7 +361,7 @@ func RunApp(args []string) {
 					&cli.StringFlag{
 						Name:  "password",
 						Usage: "the password of the encrypted report, ignored unless --store-dumps is set",
-						Value: yapscan.DefaultZIPPassword,
+						Value: output.DefaultZIPPassword,
 					},
 				}, segmentFilterFlags...), suspendFlags...),
 			},

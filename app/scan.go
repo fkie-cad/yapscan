@@ -1,8 +1,11 @@
 package app
 
 import (
+	"context"
 	"fmt"
 	"fraunhofer/fkie/yapscan"
+	"fraunhofer/fkie/yapscan/fileIO"
+	"fraunhofer/fkie/yapscan/output"
 	"fraunhofer/fkie/yapscan/procIO"
 	"os"
 	"path"
@@ -24,8 +27,8 @@ func scan(c *cli.Context) error {
 		return err
 	}
 
-	if c.NArg() == 0 && !c.Bool("all") {
-		return errors.Newf("expected at least one argument or flag \"--all\", got zero")
+	if c.NArg() == 0 && !c.Bool("all-processes") && !c.Bool("all-drives") && !c.Bool("all-shares") {
+		return errors.Newf("expected at least one argument, or one of the flags \"--all-processes\", \"--all-drives\", \"--all-shares\", got zero")
 	}
 
 	rules, err := yapscan.LoadYaraRules(c.String("rules"), c.Bool("rules-recurse"))
@@ -39,27 +42,53 @@ func scan(c *cli.Context) error {
 	}
 
 	var pids []int
-	if c.Bool("all") {
-		pids, err = procIO.GetRunningPIDs()
-		if err != nil {
-			return errors.Newf("could not enumerate PIDs, reason: %w", err)
-		}
-	} else {
-		pids = make([]int, c.NArg())
+	var paths []string
+	if c.NArg() > 0 {
 		for i := 0; i < c.NArg(); i += 1 {
-			pids[i], err = strconv.Atoi(c.Args().Get(i))
-			if err != nil {
-				return errors.Newf("argument \"%s\" is not a pid: %w", c.Args().Get(i), err)
+			arg := c.Args().Get(i)
+
+			pid, err := strconv.Atoi(arg)
+			if err == nil {
+				// is pid
+				pids = append(pids, pid)
+			} else {
+				// is path
+				paths = append(paths, arg)
 			}
 		}
 	}
 
-	reporter := yapscan.NewProgressReporter(os.Stdout, yapscan.NewPrettyFormatter())
+	if c.Bool("all-processes") {
+		pids, err = procIO.GetRunningPIDs()
+		if err != nil {
+			return errors.Newf("could not enumerate PIDs, reason: %w", err)
+		}
+	}
+
+	if c.Bool("all-drives") {
+		// TODO: Expose the drive types to flags
+		drives, err := fileIO.Enumerate(fileIO.DriveTypeFixed | fileIO.DriveTypeRemovable)
+		if err != nil {
+			return fmt.Errorf("could not enumerate local drives, reason: %w", err)
+		}
+		paths = append(paths, drives...)
+	}
+
+	if c.Bool("all-shares") {
+		// TODO: Expose the drive types to flags
+		drives, err := fileIO.Enumerate(fileIO.DriveTypeRemote)
+		if err != nil {
+			return fmt.Errorf("could not enumerate net-shares, reason: %w", err)
+		}
+		paths = append(paths, drives...)
+	}
+
+	reporter := output.NewProgressReporter(os.Stdout, output.NewPrettyFormatter())
 	if c.Bool("full-report") || c.Bool("store-dumps") {
 		tmpDir := path.Join(os.TempDir(), "yapscan")
 		fmt.Println("Full report temp dir: ", tmpDir)
 		logrus.Debug("Full report temp dir: ", tmpDir)
-		gatherRep, err := yapscan.NewGatheredAnalysisReporter(tmpDir)
+		gatherRep, err := output.NewGatheredAnalysisReporter(tmpDir)
 		if err != nil {
 			return errors.Errorf("could not initialize analysis reporter, reason: %w", err)
 		}
@@ -73,8 +102,8 @@ func scan(c *cli.Context) error {
 			}
 			gatherRep.ZIPPassword = c.String("password")
 		}
-		reporter = &yapscan.MultiReporter{
-			Reporters: []yapscan.Reporter{
+		reporter = &output.MultiReporter{
+			Reporters: []output.Reporter{
 				reporter,
 				gatherRep,
 			},
@@ -171,6 +200,39 @@ func scan(c *cli.Context) error {
 			continue
 		}
 		resume()
+	}
+
+	fileExtensions := c.StringSlice("file-extensions")
+	if len(fileExtensions) == 1 && fileExtensions[0] == "" {
+		fileExtensions = fileExtensions[1:]
+	}
+	for i := range fileExtensions {
+		if fileExtensions[i] == "-" {
+			fileExtensions[i] = ""
+		}
+	}
+
+	iteratorCtx := context.Background()
+	var pathIterator fileIO.Iterator
+	for _, path := range paths {
+		pIt, err := fileIO.IteratePath(path, fileExtensions, iteratorCtx)
+		if err != nil {
+			return fmt.Errorf("could not initialize filesystem iterator for path \"%s\", reason: %w", path, err)
+		}
+		pathIterator = fileIO.Concurrent(pathIterator, pIt)
+	}
+
+	if pathIterator != nil {
+		defer pathIterator.Close()
+
+		fsScanner := fileIO.NewFSScanner(yaraScanner)
+		fsScanner.NGoroutines = c.Int("threads")
+
+		progress, _ := fsScanner.Scan(pathIterator)
+		err = reporter.ConsumeFSScanProgress(progress)
+		if err != nil {
+			logrus.WithError(err).Error("an error occurred during progress report, there may be no other output")
+		}
 	}
 
 	return nil
