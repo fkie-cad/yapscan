@@ -62,32 +62,36 @@ func (p *processLinux) Info() (*ProcessInfo, error) {
 		info.Username = u.Username
 	}
 
-	info.ExecutablePath, tmpErr = os.Readlink(fmt.Sprintf("/proc/%d/exe", p.pid))
+	procExeLink := fmt.Sprintf("/proc/%d/exe", p.pid)
+	info.ExecutablePath, tmpErr = os.Readlink(procExeLink)
 	if tmpErr != nil {
 		err = errors.NewMultiError(err, fmt.Errorf("could not determine executable path, reason: %w", tmpErr))
-	} else {
-		info.ExecutableMD5, info.ExecutableSHA256, tmpErr = ComputeHashes(info.ExecutablePath)
-		if tmpErr != nil {
-			err = errors.NewMultiError(err, fmt.Errorf("could not determine executable hashes, reason: %w", tmpErr))
-		}
+	}
 
-		exe, tmpErr := os.OpenFile(info.ExecutablePath, os.O_RDONLY, 0666)
-		if tmpErr != nil {
-			err = errors.NewMultiError(err, fmt.Errorf("could not determine bitness, reason: %w", tmpErr))
-		}
-		magic := make([]byte, 5)
-		_, tmpErr = io.ReadFull(exe, magic)
-		if tmpErr != nil {
-			err = errors.NewMultiError(err, fmt.Errorf("could not determine bitness, reason: %w", tmpErr))
-		}
-		switch string(magic) {
-		case "\x7FELF\x01":
-			info.Bitness = arch.Bitness32Bit
-		case "\x7FELF\x02":
-			info.Bitness = arch.Bitness64Bit
-		default:
-			err = errors.NewMultiError(err, fmt.Errorf("could not determine bitness, reason: unknown magic number of executable %v", magic))
-		}
+	// Using procExeLink here is more robust, as the OS sometimes does more magic.
+	// One example is a flatpak application. The resolved path cannot be found, while the link
+	// can still be resolved correctly.
+	info.ExecutableMD5, info.ExecutableSHA256, tmpErr = ComputeHashes(procExeLink)
+	if tmpErr != nil {
+		err = errors.NewMultiError(err, fmt.Errorf("could not determine executable hashes, reason: %w", tmpErr))
+	}
+
+	exe, tmpErr := os.OpenFile(procExeLink, os.O_RDONLY, 0666)
+	if tmpErr != nil {
+		err = errors.NewMultiError(err, fmt.Errorf("could not determine bitness, reason: %w", tmpErr))
+	}
+	magic := make([]byte, 5)
+	_, tmpErr = io.ReadFull(exe, magic)
+	if tmpErr != nil {
+		err = errors.NewMultiError(err, fmt.Errorf("could not determine bitness, reason: %w", tmpErr))
+	}
+	switch string(magic) {
+	case "\x7FELF\x01":
+		info.Bitness = arch.Bitness32Bit
+	case "\x7FELF\x02":
+		info.Bitness = arch.Bitness64Bit
+	default:
+		err = errors.NewMultiError(err, fmt.Errorf("could not determine bitness, reason: unknown magic number of executable %v", magic))
 	}
 
 	info.MemorySegments, tmpErr = p.MemorySegments()
