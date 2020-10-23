@@ -223,6 +223,7 @@ func scan(c *cli.Context) error {
 
 		pIt, err := fileIO.IteratePath(path, fileExtensions, iteratorCtx)
 		if err != nil {
+			fmt.Fprintf(os.Stderr, "could not intialize scanner for path \"%s\", reason: %v", path, err)
 			return fmt.Errorf("could not initialize filesystem iterator for path \"%s\", reason: %w", path, err)
 		}
 		pathIterator = fileIO.Concurrent(pathIterator, pIt)
