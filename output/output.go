@@ -778,25 +778,37 @@ func (p prettyFormatter) FormatMemoryScanProgress(progress *yapscan.MemoryScanPr
 }
 
 func (p prettyFormatter) FormatPath(path string, maxlen int) string {
+	// TODO: This needs improvement.
 	if len(path) <= maxlen {
 		return path
 	}
 	parts := strings.Split(path, fmt.Sprintf("%c", filepath.Separator))
 	res := parts[0]
 	if len(parts) == 1 {
+		if len(res)-maxlen-3 < 0 {
+			return res
+		}
 		return "..." + res[len(res)-maxlen-3:]
 	}
 	if len(parts) == 2 {
-		return filepath.Join(res, parts[1][len(parts[1])-len(res)-1-maxlen-3:])
+		if len(parts[1])-len(res)-1-maxlen-3 < 0 {
+			return filepath.Join(res, parts[1])
+		}
+		return filepath.Join(res, "..."+parts[1][len(parts[1])-len(res)-1-maxlen-3:])
 	}
-	// TODO: This needs improvement.
 	res = filepath.Join(res, "...", parts[len(parts)-1])
 	if len(res) <= maxlen {
 		return res
 	}
 	dir, file := filepath.Split(res)
 	if len(dir) < maxlen {
-		return filepath.Join(dir, file[len(file)-1-maxlen:])
+		if len(file)-len(dir)-1-maxlen-3 < 0 {
+			return res
+		}
+		return filepath.Join(dir, "..."+file[len(file)-len(dir)-1-maxlen-3:])
+	}
+	if len(res)-maxlen-3 < 0 {
+		return res
 	}
 	return "..." + res[len(res)-maxlen-3:]
 }
