@@ -219,14 +219,14 @@ func scan(c *cli.Context) error {
 	iteratorCtx := context.Background()
 	var pathIterator fileIO.Iterator
 	for _, path := range paths {
-		fmt.Printf("- %s\n", path)
-
 		pIt, err := fileIO.IteratePath(path, fileExtensions, iteratorCtx)
 		if err != nil {
-			fmt.Fprintf(os.Stderr, "could not intialize scanner for path \"%s\", reason: %v", path, err)
-			return fmt.Errorf("could not initialize filesystem iterator for path \"%s\", reason: %w", path, err)
+			fmt.Printf("- %s ERROR: could not intialize scanner for path, reason: %v", path, err)
+			logrus.WithError(err).Error("Could not initialize scanner for path \"%s\".")
+			continue
 		}
 		pathIterator = fileIO.Concurrent(pathIterator, pIt)
+		fmt.Printf("- %s\n", path)
 	}
 
 	if pathIterator != nil {
