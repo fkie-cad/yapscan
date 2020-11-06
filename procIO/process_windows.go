@@ -217,6 +217,7 @@ func (p *processWindows) MemorySegments() ([]*MemorySegmentInfo, error) {
 			}
 			lpAddress += win32.LPCVOID(mbi.RegionSize)
 			seg := SegmentFromMemoryBasicInformation(mbi)
+			seg.FilePath, _ = LookupFilePathOfSegment(p.procHandle, seg)
 
 			if seg.State == StateFree {
 				continue

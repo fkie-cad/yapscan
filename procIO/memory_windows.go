@@ -1,6 +1,9 @@
 package procIO
 
-import "github.com/0xrawsec/golang-win32/win32"
+import (
+	"github.com/0xrawsec/golang-win32/win32"
+	"github.com/0xrawsec/golang-win32/win32/kernel32"
+)
 
 func SegmentFromMemoryBasicInformation(info win32.MemoryBasicInformation) *MemorySegmentInfo {
 	return &MemorySegmentInfo{
@@ -13,6 +16,17 @@ func SegmentFromMemoryBasicInformation(info win32.MemoryBasicInformation) *Memor
 		Type:                 typeFromDWORD(info.Type),
 		SubSegments:          make([]*MemorySegmentInfo, 0),
 	}
+}
+
+func LookupFilePathOfSegment(procHandle win32.HANDLE, seg *MemorySegmentInfo) (string, error) {
+	if seg.BaseAddress != seg.ParentBaseAddress {
+		// Only check root segments
+		return "", nil
+	}
+	if seg.Type == TypeImage {
+		return kernel32.GetModuleFilenameExW(procHandle, win32.HANDLE(seg.BaseAddress))
+	}
+	return "", nil
 }
 
 func permissionsFromProtectDWORD(protect win32.DWORD) Permissions {
