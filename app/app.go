@@ -17,6 +17,15 @@ const yaraRulesNamespace = ""
 
 var onExit func()
 
+var DefaultNumberOfFilescanThreads int
+
+func init() {
+	DefaultNumberOfFilescanThreads = runtime.GOMAXPROCS(0) / 2
+	if DefaultNumberOfFilescanThreads < 1 {
+		DefaultNumberOfFilescanThreads = 1
+	}
+}
+
 func initAppAction(c *cli.Context) error {
 	lvl, err := logrus.ParseLevel(c.String("log-level"))
 	if err != nil {
@@ -341,7 +350,7 @@ func RunApp(args []string) {
 						Name:    "threads",
 						Aliases: []string{"t"},
 						Usage:   "number of threads (goroutines) used for scanning files",
-						Value:   runtime.GOMAXPROCS(0),
+						Value:   DefaultNumberOfFilescanThreads,
 					},
 					&cli.BoolFlag{
 						Name:  "full-report",
