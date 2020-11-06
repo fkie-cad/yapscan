@@ -5,6 +5,7 @@ package procIO
 
 import (
 	"fmt"
+	"strings"
 )
 
 const (
@@ -17,6 +18,19 @@ const (
 )
 
 const _StateName = "CommitFreeReserve"
+
+var _StateNames = []string{
+	_StateName[0:6],
+	_StateName[6:10],
+	_StateName[10:17],
+}
+
+// StateNames returns a list of possible string values of State.
+func StateNames() []string {
+	tmp := make([]string, len(_StateNames))
+	copy(tmp, _StateNames)
+	return tmp
+}
 
 var _StateMap = map[State]string{
 	0: _StateName[0:6],
@@ -33,9 +47,12 @@ func (x State) String() string {
 }
 
 var _StateValue = map[string]State{
-	_StateName[0:6]:   0,
-	_StateName[6:10]:  1,
-	_StateName[10:17]: 2,
+	_StateName[0:6]:                    0,
+	strings.ToLower(_StateName[0:6]):   0,
+	_StateName[6:10]:                   1,
+	strings.ToLower(_StateName[6:10]):  1,
+	_StateName[10:17]:                  2,
+	strings.ToLower(_StateName[10:17]): 2,
 }
 
 // ParseState attempts to convert a string to a State
@@ -43,7 +60,7 @@ func ParseState(name string) (State, error) {
 	if x, ok := _StateValue[name]; ok {
 		return x, nil
 	}
-	return State(0), fmt.Errorf("%s is not a valid State", name)
+	return State(0), fmt.Errorf("%s is not a valid State, try [%s]", name, strings.Join(_StateNames, ", "))
 }
 
 // MarshalText implements the text marshaller method
@@ -73,6 +90,19 @@ const (
 
 const _TypeName = "ImageMappedPrivate"
 
+var _TypeNames = []string{
+	_TypeName[0:5],
+	_TypeName[5:11],
+	_TypeName[11:18],
+}
+
+// TypeNames returns a list of possible string values of Type.
+func TypeNames() []string {
+	tmp := make([]string, len(_TypeNames))
+	copy(tmp, _TypeNames)
+	return tmp
+}
+
 var _TypeMap = map[Type]string{
 	0: _TypeName[0:5],
 	1: _TypeName[5:11],
@@ -88,9 +118,12 @@ func (x Type) String() string {
 }
 
 var _TypeValue = map[string]Type{
-	_TypeName[0:5]:   0,
-	_TypeName[5:11]:  1,
-	_TypeName[11:18]: 2,
+	_TypeName[0:5]:                    0,
+	strings.ToLower(_TypeName[0:5]):   0,
+	_TypeName[5:11]:                   1,
+	strings.ToLower(_TypeName[5:11]):  1,
+	_TypeName[11:18]:                  2,
+	strings.ToLower(_TypeName[11:18]): 2,
 }
 
 // ParseType attempts to convert a string to a Type
@@ -98,7 +131,7 @@ func ParseType(name string) (Type, error) {
 	if x, ok := _TypeValue[name]; ok {
 		return x, nil
 	}
-	return Type(0), fmt.Errorf("%s is not a valid Type", name)
+	return Type(0), fmt.Errorf("%s is not a valid Type, try [%s]", name, strings.Join(_TypeNames, ", "))
 }
 
 // MarshalText implements the text marshaller method

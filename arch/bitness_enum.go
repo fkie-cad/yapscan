@@ -5,6 +5,7 @@ package arch
 
 import (
 	"fmt"
+	"strings"
 )
 
 const (
@@ -17,6 +18,19 @@ const (
 )
 
 const _BitnessName = "Invalid32Bit64Bit"
+
+var _BitnessNames = []string{
+	_BitnessName[0:7],
+	_BitnessName[7:12],
+	_BitnessName[12:17],
+}
+
+// BitnessNames returns a list of possible string values of Bitness.
+func BitnessNames() []string {
+	tmp := make([]string, len(_BitnessNames))
+	copy(tmp, _BitnessNames)
+	return tmp
+}
 
 var _BitnessMap = map[Bitness]string{
 	0:  _BitnessName[0:7],
@@ -33,9 +47,12 @@ func (x Bitness) String() string {
 }
 
 var _BitnessValue = map[string]Bitness{
-	_BitnessName[0:7]:   0,
-	_BitnessName[7:12]:  32,
-	_BitnessName[12:17]: 64,
+	_BitnessName[0:7]:                    0,
+	strings.ToLower(_BitnessName[0:7]):   0,
+	_BitnessName[7:12]:                   32,
+	strings.ToLower(_BitnessName[7:12]):  32,
+	_BitnessName[12:17]:                  64,
+	strings.ToLower(_BitnessName[12:17]): 64,
 }
 
 // ParseBitness attempts to convert a string to a Bitness
@@ -43,7 +60,7 @@ func ParseBitness(name string) (Bitness, error) {
 	if x, ok := _BitnessValue[name]; ok {
 		return x, nil
 	}
-	return Bitness(0), fmt.Errorf("%s is not a valid Bitness", name)
+	return Bitness(0), fmt.Errorf("%s is not a valid Bitness, try [%s]", name, strings.Join(_BitnessNames, ", "))
 }
 
 // MarshalText implements the text marshaller method

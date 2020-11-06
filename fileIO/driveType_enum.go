@@ -5,6 +5,7 @@ package fileIO
 
 import (
 	"fmt"
+	"strings"
 )
 
 const (
@@ -24,6 +25,22 @@ const (
 
 const _DriveTypeName = "UnknownRemovableFixedRemoteCDRomRAM"
 
+var _DriveTypeNames = []string{
+	_DriveTypeName[0:7],
+	_DriveTypeName[7:16],
+	_DriveTypeName[16:21],
+	_DriveTypeName[21:27],
+	_DriveTypeName[27:32],
+	_DriveTypeName[32:35],
+}
+
+// DriveTypeNames returns a list of possible string values of DriveType.
+func DriveTypeNames() []string {
+	tmp := make([]string, len(_DriveTypeNames))
+	copy(tmp, _DriveTypeNames)
+	return tmp
+}
+
 var _DriveTypeMap = map[DriveType]string{
 	0:  _DriveTypeName[0:7],
 	1:  _DriveTypeName[7:16],
@@ -42,12 +59,18 @@ func (x DriveType) String() string {
 }
 
 var _DriveTypeValue = map[string]DriveType{
-	_DriveTypeName[0:7]:   0,
-	_DriveTypeName[7:16]:  1,
-	_DriveTypeName[16:21]: 2,
-	_DriveTypeName[21:27]: 4,
-	_DriveTypeName[27:32]: 8,
-	_DriveTypeName[32:35]: 16,
+	_DriveTypeName[0:7]:                    0,
+	strings.ToLower(_DriveTypeName[0:7]):   0,
+	_DriveTypeName[7:16]:                   1,
+	strings.ToLower(_DriveTypeName[7:16]):  1,
+	_DriveTypeName[16:21]:                  2,
+	strings.ToLower(_DriveTypeName[16:21]): 2,
+	_DriveTypeName[21:27]:                  4,
+	strings.ToLower(_DriveTypeName[21:27]): 4,
+	_DriveTypeName[27:32]:                  8,
+	strings.ToLower(_DriveTypeName[27:32]): 8,
+	_DriveTypeName[32:35]:                  16,
+	strings.ToLower(_DriveTypeName[32:35]): 16,
 }
 
 // ParseDriveType attempts to convert a string to a DriveType
@@ -55,7 +78,7 @@ func ParseDriveType(name string) (DriveType, error) {
 	if x, ok := _DriveTypeValue[name]; ok {
 		return x, nil
 	}
-	return DriveType(0), fmt.Errorf("%s is not a valid DriveType", name)
+	return DriveType(0), fmt.Errorf("%s is not a valid DriveType, try [%s]", name, strings.Join(_DriveTypeNames, ", "))
 }
 
 // MarshalText implements the text marshaller method
