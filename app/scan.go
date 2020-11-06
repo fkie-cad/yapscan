@@ -222,7 +222,7 @@ func scan(c *cli.Context) error {
 		pIt, err := fileIO.IteratePath(path, fileExtensions, iteratorCtx)
 		if err != nil {
 			fmt.Printf("- %s ERROR: could not intialize scanner for path, reason: %v", path, err)
-			logrus.WithError(err).Error("Could not initialize scanner for path \"%s\".")
+			logrus.WithError(err).Errorf("Could not initialize scanner for path \"%s\".", path)
 			continue
 		}
 		pathIterator = fileIO.Concurrent(pathIterator, pIt)
