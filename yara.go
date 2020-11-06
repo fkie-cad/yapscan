@@ -14,34 +14,63 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+// RulesZIPPassword is the password yapscan uses to de-/encrypt the rules zip file.
 const RulesZIPPassword = "infected"
 
+// DefaultYaraRulesNamespace is the default namespace when compiling rules.
 var DefaultYaraRulesNamespace = ""
+
+// YaraRulesFileExtensions are the file extensions yapscan expects rules files to have.
+// This is used when loading files from a directory.
 var YaraRulesFileExtensions = []string{
 	".yar",
 	".yara",
 }
 
+// YaraScanner is a wrapper for yara.Rules, with a more go-like interface.
 type YaraScanner struct {
 	rules *yara.Rules
 }
 
+// NewYaraScanner creates a new YaraScanner from the given yara.Rules.
 func NewYaraScanner(rules *yara.Rules) (*YaraScanner, error) {
 	return &YaraScanner{rules}, nil
 }
 
+// ScanFile scans the file with the given filename.
+// This function simply calls ScanFile on the underlying yara.Rules object.
 func (s *YaraScanner) ScanFile(filename string) ([]yara.MatchRule, error) {
 	var matches yara.MatchRules
 	err := s.rules.ScanFile(filename, 0, 0, &matches)
 	return matches, err
 }
 
+// ScanMem scans the given buffer.
+// This function simply calls ScanMem on the underlying yara.Rules object.
 func (s *YaraScanner) ScanMem(buf []byte) ([]yara.MatchRule, error) {
 	var matches yara.MatchRules
 	err := s.rules.ScanMem(buf, 0, 0, &matches)
 	return matches, err
 }
 
+// LoadYaraRules loads yara.Rules from a file (or files) and compiles if necessary.
+// The given path can be a path to a directory, a compiled rules-file, a plain text
+// file containing rules, or an encrypted zip file containing rules.
+//
+// If the path is a directory, all files with one of the file extensions in YaraRulesFileExtensions
+// are loaded (recursively if recurseIfDir is true). All files are assumed to be
+// uncompiled and will be compiled. Loading multiple already compiled files into one
+// yara.Rules object is not supported.
+// Each file will be compiled with the namespace equal to its filename, relative to
+// the given path.
+//
+// If the path is a single file, it may be compiled, uncompiled or a zip file.
+// An uncompiled file will be compiled with the namespace
+// `DefaultYaraRulesNamespace+"/"+filename`. A zip file will be opened and decrypted
+// with the RulesZIPPassword. The contents of the zip file will be treated similar to
+// the way a directory is treated (see above), however *all* files are assumed to be
+// rules-files, recursion is always enabled and there may be either a single compiled
+// file or arbitrarily many uncompiled files in the zip.
 func LoadYaraRules(path string, recurseIfDir bool) (*yara.Rules, error) {
 	stat, err := os.Stat(path)
 	if err != nil {
@@ -54,6 +83,8 @@ func LoadYaraRules(path string, recurseIfDir bool) (*yara.Rules, error) {
 	}
 }
 
+// IsYaraRulesFile returns true, if the given filename has one of the extensions
+// in YaraRulesFileExtensions.
 func IsYaraRulesFile(name string) bool {
 	for _, ext := range YaraRulesFileExtensions {
 		nLen := len(name)
