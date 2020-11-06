@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"time"
 
 	"github.com/yeka/zip"
 
@@ -29,11 +30,19 @@ var YaraRulesFileExtensions = []string{
 
 // YaraScanner is a wrapper for yara.Rules, with a more go-like interface.
 type YaraScanner struct {
-	rules *yara.Rules
+	rules Rules
+}
+
+type Rules interface {
+	ScanFile(filename string, flags yara.ScanFlags, timeout time.Duration, cb yara.ScanCallback) (err error)
+	ScanMem(buf []byte, flags yara.ScanFlags, timeout time.Duration, cb yara.ScanCallback) (err error)
 }
 
 // NewYaraScanner creates a new YaraScanner from the given yara.Rules.
-func NewYaraScanner(rules *yara.Rules) (*YaraScanner, error) {
+func NewYaraScanner(rules Rules) (*YaraScanner, error) {
+	if rules == nil {
+		return nil, fmt.Errorf("cannot create a yara scanner with nil rules")
+	}
 	return &YaraScanner{rules}, nil
 }
 
