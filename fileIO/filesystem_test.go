@@ -4,19 +4,21 @@ import (
 	"context"
 	"io"
 	"path/filepath"
+	"sort"
+	"strings"
 	"testing"
 
 	. "github.com/smartystreets/goconvey/convey"
 )
 
 func testDataDir(path ...string) string {
-	path = append([]string{"..", "testdata"}, path...)
+	path = append([]string{"..", "testdata", "fileIO"}, path...)
 	return filepath.Join(path...)
 }
 
 func TestIterateFail(t *testing.T) {
 	Convey("Iterating through a non-existent directory", t, func() {
-		it, err := IteratePath(filepath.Join("thispath", "shouldnot", "exist"), context.Background())
+		it, err := IteratePath(filepath.Join("thispath", "shouldnot", "exist"), nil, context.Background())
 
 		Convey("should error.", func() {
 			So(it, ShouldBeNil)
@@ -25,7 +27,7 @@ func TestIterateFail(t *testing.T) {
 	})
 
 	Convey("Opening a file for iteration", t, func() {
-		it, err := IteratePath(testDataDir("fsIterator", "f1"), context.Background())
+		it, err := IteratePath(testDataDir("filesystem", "f1"), nil, context.Background())
 
 		Convey("should error.", func() {
 			So(it, ShouldBeNil)
@@ -36,15 +38,21 @@ func TestIterateFail(t *testing.T) {
 
 func TestIterateSuccess(t *testing.T) {
 	Convey("Iterating through a directory with a single goroutine", t, func() {
-		it, err := IteratePath(testDataDir("fsIterator"), context.Background())
+		it, err := IteratePath(testDataDir("filesystem"), nil, context.Background())
 
 		Convey("should not error.", func() {
 			So(err, ShouldBeNil)
 			So(it, ShouldNotBeNil)
 		})
 
-		filenames := []string{"f1", "f2", "f3", "f4"}
+		filenames := []string{
+			testDataDir("filesystem", "f1"),
+			testDataDir("filesystem", "f2"),
+			testDataDir("filesystem", "dir1", "dir3", "f3"),
+			testDataDir("filesystem", "dir2", "f4"),
+		}
 		Convey("should yield all files.", func() {
+			found := make([]string, 0)
 			for {
 				f, err := it.Next()
 				if err == io.EOF {
@@ -53,10 +61,16 @@ func TestIterateSuccess(t *testing.T) {
 
 				So(err, ShouldBeNil)
 				So(f, ShouldNotBeNil)
-				if f != nil {
-					So(f.path, ShouldBeIn, filenames)
-				}
+				found = append(found, f.Path())
 			}
+			// Sort both because the order does not matter
+			sort.Slice(found, func(i, j int) bool {
+				return strings.Compare(found[i], found[j]) < 0
+			})
+			sort.Slice(filenames, func(i, j int) bool {
+				return strings.Compare(filenames[i], filenames[j]) < 0
+			})
+			So(found, ShouldResemble, filenames)
 		})
 
 		Convey("when closing", func() {
