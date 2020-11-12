@@ -14,10 +14,11 @@ before_install:
     - git clone --depth=1 --branch $YARA_VERSION https://github.com/VirusTotal/yara.git deps/yara
     - pushd deps/yara
     - ./bootstrap.sh
-    - ./configure --with-crypto || exit $?
+    - ./configure --prefix=/usr --with-crypto || exit $?
     - make -j$BUILD_THREADS || exit $?
     - sudo make install || exit $?
     - popd
+    - pkg-config -cflags -libs yara
 
 install:
     - ./prepare.sh
