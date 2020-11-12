@@ -107,8 +107,7 @@ Instead it acts similarly to the exe with two exported, high-level entry points:
 extern int start(int argc, char** argv);
 
 // run is meant for use with rundll32.
-// It tries to hook into the terminal IO of the parent process
-// via AttachConsole(ATTACH_PARENT_PROCESS), then parses the
+// It opens a new console window via AllocConsole(), then parses the
 // lpCmdLine to extract the arguments and calls starts yapscan
 // with the extracted arguments. 
 extern void run(HWND hWnd, HINSTANCE hInst, LPTSTR lpCmdLine, int nCmdShow);
@@ -118,11 +117,11 @@ Some environments like VDIs (Virtual Desktop Infrastructure) may prevent the exe
 If you gain access to a command line terminal in such an environment you can call yapscan via the built DLL like so.
 
 ```
-rundll32.exe yapscan.dll,run "scan -r rules.zip --all-processes"
+rundll32.exe yapscan.dll,run scan -r rules.zip --all-processes
 ```  
 
 **NOTE**: This feature is still experimental!
-There very likely are quirks with the argument parsing and the use of `AttachConsole` still seems unreliable. 
+There very likely are quirks with the argument parsing. 
 
 ## State of this project
 

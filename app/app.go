@@ -44,20 +44,9 @@ func initAppAction(c *cli.Context) error {
 			return errors.Errorf("could not open logfile for writing, reason: %w", err)
 		}
 		logrus.SetOutput(logfile)
-		oldExit := logrus.StandardLogger().ExitFunc
-		logrus.StandardLogger().ExitFunc = func(code int) {
-			if onExit != nil {
-				onExit()
-			}
-			if oldExit != nil {
-				oldExit(code)
-			} else {
-				os.Exit(code)
-			}
-		}
-		onExit = func() {
+		logrus.RegisterExitHandler(func() {
 			logfile.Close()
-		}
+		})
 	}
 	logrus.WithField("arguments", os.Args).Debug("Program started.")
 	return nil
@@ -216,6 +205,8 @@ func RunApp(args []string) {
 		HelpName:    "yapscan",
 		Description: "A yara based scanner for files and process memory with some extras.",
 		Version:     "0.1.0",
+		Writer:      os.Stdout,
+		ErrWriter:   os.Stderr,
 		Authors: []*cli.Author{
 			&cli.Author{
 				Name:  "Luca Corbatto",
