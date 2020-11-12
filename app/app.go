@@ -220,6 +220,9 @@ func RunApp(args []string) {
 				Name:  "Luca Corbatto",
 				Email: "luca.corbatto@fkie.fraunhofer.de",
 			},
+			&cli.Author{
+				Name: "Fraunhofer FKIE",
+			},
 		},
 		EnableBashCompletion: true,
 		Flags: []cli.Flag{
