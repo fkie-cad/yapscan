@@ -24,4 +24,8 @@ install:
 
 script:
     - go test -v ./...
+    - mkdir -p build/ &>/dev/null
+    - pushd cmd/yapscan
+    - go build -trimpath -o ../../build/yapscan
+    - popd
     - ./buildForWindows.sh
