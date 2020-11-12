@@ -1,4 +1,4 @@
-# yapscan
+# yapscan [![Build Status](https://travis-ci.org/fkie-cad/yapscan.svg?branch=master)](https://travis-ci.org/fkie-cad/yapscan)
 
 Yapscan is a **YA**ra based **P**rocess **SCAN**ner, aimed at giving more control about what to scan and giving detailed reports on matches.
 
