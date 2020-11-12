@@ -38,13 +38,8 @@ done
 cores=`cat /proc/cpuinfo | grep "cpu cores" | head -n1 | cut -d: -f2 | cut -d' ' -f2`
 cores=$((cores*2))
 
-go mod tidy
-go mod vendor
+./prepare.sh
 
-go get github.com/abice/go-enum
-go mod tidy
-
-go generate ./...
 mkdir -p build/ &>/dev/null
 
 docker build --build-arg BUILD_THREADS=$cores --network=host -t yapscan-xcompile -f Dockerfile.xwin .
