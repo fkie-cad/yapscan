@@ -9,7 +9,15 @@ services:
 
 before_install:
     - sudo apt-get update
-    - sudo apt-get install -y libyara-dev
+    - sudo apt-get install -y libssl-dev p7zip-full # libyara-dev package is too old
+    - mkdir deps
+    - git clone --depth=1 --branch $YARA_VERSION https://github.com/VirusTotal/yara.git deps/yara
+    - pushd deps/yara
+    - ./bootstrap.sh
+    - ./configure --with-crypto || exit $?
+    - make -j$BUILD_THREADS || exit $?
+    - sudo make install || exit $?
+    - popd
 
 install:
     - ./prepare.sh
