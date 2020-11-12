@@ -1,8 +1,9 @@
 package main
 
 import (
-	"fraunhofer/fkie/yapscan/app"
 	"os"
+
+	"github.com/fkie-cad/yapscan/app"
 )
 
 func main() {

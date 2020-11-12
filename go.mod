@@ -1,4 +1,4 @@
-module fraunhofer/fkie/yapscan
+module github.com/fkie-cad/yapscan
 
 go 1.15
 

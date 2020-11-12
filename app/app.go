@@ -2,11 +2,12 @@ package app
 
 import (
 	"fmt"
-	"fraunhofer/fkie/yapscan"
-	"fraunhofer/fkie/yapscan/output"
 	"os"
 	"runtime"
 	"strings"
+
+	"github.com/fkie-cad/yapscan"
+	"github.com/fkie-cad/yapscan/output"
 
 	"github.com/sirupsen/logrus"
 	"github.com/targodan/go-errors"

@@ -3,11 +3,12 @@ package fileIO
 import (
 	"context"
 	"errors"
-	"fraunhofer/fkie/yapscan"
 	"io"
 	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/fkie-cad/yapscan"
 )
 
 var (

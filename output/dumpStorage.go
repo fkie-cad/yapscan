@@ -3,10 +3,11 @@ package output
 import (
 	"context"
 	"fmt"
-	"fraunhofer/fkie/yapscan/procIO"
 	"io"
 	"os"
 	"path"
+
+	"github.com/fkie-cad/yapscan/procIO"
 
 	"github.com/targodan/go-errors"
 )

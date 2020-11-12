@@ -2,10 +2,11 @@ package app
 
 import (
 	"fmt"
-	"fraunhofer/fkie/yapscan/procIO"
 	"path/filepath"
 	"strconv"
 	"strings"
+
+	"github.com/fkie-cad/yapscan/procIO"
 
 	"github.com/targodan/go-errors"
 	"github.com/urfave/cli/v2"

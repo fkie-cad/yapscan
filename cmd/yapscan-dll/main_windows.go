@@ -3,8 +3,9 @@ package main
 import "C"
 import (
 	"fmt"
-	"fraunhofer/fkie/yapscan/app"
 	"os"
+
+	"github.com/fkie-cad/yapscan/app"
 
 	"github.com/sirupsen/logrus"
 

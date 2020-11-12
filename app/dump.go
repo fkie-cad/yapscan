@@ -3,11 +3,12 @@ package app
 import (
 	"encoding/hex"
 	"fmt"
-	"fraunhofer/fkie/yapscan/procIO"
 	"io"
 	"os"
 	"path"
 	"strconv"
+
+	"github.com/fkie-cad/yapscan/procIO"
 
 	"github.com/targodan/go-errors"
 	"github.com/urfave/cli/v2"

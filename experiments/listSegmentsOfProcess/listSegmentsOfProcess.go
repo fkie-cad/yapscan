@@ -5,7 +5,7 @@ import (
 	"os"
 	"strconv"
 
-	"fraunhofer/fkie/yapscan/procIO"
+	"github.com/fkie-cad/yapscan/procIO"
 
 	"github.com/dustin/go-humanize"
 )

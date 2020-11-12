@@ -8,10 +8,6 @@ import (
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
-	"fraunhofer/fkie/yapscan"
-	"fraunhofer/fkie/yapscan/fileIO"
-	"fraunhofer/fkie/yapscan/procIO"
-	"fraunhofer/fkie/yapscan/system"
 	"io"
 	"io/ioutil"
 	"math/rand"
@@ -20,6 +16,11 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+
+	"github.com/fkie-cad/yapscan"
+	"github.com/fkie-cad/yapscan/fileIO"
+	"github.com/fkie-cad/yapscan/procIO"
+	"github.com/fkie-cad/yapscan/system"
 
 	"github.com/fatih/color"
 	"github.com/hillu/go-yara/v4"
