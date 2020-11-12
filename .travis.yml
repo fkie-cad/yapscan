@@ -1,0 +1,11 @@
+language: go
+
+go:
+    - "1.x"
+    #- "1.11"
+
+before_install:
+    - ./prepare.sh
+
+script:
+    - go test -v ./...
