@@ -1,9 +1,10 @@
 package system
 
 import (
-	"fraunhofer/fkie/yapscan/arch"
 	"net"
 	"os"
+
+	"github.com/fkie-cad/yapscan/arch"
 
 	"github.com/targodan/go-errors"
 )

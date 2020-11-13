@@ -2,9 +2,10 @@ package app
 
 import (
 	"fmt"
-	"fraunhofer/fkie/yapscan"
 	"os"
 	"path/filepath"
+
+	"github.com/fkie-cad/yapscan"
 
 	"github.com/yeka/zip"
 

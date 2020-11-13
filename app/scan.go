@@ -3,13 +3,14 @@ package app
 import (
 	"context"
 	"fmt"
-	"fraunhofer/fkie/yapscan"
-	"fraunhofer/fkie/yapscan/fileIO"
-	"fraunhofer/fkie/yapscan/output"
-	"fraunhofer/fkie/yapscan/procIO"
 	"os"
 	"path"
 	"strconv"
+
+	"github.com/fkie-cad/yapscan"
+	"github.com/fkie-cad/yapscan/fileIO"
+	"github.com/fkie-cad/yapscan/output"
+	"github.com/fkie-cad/yapscan/procIO"
 
 	"github.com/sirupsen/logrus"
 	"github.com/targodan/go-errors"

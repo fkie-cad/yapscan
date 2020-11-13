@@ -3,10 +3,11 @@ package yapscan
 import (
 	"bytes"
 	"fmt"
-	"fraunhofer/fkie/yapscan/procIO"
 	"reflect"
 	"strings"
 	"text/template"
+
+	"github.com/fkie-cad/yapscan/procIO"
 
 	"github.com/dustin/go-humanize"
 )

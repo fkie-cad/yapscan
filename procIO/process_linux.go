@@ -3,7 +3,6 @@ package procIO
 import (
 	"bufio"
 	"fmt"
-	"fraunhofer/fkie/yapscan/arch"
 	"io"
 	"os"
 	"os/exec"
@@ -12,6 +11,8 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
+
+	"github.com/fkie-cad/yapscan/arch"
 
 	"github.com/targodan/go-errors"
 )

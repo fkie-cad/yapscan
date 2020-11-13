@@ -3,22 +3,36 @@ package main
 import "C"
 import (
 	"fmt"
-	"fraunhofer/fkie/yapscan/app"
 	"os"
+	"time"
+
+	"golang.org/x/sys/windows"
 
 	"github.com/sirupsen/logrus"
 
-	"github.com/google/shlex"
 	"github.com/urfave/cli/v2"
+
+	"github.com/fkie-cad/yapscan/app"
+
+	"github.com/google/shlex"
 )
 
 // #include<windows.h>
+// #include<stdio.h>
 //
 // extern __declspec(dllexport) int start(int argc, char** argv);
 // extern __declspec(dllexport) void run(HWND hwnd, HINSTANCE hinst, LPTSTR lpCmdLine, int nCmdShow);
 //
 // static char* arg_index(char** argv, int i) {
 //     return argv[i];
+// }
+//
+// static void prepare_console() {
+//     AllocConsole();
+//
+//     freopen("CONIN$", "r", stdin);
+//     freopen("CONOUT$", "w", stdout);
+//     freopen("CONOUT$", "w", stderr);
 // }
 import "C"
 
@@ -34,26 +48,53 @@ func start(argc C.int, argv **C.char) C.int {
 
 //export run
 func run(hWnd C.HWND, hInst C.HINSTANCE, lpCmdLine C.LPTSTR, nCmdShow C.int) {
-	res := C.AttachConsole(C.ATTACH_PARENT_PROCESS)
-	if res == 0 {
-		// Failure, but we cannot output anything.
-		return
+	C.prepare_console()
+
+	hIn, err := windows.GetStdHandle(windows.STD_INPUT_HANDLE)
+	if err == nil {
+		os.Stdin = os.NewFile(uintptr(hIn), "/dev/stdin")
 	}
+	hOut, err := windows.GetStdHandle(windows.STD_OUTPUT_HANDLE)
+	if err == nil {
+		os.Stdout = os.NewFile(uintptr(hOut), "/dev/stdout")
+	}
+	hErr, err := windows.GetStdHandle(windows.STD_ERROR_HANDLE)
+	if err == nil {
+		os.Stderr = os.NewFile(uintptr(hErr), "/dev/stderr")
+	}
+
 	exiter := func(code int) {
-		C.FreeConsole()
-		os.Exit(code)
+		os.Stdout.Sync()
+		os.Stderr.Sync()
+
+		fmt.Printf("Yapscan exited with code: %d\n", code)
+		fmt.Println("Please close this window.")
+
+		for {
+			time.Sleep(1 * time.Second)
+		}
 	}
 	cli.OsExiter = exiter
-	logrus.StandardLogger().ExitFunc = exiter
+	logrus.RegisterExitHandler(func() {
+		os.Stdout.Sync()
+		os.Stderr.Sync()
 
-	fmt.Println()
+		fmt.Println("Yapscan has encountered a fatal error.")
+		fmt.Println("Please close this window.")
+
+		for {
+			time.Sleep(1 * time.Second)
+		}
+	})
 
 	str := C.GoString(lpCmdLine)
 	args, _ := shlex.Split(str)
 	args = append([]string{"rundll32.exe"}, args...)
 
 	app.RunApp(args)
-	C.FreeConsole()
+
+	// Just in case
+	exiter(0)
 }
 
 func main() {}

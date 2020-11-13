@@ -1,12 +1,13 @@
 package app
 
 import (
-	"fraunhofer/fkie/yapscan"
-	"fraunhofer/fkie/yapscan/procIO"
-	"fraunhofer/fkie/yapscan/system"
 	"regexp"
 	"strconv"
 	"strings"
+
+	"github.com/fkie-cad/yapscan"
+	"github.com/fkie-cad/yapscan/procIO"
+	"github.com/fkie-cad/yapscan/system"
 
 	"github.com/sirupsen/logrus"
 

@@ -2,8 +2,9 @@ package app
 
 import (
 	"fmt"
-	"fraunhofer/fkie/yapscan/procIO"
 	"strconv"
+
+	"github.com/fkie-cad/yapscan/procIO"
 
 	"github.com/dustin/go-humanize"
 	"github.com/targodan/go-errors"

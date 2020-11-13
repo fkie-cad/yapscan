@@ -8,7 +8,7 @@ import (
 
 	"github.com/sirupsen/logrus"
 
-	"fraunhofer/fkie/yapscan/procIO"
+	"github.com/fkie-cad/yapscan/procIO"
 
 	"github.com/targodan/go-errors"
 )

@@ -6,9 +6,10 @@ import (
 	"encoding/hex"
 	"errors"
 	"fmt"
-	"fraunhofer/fkie/yapscan/arch"
 	"io"
 	"os"
+
+	"github.com/fkie-cad/yapscan/arch"
 )
 
 var ErrProcIsSelf = errors.New("not supported on self")
