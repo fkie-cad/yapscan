@@ -76,14 +76,17 @@ func dumpMemory(c *cli.Context) error {
 		if seg.BaseAddress == addr || allSegments {
 			found = true
 		}
+		fmt.Printf("0x%08X: ", seg.BaseAddress)
 		match := filter.Filter(seg)
 		if allSegments && !match.Result {
+			fmt.Println("skipping, " + match.Reason)
 			continue
 		}
 		if found {
 			rdr, err := procIO.NewMemoryReader(proc, seg)
 			if err != nil {
-				return errors.Newf("could not read memory of process %d at address 0x%016X, reason %w", pid, seg.BaseAddress, err)
+				fmt.Println(errors.Newf("could not read memory of process %d at address 0x%016X, reason %w", pid, seg.BaseAddress, err))
+				continue
 			}
 
 			if c.Bool("store") {
@@ -91,13 +94,16 @@ func dumpMemory(c *cli.Context) error {
 				path := path.Join(c.String("storage-dir"), fname)
 				outfile, err := os.OpenFile(path, os.O_CREATE|os.O_RDWR, 0666)
 				if err != nil {
-					return errors.Newf("could not create dump file \"%s\", reason: %w", path, err)
+					fmt.Println(errors.Newf("could not create dump file \"%s\", reason: %w", path, err))
+					continue
 				}
 				_, err = io.Copy(outfile, rdr)
 				outfile.Close()
 				if err != nil {
-					return errors.Newf("could not dump segment to file \"%s\", reason: %w", path, err)
+					fmt.Println(errors.Newf("could not dump segment to file \"%s\", reason: %w", path, err))
+					continue
 				}
+				fmt.Printf("dumped to \"%s\"\n", path)
 			} else {
 				_, err = io.Copy(dumper, rdr)
 				if err != nil {
