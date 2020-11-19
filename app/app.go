@@ -352,6 +352,10 @@ func RunApp(args []string) {
 						Usage: "create a full report",
 						Value: false,
 					},
+					&cli.StringFlag{
+						Name:  "report-dir",
+						Usage: "the directory in which the report zip will be written",
+					},
 					&cli.BoolFlag{
 						Name:  "store-dumps",
 						Usage: "store dumps of memory regions that match rules, implies --full-report, the report will be encrypted with --password",

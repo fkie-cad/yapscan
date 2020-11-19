@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"path/filepath"
 	"strconv"
 
 	"github.com/fkie-cad/yapscan"
@@ -93,7 +94,7 @@ func scan(c *cli.Context) error {
 		if err != nil {
 			return errors.Errorf("could not initialize analysis reporter, reason: %w", err)
 		}
-		gatherRep.ZIP = gatherRep.SuggestZIPName()
+		gatherRep.ZIP = filepath.Join(c.String("report-dir"), gatherRep.SuggestZIPName())
 		gatherRep.DeleteAfterZipping = !c.Bool("keep")
 		fmt.Printf("Full report will be written to \"%s\".\n", gatherRep.ZIP)
 		if c.Bool("store-dumps") {
