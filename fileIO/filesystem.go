@@ -103,6 +103,7 @@ func (it *fsIterator) dirScanner() {
 		dir := it.dirs[0]
 		it.dirs = it.dirs[1:]
 
+		// New func here only for defer.
 		func() {
 			f, err := os.Open(dir)
 			if err != nil {
