@@ -24,12 +24,15 @@ install:
     - ./prepare.sh
 
 script:
-    - go test -v ./...
+    - go test -race -coverprofile=coverage.txt -covermode=atomic -v ./...
     - mkdir -p build/ &>/dev/null
     - pushd cmd/yapscan
     - go build -trimpath -o ../../build/yapscan
     - popd
     - ./buildForWindows.sh
+
+after_success:
+    - bash <(curl -s https://codecov.io/bash)
 
 before_deploy:
     - pushd build

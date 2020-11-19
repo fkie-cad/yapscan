@@ -204,7 +204,7 @@ func RunApp(args []string) {
 		Name:        "yapscan",
 		HelpName:    "yapscan",
 		Description: "A yara based scanner for files and process memory with some extras.",
-		Version:     "0.1.0",
+		Version:     "0.2.0",
 		Writer:      os.Stdout,
 		ErrWriter:   os.Stderr,
 		Authors: []*cli.Author{
@@ -351,6 +351,10 @@ func RunApp(args []string) {
 						Name:  "full-report",
 						Usage: "create a full report",
 						Value: false,
+					},
+					&cli.StringFlag{
+						Name:  "report-dir",
+						Usage: "the directory in which the report zip will be written",
 					},
 					&cli.BoolFlag{
 						Name:  "store-dumps",

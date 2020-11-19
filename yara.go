@@ -7,6 +7,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/yeka/zip"
@@ -33,6 +34,9 @@ type YaraScanner struct {
 	rules Rules
 }
 
+// Rules are a yara.Rules compatible interface, defining the functions required by yapscan.
+// The choice of an interface over the concrete struct yara.Rules is mostly to make testing
+// easier.
 type Rules interface {
 	ScanFile(filename string, flags yara.ScanFlags, timeout time.Duration, cb yara.ScanCallback) (err error)
 	ScanMem(buf []byte, flags yara.ScanFlags, timeout time.Duration, cb yara.ScanCallback) (err error)
@@ -101,7 +105,7 @@ func IsYaraRulesFile(name string) bool {
 		if nLen < eLen {
 			continue
 		}
-		if name[nLen-eLen:] == ext {
+		if strings.ToLower(name[nLen-eLen:]) == ext {
 			return true
 		}
 	}
@@ -233,6 +237,9 @@ func loadZippedRules(in io.ReaderAt, size int64) (*yara.Rules, error) {
 			f.Close()
 			return rules, err
 		case ruleTypePlain:
+			if !IsYaraRulesFile(file.Name) {
+				continue
+			}
 			err = loadUncompiledRules(compiler, rdr, file.FileInfo().Name())
 			f.Close()
 			if err != nil {
@@ -266,6 +273,7 @@ func detectRuleType(in io.Reader) (ruleType, io.Reader, error) {
 	if err != nil {
 		return 0, in, fmt.Errorf("could not read rules file, reason: %w", err)
 	}
+	fmt.Println(buff)
 
 	inWithMagic := io.MultiReader(bytes.NewReader(buff), in)
 

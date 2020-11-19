@@ -8,6 +8,9 @@ import (
 	"github.com/hillu/go-yara/v4"
 )
 
+// AddressesFromMatches returns one value for each given yara.MatchString.
+// The returned values are equal to the given offset plus the Offset field of
+// each yara.MatchString.
 func AddressesFromMatches(matches []yara.MatchString, offset uint64) []uint64 {
 	addrs := make([]uint64, len(matches))
 	for i, m := range matches {
@@ -16,6 +19,9 @@ func AddressesFromMatches(matches []yara.MatchString, offset uint64) []uint64 {
 	return addrs
 }
 
+// FormatSlice calls fmt.Sprintf(format, element, args...) for each
+// element in the given slice. The returned string slice contains the
+// formatted output.
 func FormatSlice(format string, slice interface{}, args ...interface{}) []string {
 	ref := reflect.ValueOf(slice)
 	if ref.Kind() != reflect.Slice {
@@ -34,6 +40,8 @@ func FormatSlice(format string, slice interface{}, args ...interface{}) []string
 	return strs
 }
 
+// Join joins all elements of a string slice, using the defaultGlue
+// for all but the last two elements.
 func Join(parts []string, defaultGlue, finalGlue string) string {
 	switch len(parts) {
 	case 0:

@@ -42,7 +42,9 @@ func TestIterateSuccess(t *testing.T) {
 
 		Convey("should not error.", func() {
 			So(err, ShouldBeNil)
-			So(it, ShouldNotBeNil)
+			if it == nil { // Workaround for goconvey bug goconvey/#612
+				So(it, ShouldNotBeNil)
+			}
 		})
 
 		filenames := []string{
