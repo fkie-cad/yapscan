@@ -33,6 +33,9 @@ type YaraScanner struct {
 	rules Rules
 }
 
+// Rules are a yara.Rules compatible interface, defining the functions required by yapscan.
+// The choice of an interface over the concrete struct yara.Rules is mostly to make testing
+// easier.
 type Rules interface {
 	ScanFile(filename string, flags yara.ScanFlags, timeout time.Duration, cb yara.ScanCallback) (err error)
 	ScanMem(buf []byte, flags yara.ScanFlags, timeout time.Duration, cb yara.ScanCallback) (err error)

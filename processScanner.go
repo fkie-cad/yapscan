@@ -13,16 +13,24 @@ import (
 	"github.com/targodan/go-errors"
 )
 
-type MemoryScanner interface {
-	ScanMem(buf []byte) (results []yara.MatchRule, err error)
-}
-
+// ProcessScanner implements scanning of memory segments, allocated by a process.
+// This scanning is done using an underlying MemoryScanner on segments, matching
+// a MemorySegmentFilter.
 type ProcessScanner struct {
 	proc    procIO.Process
 	filter  MemorySegmentFilter
 	scanner MemoryScanner
 }
 
+// MemoryScanner is a yara.Rules compatible interface, defining the subset of
+// functions required for scanning memory buffers.
+type MemoryScanner interface {
+	ScanMem(buf []byte) (results []yara.MatchRule, err error)
+}
+
+// NewProcessScanner create a new ProcessScanner with for the given procIO.Process.
+// It uses the given MemoryScanner in order to scan memory segments of the process,
+// which match the given MemoryScanner.
 func NewProcessScanner(proc procIO.Process, filter MemorySegmentFilter, scanner MemoryScanner) *ProcessScanner {
 	return &ProcessScanner{
 		proc:    proc,
@@ -31,16 +39,28 @@ func NewProcessScanner(proc procIO.Process, filter MemorySegmentFilter, scanner 
 	}
 }
 
+// ErrSkipped is returned, when a memory segment is skipped due to
+// the applied filter.
 var ErrSkipped = errors.New("skipped")
 
+// MemoryScanProgress contains all information, generated during scanning.
 type MemoryScanProgress struct {
-	Process       procIO.Process
+	// Process contains information about the process being scanned.
+	Process procIO.Process
+	// MemorySegment contains information about the specific memory segment which was just scanned.
 	MemorySegment *procIO.MemorySegmentInfo
-	Dump          []byte
-	Matches       []yara.MatchRule
-	Error         error
+	// Dump contains the raw contents of the memory segment.
+	Dump []byte
+	// Matches contains the yara.MatchRule results.
+	Matches []yara.MatchRule
+	// Error contains the encountered error or nil, if no error was encountered.
+	Error error
 }
 
+// Scan starts an asynchronous scan.
+// The returned unbuffered channel will yield MemoryScanProgress instances
+// every time a memory segment has been processed. The channel will be closed
+// when all segments have been processed.
 func (s *ProcessScanner) Scan() (<-chan *MemoryScanProgress, error) {
 	segments, err := s.proc.MemorySegments()
 	if err != nil {
