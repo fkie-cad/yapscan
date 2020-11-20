@@ -95,15 +95,11 @@ func join(c *cli.Context) error {
 
 		file, err := os.OpenFile(filename, os.O_RDONLY, 0666)
 		if err != nil {
-			return err
+			return errors.Newf("could not open file \"%s\", reason: %w", filename, err)
 		}
 		defer file.Close()
 
-		size, err := file.Seek(0, io.SeekEnd)
-		if err != nil {
-			return errors.Newf("could not determine size of file \"%s\", reason: %w", filename, err)
-		}
-		_, err = file.Seek(0, io.SeekStart)
+		fStat, err := os.Stat(filename)
 		if err != nil {
 			return errors.Newf("could not determine size of file \"%s\", reason: %w", filename, err)
 		}
@@ -114,7 +110,7 @@ func join(c *cli.Context) error {
 			File:     file,
 			PID:      pid,
 			Address:  addr,
-			Size:     uintptr(size),
+			Size:     uintptr(fStat.Size()),
 		}
 	}
 
