@@ -5,6 +5,7 @@ import (
 	"io"
 	"os"
 	"path"
+	"path/filepath"
 	"regexp"
 	"sort"
 	"strconv"
@@ -53,7 +54,19 @@ func join(c *cli.Context) error {
 
 	outFilename := c.String("output")
 
-	inFilenames := c.Args().Slice()
+	rawFilenames := c.Args().Slice()
+	inFilenames := make([]string, 0, len(rawFilenames))
+	// Attempt to resolve wildcards for cases where the shell does not.
+	for _, fname := range rawFilenames {
+		names, err := filepath.Glob(fname)
+		if err != nil {
+			// Could not glob, use normal name
+			inFilenames = append(inFilenames, fname)
+		} else {
+			inFilenames = append(inFilenames, names...)
+		}
+	}
+
 	inFiles := make([]*dumpInput, len(inFilenames))
 	for i, filename := range inFilenames {
 		basename := path.Base(filename)
