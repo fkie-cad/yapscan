@@ -53,6 +53,7 @@ func join(c *cli.Context) error {
 	nameRex := regexp.MustCompile(`^([0-9]+)_[RWCX-]{3}_(0x[A-F0-9]+).bin$`)
 
 	outFilename := c.String("output")
+	customOutFilename := outFilename != ""
 
 	rawFilenames := c.Args().Slice()
 	inFilenames := make([]string, 0, len(rawFilenames))
@@ -84,10 +85,12 @@ func join(c *cli.Context) error {
 			return errors.Newf("could not parse address in filename \"%s\", please make sure the input files are named in the same way the dump command uses for its output files", basename)
 		}
 
-		if outFilename == "" {
-			outFilename = parts[1]
-		} else if outFilename != parts[1] {
-			return errors.Newf("not all input files belong to the same process")
+		if !customOutFilename {
+			if outFilename == "" {
+				outFilename = parts[1]
+			} else if outFilename != parts[1] {
+				return errors.Newf("not all input files belong to the same process")
+			}
 		}
 
 		file, err := os.OpenFile(filename, os.O_RDONLY, 0666)
@@ -119,7 +122,7 @@ func join(c *cli.Context) error {
 		return inFiles[i].Address < inFiles[j].Address
 	})
 
-	if c.String("output") == "" {
+	if !customOutFilename {
 		outFilename += fmt.Sprintf("_0x%X.bin", inFiles[0].Address)
 	}
 
