@@ -4,7 +4,6 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"path"
 	"path/filepath"
 	"regexp"
 	"sort"
@@ -70,7 +69,7 @@ func join(c *cli.Context) error {
 
 	inFiles := make([]*dumpInput, len(inFilenames))
 	for i, filename := range inFilenames {
-		basename := path.Base(filename)
+		basename := filepath.Base(filename)
 		parts := nameRex.FindStringSubmatch(basename)
 		if parts == nil || len(parts) != 3 {
 			return errors.Newf("could not parse filename \"%s\", please make sure the input files are named in the same way the dump command uses for its output files", basename)
