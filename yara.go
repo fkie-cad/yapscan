@@ -273,7 +273,6 @@ func detectRuleType(in io.Reader) (ruleType, io.Reader, error) {
 	if err != nil {
 		return 0, in, fmt.Errorf("could not read rules file, reason: %w", err)
 	}
-	fmt.Println(buff)
 
 	inWithMagic := io.MultiReader(bytes.NewReader(buff), in)
 

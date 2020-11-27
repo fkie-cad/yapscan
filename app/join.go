@@ -4,7 +4,7 @@ import (
 	"fmt"
 	"io"
 	"os"
-	"path"
+	"path/filepath"
 	"regexp"
 	"sort"
 	"strconv"
@@ -52,11 +52,24 @@ func join(c *cli.Context) error {
 	nameRex := regexp.MustCompile(`^([0-9]+)_[RWCX-]{3}_(0x[A-F0-9]+).bin$`)
 
 	outFilename := c.String("output")
+	customOutFilename := outFilename != ""
 
-	inFilenames := c.Args().Slice()
+	rawFilenames := c.Args().Slice()
+	inFilenames := make([]string, 0, len(rawFilenames))
+	// Attempt to resolve wildcards for cases where the shell does not.
+	for _, fname := range rawFilenames {
+		names, err := filepath.Glob(fname)
+		if err != nil {
+			// Could not glob, use normal name
+			inFilenames = append(inFilenames, fname)
+		} else {
+			inFilenames = append(inFilenames, names...)
+		}
+	}
+
 	inFiles := make([]*dumpInput, len(inFilenames))
 	for i, filename := range inFilenames {
-		basename := path.Base(filename)
+		basename := filepath.Base(filename)
 		parts := nameRex.FindStringSubmatch(basename)
 		if parts == nil || len(parts) != 3 {
 			return errors.Newf("could not parse filename \"%s\", please make sure the input files are named in the same way the dump command uses for its output files", basename)
@@ -71,23 +84,21 @@ func join(c *cli.Context) error {
 			return errors.Newf("could not parse address in filename \"%s\", please make sure the input files are named in the same way the dump command uses for its output files", basename)
 		}
 
-		if outFilename == "" {
-			outFilename = parts[1]
-		} else if outFilename != parts[1] {
-			return errors.Newf("not all input files belong to the same process")
+		if !customOutFilename {
+			if outFilename == "" {
+				outFilename = parts[1]
+			} else if outFilename != parts[1] {
+				return errors.Newf("not all input files belong to the same process")
+			}
 		}
 
 		file, err := os.OpenFile(filename, os.O_RDONLY, 0666)
 		if err != nil {
-			return err
+			return errors.Newf("could not open file \"%s\", reason: %w", filename, err)
 		}
 		defer file.Close()
 
-		size, err := file.Seek(0, io.SeekEnd)
-		if err != nil {
-			return errors.Newf("could not determine size of file \"%s\", reason: %w", filename, err)
-		}
-		_, err = file.Seek(0, io.SeekStart)
+		fStat, err := os.Stat(filename)
 		if err != nil {
 			return errors.Newf("could not determine size of file \"%s\", reason: %w", filename, err)
 		}
@@ -98,7 +109,7 @@ func join(c *cli.Context) error {
 			File:     file,
 			PID:      pid,
 			Address:  addr,
-			Size:     uintptr(size),
+			Size:     uintptr(fStat.Size()),
 		}
 	}
 
@@ -106,7 +117,7 @@ func join(c *cli.Context) error {
 		return inFiles[i].Address < inFiles[j].Address
 	})
 
-	if c.String("output") == "" {
+	if !customOutFilename {
 		outFilename += fmt.Sprintf("_0x%X.bin", inFiles[0].Address)
 	}
 

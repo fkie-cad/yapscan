@@ -4,6 +4,7 @@ import "C"
 import (
 	"fmt"
 	"os"
+	"strings"
 	"time"
 
 	"golang.org/x/sys/windows"
@@ -88,6 +89,8 @@ func run(hWnd C.HWND, hInst C.HINSTANCE, lpCmdLine C.LPTSTR, nCmdShow C.int) {
 	})
 
 	str := C.GoString(lpCmdLine)
+	// Slightly hacky way to avoid having to use double-backslashes in windows paths.
+	str = strings.ReplaceAll(str, "\\", "\\\\")
 	args, _ := shlex.Split(str)
 	args = append([]string{"rundll32.exe"}, args...)
 
