@@ -15,13 +15,13 @@ RUN mkdir /opt/docker
 ARG BUILD_THREADS=4
 ENV BUILD_THREADS=$BUILD_THREADS
 
-ARG OPENSSL_VERSION=OpenSSL_1_1_0-stable
-RUN git clone --depth=1 --branch $OPENSSL_VERSION https://github.com/openssl/openssl.git /opt/openssl
+ARG OPENSSL_VERSION
+RUN git clone --depth=1 --branch=$OPENSSL_VERSION https://github.com/openssl/openssl.git /opt/openssl
 COPY docker/buildOpenssl.sh /opt/docker
 RUN /opt/docker/buildOpenssl.sh
 
-ARG YARA_VERSION=v4.0.2
-RUN git clone --depth=1 --branch $YARA_VERSION https://github.com/VirusTotal/yara.git /opt/yara
+ARG YARA_VERSION
+RUN git clone --depth=1 --branch=$YARA_VERSION https://github.com/VirusTotal/yara.git /opt/yara
 COPY docker/buildYara.sh /opt/docker
 RUN /opt/docker/buildYara.sh
 
