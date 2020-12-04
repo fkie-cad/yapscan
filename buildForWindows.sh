@@ -42,7 +42,7 @@ cores=$((cores*2))
 
 mkdir -p build/ &>/dev/null
 
-OPENSSL_VERSION=${OPENSSL_VERSION:-OpenSSL_1_1_0-stable}
+OPENSSL_VERSION=${OPENSSL_VERSION:-OpenSSL_1_1_1-stable}
 YARA_VERSION=${YARA_VERSION:-v4.0.2}
 
 docker build \
