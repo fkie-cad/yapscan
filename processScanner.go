@@ -13,13 +13,16 @@ import (
 	"github.com/targodan/go-errors"
 )
 
+type segmentScanner interface {
+	ScanSegment(seg *procIO.MemorySegmentInfo) ([]yara.MatchRule, []byte, error)
+}
+
 // ProcessScanner implements scanning of memory segments, allocated by a process.
 // This scanning is done using an underlying MemoryScanner on segments, matching
 // a MemorySegmentFilter.
 type ProcessScanner struct {
 	proc    procIO.Process
-	filter  MemorySegmentFilter
-	scanner MemoryScanner
+	scanner segmentScanner
 }
 
 // MemoryScanner is a yara.Rules compatible interface, defining the subset of
@@ -28,14 +31,37 @@ type MemoryScanner interface {
 	ScanMem(buf []byte) (results []yara.MatchRule, err error)
 }
 
+type process interface {
+	procIO.Process
+}
+
+type memoryReader interface {
+	procIO.MemoryReader
+}
+
+type memoryReaderFactory interface {
+	procIO.MemoryReaderFactory
+}
+
+type defaultSegmentScanner struct {
+	proc       procIO.Process
+	filter     MemorySegmentFilter
+	scanner    MemoryScanner
+	rdrFactory procIO.MemoryReaderFactory
+}
+
 // NewProcessScanner create a new ProcessScanner with for the given procIO.Process.
 // It uses the given MemoryScanner in order to scan memory segments of the process,
 // which match the given MemoryScanner.
 func NewProcessScanner(proc procIO.Process, filter MemorySegmentFilter, scanner MemoryScanner) *ProcessScanner {
 	return &ProcessScanner{
-		proc:    proc,
-		filter:  filter,
-		scanner: scanner,
+		proc: proc,
+		scanner: &defaultSegmentScanner{
+			proc:       proc,
+			filter:     filter,
+			scanner:    scanner,
+			rdrFactory: &procIO.DefaultMemoryReaderFactory{},
+		},
 	}
 }
 
@@ -57,6 +83,30 @@ type MemoryScanProgress struct {
 	Error error
 }
 
+func (s *ProcessScanner) handleSegment(progress chan<- *MemoryScanProgress, segment *procIO.MemorySegmentInfo) bool {
+	if len(segment.SubSegments) == 0 {
+		// Only scan leaf segments
+		matches, data, err := s.scanner.ScanSegment(segment)
+		progress <- &MemoryScanProgress{
+			Process:       s.proc,
+			MemorySegment: segment,
+			Dump:          data,
+			Matches:       matches,
+			Error:         err,
+		}
+		return errors.Is(err, os.ErrPermission)
+	}
+
+	for _, subSegment := range segment.SubSegments {
+		abort := s.handleSegment(progress, subSegment)
+		if abort {
+			return true
+		}
+	}
+
+	return false
+}
+
 // Scan starts an asynchronous scan.
 // The returned unbuffered channel will yield MemoryScanProgress instances
 // every time a memory segment has been processed. The channel will be closed
@@ -76,33 +126,9 @@ func (s *ProcessScanner) Scan() (<-chan *MemoryScanProgress, error) {
 	go func() {
 		defer close(progress)
 		for _, segment := range segments {
-			if len(segment.SubSegments) == 0 {
-				// Only scan leaf segments
-				matches, data, err := s.scanSegment(segment)
-				progress <- &MemoryScanProgress{
-					Process:       s.proc,
-					MemorySegment: segment,
-					Dump:          data,
-					Matches:       matches,
-					Error:         err,
-				}
-				if errors.Is(err, os.ErrPermission) {
-					return
-				}
-			}
-
-			for _, subSegment := range segment.SubSegments {
-				matches, data, err := s.scanSegment(subSegment)
-				progress <- &MemoryScanProgress{
-					Process:       s.proc,
-					MemorySegment: subSegment,
-					Dump:          data,
-					Matches:       matches,
-					Error:         err,
-				}
-				if errors.Is(err, os.ErrPermission) {
-					return
-				}
+			abort := s.handleSegment(progress, segment)
+			if abort {
+				return
 			}
 		}
 	}()
@@ -110,7 +136,7 @@ func (s *ProcessScanner) Scan() (<-chan *MemoryScanProgress, error) {
 	return progress, nil
 }
 
-func (s *ProcessScanner) scanSegment(seg *procIO.MemorySegmentInfo) ([]yara.MatchRule, []byte, error) {
+func (s *defaultSegmentScanner) ScanSegment(seg *procIO.MemorySegmentInfo) ([]yara.MatchRule, []byte, error) {
 	match := s.filter.Filter(seg)
 	if !match.Result {
 		logrus.WithFields(logrus.Fields{
@@ -124,7 +150,7 @@ func (s *ProcessScanner) scanSegment(seg *procIO.MemorySegmentInfo) ([]yara.Matc
 		"segment": seg,
 	}).Info("Scanning memory segment.")
 
-	rdr, err := procIO.NewMemoryReader(s.proc, seg)
+	rdr, err := s.rdrFactory.NewMemoryReader(s.proc, seg)
 	if err != nil {
 		return nil, nil, err
 	}
