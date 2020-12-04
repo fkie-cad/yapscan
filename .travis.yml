@@ -2,7 +2,9 @@ language: go
 
 go:
     - "1.x"
-    #- "1.11"
+
+env:
+    - OPENSSL_VERSION=OpenSSL_1_1_1-stable YARA_VERSION=v4.0.2
 
 services:
     - docker
@@ -15,7 +17,7 @@ before_install:
     - pushd deps/yara
     - ./bootstrap.sh
     - ./configure --prefix=/usr --with-crypto || exit $?
-    - make -j$BUILD_THREADS || exit $?
+    - make -j${BUILD_THREADS:-1} || exit $?
     - sudo make install || exit $?
     - popd
     - pkg-config --cflags --libs yara

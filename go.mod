@@ -21,7 +21,7 @@ require (
 	github.com/targodan/go-errors v1.0.0
 	github.com/urfave/cli/v2 v2.3.0
 	github.com/yeka/zip v0.0.0-20180914125537-d046722c6feb
-	golang.org/x/crypto v0.0.0-20201117144127-c1f2f97bffc9 // indirect
-	golang.org/x/sys v0.0.0-20201119102817-f84b799fce68
+	golang.org/x/crypto v0.0.0-20201203163018-be400aefbc4c // indirect
+	golang.org/x/sys v0.0.0-20201202213521-69691e467435
 	gopkg.in/check.v1 v1.0.0-20180628173108-788fd7840127 // indirect
 )

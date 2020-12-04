@@ -42,7 +42,13 @@ cores=$((cores*2))
 
 mkdir -p build/ &>/dev/null
 
-docker build --build-arg BUILD_THREADS=$cores --network=host -t yapscan-xcompile -f Dockerfile.xwin .
+OPENSSL_VERSION=${OPENSSL_VERSION:-OpenSSL_1_1_1-stable}
+YARA_VERSION=${YARA_VERSION:-v4.0.2}
+
+docker build \
+    --build-arg BUILD_THREADS=$cores \
+    --build-arg OPENSSL_VERSION=$OPENSSL_VERSION --build-arg YARA_VERSION=$YARA_VERSION \
+    --network=host -t yapscan-xcompile -f Dockerfile.xwin .
 
 docker run --rm --network=host --volume $(pwd):/opt/yapscan -i yapscan-xcompile <<EOF
 export PKG_CONFIG_LIBDIR=/opt/openssl/dist/lib/pkgconfig

@@ -1,4 +1,4 @@
-# yapscan [![Build Status](https://travis-ci.com/fkie-cad/yapscan.svg?branch=master)](https://travis-ci.com/fkie-cad/yapscan) [![codecov](https://codecov.io/gh/fkie-cad/yapscan/branch/master/graph/badge.svg?token=Y2ANV37QH6)](https://codecov.io/gh/fkie-cad/yapscan)
+# yapscan [![Build Status](https://travis-ci.org/fkie-cad/yapscan.svg?branch=master)](https://travis-ci.org/fkie-cad/yapscan) [![codecov](https://codecov.io/gh/fkie-cad/yapscan/branch/master/graph/badge.svg?token=Y2ANV37QH6)](https://codecov.io/gh/fkie-cad/yapscan)
 
 Yapscan is a **YA**ra based **P**rocess **SCAN**ner, aimed at giving more control about what to scan and giving detailed reports on matches.
 
@@ -8,12 +8,12 @@ You can use yapscan to selectively scan the memory of running processes as well 
 The most notable differences to stock yara are (see section [Usage](#usage)),
 
 - Supports loading yara-rules from an encrypted zip file to prevent anti-virus software from detecting rules as malicious.
-- Multiple yara rules can also be loaded recursively from a directory.
+- Multiple yara rules can also be loaded recursively from a directory. 
 - Can suspend processes to be scanned (use with care, may crash your system).
 - Allows for filtering of memory segments to be scanned based on size, type (image, mapped, private), state (commit, free, reserve), and permissions.
 - Allows for easy scanning of all running processes, local drives and/or mounted shares.
 - Comes with extensive reporting features to allow later analysis of efficacy of rules.
-- Matched memory segments can even be automatically dumped and stored as part of the
+- Matched memory segments can even be automatically dumped and stored as part of the 
 
 Other quality-of-life features include
 
@@ -109,7 +109,7 @@ extern int start(int argc, char** argv);
 // run is meant for use with rundll32.
 // It opens a new console window via AllocConsole(), then parses the
 // lpCmdLine to extract the arguments and calls starts yapscan
-// with the extracted arguments.
+// with the extracted arguments. 
 extern void run(HWND hWnd, HINSTANCE hInst, LPTSTR lpCmdLine, int nCmdShow);
 ```
 
@@ -121,7 +121,7 @@ rundll32.exe yapscan.dll,run scan -r rules.zip --all-processes
 ```  
 
 **NOTE**: This feature is still experimental!
-There very likely are quirks with the argument parsing.
+There very likely are quirks with the argument parsing. 
 
 ## State of this project
 

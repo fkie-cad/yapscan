@@ -9,6 +9,16 @@ type MemoryReader interface {
 	Reset() (MemoryReader, error)
 }
 
+type MemoryReaderFactory interface {
+	NewMemoryReader(proc Process, seg *MemorySegmentInfo) (MemoryReader, error)
+}
+
+type DefaultMemoryReaderFactory struct{}
+
+func (f *DefaultMemoryReaderFactory) NewMemoryReader(proc Process, seg *MemorySegmentInfo) (MemoryReader, error) {
+	return NewMemoryReader(proc, seg)
+}
+
 type memoryReaderImpl interface {
 	io.ReadCloser
 	Process() Process
