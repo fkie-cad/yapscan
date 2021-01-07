@@ -200,7 +200,8 @@ The scripts perform the following tasks.
 2. Set some environment variables in powershell, to allow the use of the mingw toolchain
 3. Call the `go build` command with the appropriate build tag for static builds
 
-Thanks to @hillu (author of go-yara), for pointing me in the right direction for building natively on windows.
+Thanks to @hillu (author of [go-yara]), for pointing me in the right direction for building natively on windows.
 See #7 and the links therein if you want some more details.
 
 [the MSYS2 Website]: https://www.msys2.org/
+[go-yara]: https://github.com/hillu/go-yara/
