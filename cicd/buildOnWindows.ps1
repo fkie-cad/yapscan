@@ -30,7 +30,7 @@ if ($BuildDeps) {
 $ENV:PKG_CONFIG_PATH = "$MsysPath\opt\yapscan-deps\lib"
 $ENV:PATH += ";$MsysPath\mingw64\bin"
 
-New-Item -Path . -Name "build" -ItemType "directory"
+New-Item -Path . -Name "build" -ItemType "directory" -Erroraction "silentlycontinue"
 
 echo "Building yapscan..."
 cd "$PSScriptRoot\..\cmd\yapscan"
