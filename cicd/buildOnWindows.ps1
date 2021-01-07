@@ -12,6 +12,11 @@ Param(
 $ENV:INSTALL_PREFIX = "/opt/yapscan-deps"  # Note: This be compatible with $ENV:PKG_CONFIG_PATH below.
 $SOURCES_DIR = "/opt/yapscan-src"  # This variable can be set to an arbitrary linux-directory.
 
+# PowerShell <3.0 compatibility
+if ($PSScriptRoot -like "") {
+    $PSScriptRoot = Split-Path -Parent $MyInvocation.MyCommand.Definition
+}
+
 $OverwriteFlag=""
 if ($OverwriteDeps) {
     $BuildDeps=$TRUE
