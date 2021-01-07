@@ -155,8 +155,7 @@ Yapscan copies one memory segment at a time into a buffer in its own memory and 
 
 ## Building Yapscan
 
-This project can only be built on Linux at this time.
-To build natively on Linux, for Linux you need install Go and the yara library.
+To build **natively on Linux**, for Linux you need install Go and the yara library.
 Once you have installed the dependencies it's as easy as:
 
 ```bash
@@ -173,13 +172,35 @@ If you want to build on Linux for Windows, all you need installed is docker.
 ```bash
 # Install docker
 git clone https://github.com/fkie-cad/yapscan
-cd yapscan
+cd yapscan/cicd/
 ./buildForWindows.sh
 ```
 
-### Why can I not build this project on Windows?
+The resulting binaries will be placed in `cicd/build/`.
 
-I have been unable, so far, to build libyara on Windows and marry the result to the go toolchain to create a static build.
+Building **natively on Windows**, using MSYS2 follow these instructions
 
-If you have experience with cgo on Windows, it would be great if you could help out.
-This is relatively important for automated testing.
+1. Install Go
+2. Install MSYS2 and follow the first steps on [the MSYS2 Website] of updating via pacman.
+3. Install build dependencies `pacman --needed -S base-devel git autoconf automake libtool mingw-w64-{x86_64,i686}-{gcc,make,pkgconf}`
+4. Open PowerShell in the `cicd/` directory and execute `.\buildOnWindows.ps1 -MsysPath <msys_path> -BuildDeps`
+   where `<msys_path>` is the install directory for MSYS2, usually `C:\msys64`.
+   **NOTE:** You'll have to press `Enter` on the MSYS window, once the dependencies are finished.
+5. Enjoy the built files in `cicd/build/`
+
+You don't have to rely on the powershell/bash scripts, but they are intended to make things as easy as possible at the cost of control over the compilation.
+If you want more control, take a look at the scripts use and modify them or execute the commands individually.
+The scripts perform the following tasks.
+
+1. Start "MSYS2 MinGW 64-bit"
+    1. Download OpenSSL from github
+    2. Static-Build OpenSSL and install the development files
+    3. Download libyara from github
+    4. Static-Build libyara and install it
+2. Set some environment variables in powershell, to allow the use of the mingw toolchain
+3. Call the `go build` command with the appropriate build tag for static builds
+
+Thanks to @hillu (author of go-yara), for pointing me in the right direction for building natively on windows.
+See #7 and the links therein if you want some more details.
+
+[the MSYS2 Website]: https://www.msys2.org/
