@@ -35,23 +35,25 @@ for arg in "$@"; do
 done
 
 
-cores=`cat /proc/cpuinfo | grep "cpu cores" | head -n1 | cut -d: -f2 | cut -d' ' -f2`
+cores=$(cat /proc/cpuinfo | grep "cpu cores" | head -n1 | cut -d: -f2 | cut -d' ' -f2)
 cores=$((cores*2))
 
-./prepare.sh
+cicd="$(dirname "$0")"
+
+$cicd/../prepare.sh || exit $?
 
 mkdir -p build/ &>/dev/null
 
-OPENSSL_VERSION=${OPENSSL_VERSION:-OpenSSL_1_1_1-stable}
-YARA_VERSION=${YARA_VERSION:-v4.0.2}
+OPENSSL_VERSION=$("$cicd/opensslVersion.sh") || exit $?
+YARA_VERSION=$("$cicd/yaraVersion.sh") || exit $?
 
 docker build \
     --build-arg BUILD_THREADS=$cores \
     --build-arg OPENSSL_VERSION=$OPENSSL_VERSION --build-arg YARA_VERSION=$YARA_VERSION \
-    --network=host -t yapscan-xcompile -f Dockerfile.xwin .
+    --network=host -t yapscan-xcompile -f Dockerfile.xwin . || exit $?
 
-docker run --rm --network=host --volume $(pwd):/opt/yapscan -i yapscan-xcompile <<EOF
-export PKG_CONFIG_LIBDIR=/opt/openssl/dist/lib/pkgconfig
+docker run --rm --network=host --volume "$cicd/..:/opt/yapscan" -i yapscan-xcompile <<EOF
+export PKG_CONFIG_LIBDIR=/opt/yapscan-deps/lib/pkgconfig
 
 export CC=x86_64-w64-mingw32-gcc
 export LD=x86_64-w64-mingw32-ld
@@ -65,20 +67,14 @@ if [[ "$buildMemtest" == "1" ]]; then
 fi
 
 if [[ "$buildYapscan" == "1" ]]; then
-    export CGO_CFLAGS="-I/opt/yara/libyara/include \$(pkg-config --static --cflags openssl)"
-    export CGO_LDFLAGS="-L/opt/yara/libyara/.libs -lyara -static \$(pkg-config --static --libs openssl)"
-
     pushd yapscan/cmd/yapscan
-    go build -trimpath -o /opt/yapscan/build/yapscan.exe -tags yara_no_pkg_config
+    go build -trimpath -o /opt/yapscan/cicd/build/yapscan.exe -tags yara_static
     popd &>/dev/null
 fi
 
 if [[ "$buildYapscanDll" == "1" ]]; then
-    export CGO_CFLAGS="-I/opt/yara/libyara/include \$(pkg-config --static --cflags openssl) -fvisibility=hidden"
-    export CGO_LDFLAGS="-L/opt/yara/libyara/.libs -lyara -static \$(pkg-config --static --libs openssl)"
-
     pushd yapscan/cmd/yapscan-dll
-    go build -trimpath -o /opt/yapscan/build/yapscan.dll -tags yara_no_pkg_config -buildmode=c-shared
+    go build -trimpath -o /opt/yapscan/cicd/build/yapscan.dll -tags yara_static -buildmode=c-shared
     popd &>/dev/null
 fi
 
