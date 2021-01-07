@@ -24,7 +24,9 @@ if ($OverwriteDeps) {
 }
 
 if ($BuildDeps) {
+    echo "Building dependencies..."
     Start -FilePath "$MsysPath\msys2_shell.cmd" -ArgumentList "-mingw64","-no-start","-defterm","-c","`"\`"$PSScriptRoot\buildAndInstallDependencies.sh\`" $OverwriteFlag \`"$SOURCES_DIR\`"; res=`$?; echo Press Enter to exit...; read; exit `$res`"" -Wait
+    echo "Done."
 }
 
 $ENV:PKG_CONFIG_PATH = "$MsysPath\opt\yapscan-deps\lib"
@@ -38,6 +40,7 @@ Push-Location "$PSScriptRoot\..\cmd\yapscan"
 go build -trimpath -tags yara_static -o .\build\yapscan.exe
 
 Pop-Location
+echo "Done."
 
 echo "Building yapscan-dll..."
 Push-Location "$PSScriptRoot\..\cmd\yapscan-dll"
@@ -45,3 +48,4 @@ Push-Location "$PSScriptRoot\..\cmd\yapscan-dll"
 go build -trimpath -tags yara_static -o .\build\yapscan.dll -buildmode=c-shared
 
 Pop-Location
+echo "Done."
