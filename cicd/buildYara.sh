@@ -28,7 +28,7 @@ if [[ "$buildEnv" == "docker" ]]; then
             --host=x86_64-w64-mingw32 \
             --disable-shared \
             --with-crypto || exit $? # --with-cuckoo --with-magic --with-dotnet
-elif [[ "$buildEnv" == "msys" ]]; then
+elif [[ "$buildEnv" == "mingw" ]]; then
     ./configure CPPFLAGS="$(pkg-config --static --cflags openssl)" LDFLAGS="$(pkg-config --static --libs openssl)" \
             "$installPrefix" \
             --disable-shared \

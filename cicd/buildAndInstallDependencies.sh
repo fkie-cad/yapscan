@@ -4,8 +4,8 @@ DEFAULT_INSTALL_PREFIX=/opt/yapscan-deps
 
 buildEnv=$("$(dirname "$0")/determineBuildEnvironment.sh") || (echo "$buildEnv"; exit 42)
 
-if [[ "$buildEnv" != "msys" ]]; then
-    echo "ERROR: This script is only meant for use with MSYS2."
+if [[ "$buildEnv" != "mingw" ]]; then
+    echo "ERROR: This script is only meant for use with MSYS2 MinGW."
     echo "If you want to use docker to cross compile yapscan for windows, use \"buildForWindows.sh\" instead."
     echo "If you want to build natively build for linux, please manually install OpenSSL and libyara."
     exit 42

@@ -23,7 +23,7 @@ BUILD_THREADS=${BUILD_THREADS:-1}
 
 if [[ "$buildEnv" == "docker" ]]; then
     ./Configure "$installPrefix" --cross-compile-prefix=x86_64-w64-mingw32- no-idea no-mdc2 no-rc5 shared mingw64 || exit $?
-elif [[ "$buildEnv" == "msys" ]]; then
+elif [[ "$buildEnv" == "mingw" ]]; then
     ./Configure "$installPrefix" no-idea no-mdc2 no-rc5 shared mingw64 || exit $?
 fi
 
