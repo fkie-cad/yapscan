@@ -50,7 +50,7 @@ docker build \
     --build-arg OPENSSL_VERSION=$OPENSSL_VERSION --build-arg YARA_VERSION=$YARA_VERSION \
     --network=host -t yapscan-xcompile -f Dockerfile.xwin .
 
-docker run --rm --network=host --volume $(pwd):/opt/yapscan -i yapscan-xcompile <<EOF
+docker run --rm --network=host --volume $(pwd)/..:/opt/yapscan -i yapscan-xcompile <<EOF
 export PKG_CONFIG_LIBDIR=/opt/openssl/dist/lib/pkgconfig
 
 export CC=x86_64-w64-mingw32-gcc
@@ -69,7 +69,7 @@ if [[ "$buildYapscan" == "1" ]]; then
     export CGO_LDFLAGS="-L/opt/yara/libyara/.libs -lyara -static \$(pkg-config --static --libs openssl)"
 
     pushd yapscan/cmd/yapscan
-    go build -trimpath -o /opt/yapscan/build/yapscan.exe -tags yara_no_pkg_config
+    go build -trimpath -o /opt/yapscan/cicd/build/yapscan.exe -tags yara_no_pkg_config
     popd &>/dev/null
 fi
 
@@ -78,7 +78,7 @@ if [[ "$buildYapscanDll" == "1" ]]; then
     export CGO_LDFLAGS="-L/opt/yara/libyara/.libs -lyara -static \$(pkg-config --static --libs openssl)"
 
     pushd yapscan/cmd/yapscan-dll
-    go build -trimpath -o /opt/yapscan/build/yapscan.dll -tags yara_no_pkg_config -buildmode=c-shared
+    go build -trimpath -o /opt/yapscan/cicd/build/yapscan.dll -tags yara_no_pkg_config -buildmode=c-shared
     popd &>/dev/null
 fi
 
