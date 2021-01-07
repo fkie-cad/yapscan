@@ -32,6 +32,11 @@ if ($BuildDeps) {
 $ENV:PKG_CONFIG_PATH = "$MsysPath\opt\yapscan-deps\lib\pkgconfig"
 $ENV:PATH += ";$MsysPath\mingw64\bin"
 
+# This should theoretically not be needed, as pkg-config is supposed to handle this.
+# However, on my test-system this was needed although `pkg-config --libs yara` did report
+# the correct flags: `-LC:\msys64\opt\yapscan-deps\lib -lyara`
+$ENV:CGO_LDFLAGS="-L$MsysPath\opt\yapscan-deps\lib"
+
 New-Item -Path . -Name "build" -ItemType "directory" -Erroraction "silentlycontinue"
 
 echo "Building yapscan..."
