@@ -29,7 +29,7 @@ if ($BuildDeps) {
     echo "Done."
 }
 
-$ENV:PKG_CONFIG_PATH = "$MsysPath\opt\yapscan-deps\lib"
+$ENV:PKG_CONFIG_PATH = "$MsysPath\opt\yapscan-deps\lib\pkgconfig"
 $ENV:PATH += ";$MsysPath\mingw64\bin"
 
 New-Item -Path . -Name "build" -ItemType "directory" -Erroraction "silentlycontinue"
