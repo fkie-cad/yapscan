@@ -33,11 +33,15 @@ $ENV:PATH += ";$MsysPath\mingw64\bin"
 New-Item -Path . -Name "build" -ItemType "directory" -Erroraction "silentlycontinue"
 
 echo "Building yapscan..."
-cd "$PSScriptRoot\..\cmd\yapscan"
+Push-Location "$PSScriptRoot\..\cmd\yapscan"
 
 go build -trimpath -tags yara_static -o .\build\yapscan.exe
 
+Pop-Location
+
 echo "Building yapscan-dll..."
-cd "$PSScriptRoot\..\cmd\yapscan-dll"
+Push-Location "$PSScriptRoot\..\cmd\yapscan-dll"
 
 go build -trimpath -tags yara_static -o .\build\yapscan.dll -buildmode=c-shared
+
+Pop-Location
