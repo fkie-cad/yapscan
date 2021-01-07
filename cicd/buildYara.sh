@@ -23,13 +23,13 @@ BUILD_THREADS=${BUILD_THREADS:-1}
 
 ./bootstrap.sh
 if [[ "$buildEnv" == "docker" ]]; then
-    ./configure CPPFLAGS="`pkg-config --static --cflags openssl`" LDFLAGS="`pkg-config --static --libs openssl`" \
+    ./configure CPPFLAGS="$(pkg-config --static --cflags openssl)" LDFLAGS="$(pkg-config --static --libs openssl)" \
             "$installPrefix" \
             --host=x86_64-w64-mingw32 \
             --disable-shared \
             --with-crypto || exit $? # --with-cuckoo --with-magic --with-dotnet
 elif [[ "$buildEnv" == "msys" ]]; then
-    ./configure CPPFLAGS="`pkg-config --static --cflags openssl`" LDFLAGS="`pkg-config --static --libs openssl`" \
+    ./configure CPPFLAGS="$(pkg-config --static --cflags openssl)" LDFLAGS="$(pkg-config --static --libs openssl)" \
             "$installPrefix" \
             --disable-shared \
             --with-crypto || exit $? # --with-cuckoo --with-magic --with-dotnet

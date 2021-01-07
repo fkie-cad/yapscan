@@ -35,7 +35,7 @@ for arg in "$@"; do
 done
 
 
-cores=`cat /proc/cpuinfo | grep "cpu cores" | head -n1 | cut -d: -f2 | cut -d' ' -f2`
+cores=$(cat /proc/cpuinfo | grep "cpu cores" | head -n1 | cut -d: -f2 | cut -d' ' -f2)
 cores=$((cores*2))
 
 ../prepare.sh || exit $?
@@ -50,7 +50,7 @@ docker build \
     --build-arg OPENSSL_VERSION=$OPENSSL_VERSION --build-arg YARA_VERSION=$YARA_VERSION \
     --network=host -t yapscan-xcompile -f Dockerfile.xwin . || exit $?
 
-docker run --rm --network=host --volume $(pwd)/..:/opt/yapscan -i yapscan-xcompile <<EOF
+docker run --rm --network=host --volume "$(pwd)/..:/opt/yapscan" -i yapscan-xcompile <<EOF
 export PKG_CONFIG_LIBDIR=/opt/yapscan-deps/lib/pkgconfig
 
 export CC=x86_64-w64-mingw32-gcc
