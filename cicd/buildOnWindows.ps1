@@ -24,7 +24,7 @@ if ($OverwriteDeps) {
 }
 
 if ($BuildDeps) {
-    Start -FilePath "$MsysPath\msys2_shell.cmd" -ArgumentList "-mingw64","-c","`"\`"$PSScriptRoot\buildAndInstallDependencies.sh\`" $OverwriteFlag \`"$SOURCES_DIR\`"; res=`$?; echo Press Enter to exit...; read; exit `$res`"" -Wait
+    Start -FilePath "$MsysPath\msys2_shell.cmd" -ArgumentList "-mingw64","-no-start","-defterm","-c","`"\`"$PSScriptRoot\buildAndInstallDependencies.sh\`" $OverwriteFlag \`"$SOURCES_DIR\`"; res=`$?; echo Press Enter to exit...; read; exit `$res`"" -Wait
 }
 
 $ENV:PKG_CONFIG_PATH = "$MsysPath\opt\yapscan-deps\lib"
