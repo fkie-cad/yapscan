@@ -191,6 +191,11 @@ Then you open PowerShell and execute `.\cicd\enableMingw.ps1 -MsysPath <msys_pat
 Now it's as easy as `go test -tags yara_static ./...`.
 The `-tags yara_static` is necessary if you use the build scripts, as they do not install any windows DLLs but only the static libraries.
 
+**NOTE:** You might get inexplicable failures with `-race` on Windows with golagn >=1.14.
+According to the [golang release notes for 1.14](https://golang.org/doc/go1.14#compiler), the new pointer arithmetic checks are somewhat overzealous on Windows.
+In Golang v1.15 it seems this may not have been fixed, but the checks are enabled automatically.
+You can deactivate them like this `go test -tags yara_static -race -gcflags=all=-d=checkptr=0 ./...`.
+
 You don't have to rely on the powershell/bash scripts, but they are intended to make things as easy as possible at the cost of control over the compilation.
 If you want more control, take a look at the scripts use and modify them or execute the commands individually.
 The scripts perform the following tasks.
