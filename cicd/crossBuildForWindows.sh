@@ -44,8 +44,6 @@ if [[ "$cicd" == "." ]]; then
     cicd="$(pwd)"
 fi
 
-$cicd/../prepare.sh || exit $?
-
 mkdir -p build/ &>/dev/null
 
 OPENSSL_VERSION=$("$cicd/opensslVersion.sh") || exit $?
