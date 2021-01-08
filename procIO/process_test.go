@@ -59,7 +59,7 @@ func TestProcessInformation(t *testing.T) {
 	var testArgs []string
 	if runtime.GOOS == "windows" {
 		testExe = "cmd.exe"
-		testArgs = []string{"/C", "pause"}
+		testArgs = []string{"/C", "timeout 5"}
 	} else {
 		testExe = "bash"
 		testArgs = []string{"-c", "sleep 5"}
