@@ -17,7 +17,7 @@ import (
 
 func main() {
 	if len(os.Args) < 3 {
-		log.Fatalf("Usage: %s <size> <native_memprotect> [file]")
+		log.Fatalf("Usage: %s <size> <native_memprotect> [file]", os.Args[0])
 	}
 
 	filename := ""
