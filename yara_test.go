@@ -158,7 +158,7 @@ func TestLoadYaraRules(t *testing.T) {
 	})
 
 	Convey("Loading multiple uncompiled yara rules", t, func() {
-		Convey("non-resursively", func() {
+		Convey("non-recursively", func() {
 			rules, err := LoadYaraRules(testDataDir("rules_uncompiled"), false)
 			So(rules, ShouldNotBeNil)
 			So(err, ShouldBeNil)
@@ -176,7 +176,7 @@ func TestLoadYaraRules(t *testing.T) {
 			})
 		})
 
-		Convey("resursively", func() {
+		Convey("recursively", func() {
 			rules, err := LoadYaraRules(testDataDir("rules_uncompiled"), true)
 			So(rules, ShouldNotBeNil)
 			So(err, ShouldBeNil)
