@@ -14,4 +14,6 @@ go get -v $update github.com/abice/go-enum
 go get -v $update github.com/vektra/mockery/v2/.../
 go mod tidy
 
+find . -name 'mock_*_test.go' -type f -delete
+
 go generate ./...

@@ -22,6 +22,8 @@ go get -v $update github.com/abice/go-enum
 go get -v $update github.com/vektra/mockery/v2/.../
 go mod tidy
 
+# TODO: Remove all old mocks
+
 go generate ./...
 
 Pop-Location
