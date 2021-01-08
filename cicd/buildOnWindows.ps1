@@ -5,11 +5,11 @@ Param(
     [Parameter(Mandatory=$False)]
     [switch]$OverwriteDeps,
 
-    [Parameter(Mandatory=$True)]
+    [Parameter(Mandatory=$False)]
     [string]$MsysPath
 )
 
-$ENV:INSTALL_PREFIX = "/opt/yapscan-deps"  # Note: This be compatible with $ENV:PKG_CONFIG_PATH below.
+$ENV:INSTALL_PREFIX = "/opt/yapscan-deps"  # Note: This be compatible with $ENV:PKG_CONFIG_PATH in enableMingw.ps1.
 $SOURCES_DIR = "/opt/yapscan-src"  # This variable can be set to an arbitrary linux-directory.
 
 # PowerShell <3.0 compatibility
@@ -29,13 +29,7 @@ if ($BuildDeps) {
     echo "Done."
 }
 
-$ENV:PKG_CONFIG_PATH = "$MsysPath\opt\yapscan-deps\lib\pkgconfig"
-$ENV:PATH += ";$MsysPath\mingw64\bin"
-
-# This should theoretically not be needed, as pkg-config is supposed to handle this.
-# However, on my test-system this was needed although `pkg-config --libs yara` did report
-# the correct flags: `-LC:\msys64\opt\yapscan-deps\lib -lyara`
-$ENV:CGO_LDFLAGS="-L$MsysPath\opt\yapscan-deps\lib"
+"$PSScriptRoot\loadMingw.ps1" -MsysPath "$MsysPath"
 
 New-Item -Path . -Name "build" -ItemType "directory" -Erroraction "silentlycontinue"
 
