@@ -39,6 +39,10 @@ cores=$(cat /proc/cpuinfo | grep "cpu cores" | head -n1 | cut -d: -f2 | cut -d' 
 cores=$((cores*2))
 
 cicd="$(dirname "$0")"
+if [[ "$cicd" == "." ]]; then
+    # Necessary for docker volume
+    cicd="$(pwd)"
+fi
 
 $cicd/../prepare.sh || exit $?
 
