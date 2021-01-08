@@ -37,6 +37,10 @@ $ENV:PATH += ";$MsysPath\mingw64\bin"
 # the correct flags: `-LC:\msys64\opt\yapscan-deps\lib -lyara`
 $ENV:CGO_LDFLAGS="-L$MsysPath\opt\yapscan-deps\lib"
 
+Push-Location ..
+.\prepare.ps1
+Pop-Location
+
 New-Item -Path . -Name "build" -ItemType "directory" -Erroraction "silentlycontinue"
 
 echo "Building yapscan..."
