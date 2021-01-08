@@ -23,7 +23,7 @@ before_install:
     - pkg-config --cflags --libs yara
 
 install:
-    - ./prepare.sh
+    - go mod vendor
 
 script:
     - go test -race -coverprofile=coverage.txt -covermode=atomic -v ./...

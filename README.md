@@ -161,9 +161,7 @@ Once you have installed the dependencies it's as easy as:
 ```bash
 # Install Golang and libyara
 git clone https://github.com/fkie-cad/yapscan
-cd yapscan
-./prepare.sh
-cd cmd/yapscan
+cd yapscan/cmd/yapscan
 go build
 ```
 
@@ -173,7 +171,7 @@ If you want to build on Linux for Windows, all you need installed is docker.
 # Install docker
 git clone https://github.com/fkie-cad/yapscan
 cd yapscan/cicd/
-./buildForWindows.sh
+./crossBuildForWindows.sh
 ```
 
 The resulting binaries will be placed in `cicd/build/`.
@@ -184,9 +182,14 @@ Building **natively on Windows**, using MSYS2 follow these instructions
 2. Install MSYS2 and follow the first steps on [the MSYS2 Website] of updating via pacman.
 3. Install build dependencies `pacman --needed -S base-devel git autoconf automake libtool mingw-w64-{x86_64,i686}-{gcc,make,pkgconf}`
 4. Open PowerShell in the `cicd/` directory and execute `.\buildOnWindows.ps1 -MsysPath <msys_path> -BuildDeps`
-   where `<msys_path>` is the install directory for MSYS2, usually `C:\msys64`.
+   where `<msys_path>` is the install directory for MSYS2, default is `C:\msys64`.
    **NOTE:** You'll have to press `Enter` on the MSYS window, once the dependencies are finished.
 5. Enjoy the built files in `cicd/build/`
+
+If you want to run tests on Windows, you have to run `.\cicd\buildOnWindows.ps1 -BuildDeps` only once.
+Then you open PowerShell and execute `.\cicd\enableMingw.ps1 -MsysPath <msys_path>` to set the appropriate environment variables.
+Now it's as easy as `go test -tags yara_static ./...`.
+The `-tags yara_static` is necessary if you use the build scripts, as they do not install any windows DLLs but only the static libraries.
 
 You don't have to rely on the powershell/bash scripts, but they are intended to make things as easy as possible at the cost of control over the compilation.
 If you want more control, take a look at the scripts use and modify them or execute the commands individually.

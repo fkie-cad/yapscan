@@ -25,6 +25,3 @@ vendor/
 
 # Logfiles
 *.log
-
-# Generated Mocks (at least, while I'm working on the tests)
-mock_*_test.go
