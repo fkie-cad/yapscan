@@ -56,10 +56,13 @@ func TestPIDInEnumeration(t *testing.T) {
 
 func TestProcessInformation(t *testing.T) {
 	var testExe string
+	var testArgs []string
 	if runtime.GOOS == "windows" {
 		testExe = "cmd.exe"
+		testArgs = []string{"/C", "pause"}
 	} else {
 		testExe = "bash"
+		testArgs = []string{"-c", "sleep 5"}
 	}
 
 	path, err := exec.LookPath(testExe)
@@ -73,7 +76,7 @@ func TestProcessInformation(t *testing.T) {
 		ctx, cancel := context.WithCancel(context.Background())
 		defer cancel()
 
-		cmd := exec.CommandContext(ctx, path)
+		cmd := exec.CommandContext(ctx, path, testArgs...)
 		cmdIn, err := cmd.StdinPipe()
 		if err != nil {
 			panic(err)
