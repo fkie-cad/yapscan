@@ -64,7 +64,7 @@ export GOOS=windows
 
 if [[ "$buildMemtest" == "1" ]]; then
     pushd yapscan/cmd/memtest
-    go build -trimpath -o /opt/yapscan/build/memtest.exe
+    go build -trimpath -o /opt/yapscan/cicd/build/memtest.exe
     popd &>/dev/null
 fi
 
