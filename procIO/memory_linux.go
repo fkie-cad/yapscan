@@ -1,5 +1,8 @@
 package procIO
 
+//#include <sys/mman.h>
+import "C"
+
 import (
 	"strconv"
 	"strings"
@@ -67,4 +70,24 @@ func memorySegmentFromLine(line string) (*MemorySegmentInfo, error) {
 	}
 
 	return ret, nil
+}
+
+func PermissionsToNative(perms Permissions) int {
+	switch perms.String() {
+	case "R--":
+		return C.PROT_READ
+	case "RW-":
+		return C.PROT_READ | C.PROT_WRITE
+	case "RC-":
+		// Isn't actually COW, but RW is close enough
+		return C.PROT_READ | C.PROT_WRITE
+	case "--X":
+		return C.PROT_EXEC
+	case "RWX":
+		return C.PROT_READ | C.PROT_WRITE | C.PROT_EXEC
+	case "RCX":
+		return C.PROT_READ | C.PROT_WRITE | C.PROT_EXEC
+	default:
+		return C.PROT_NONE
+	}
 }

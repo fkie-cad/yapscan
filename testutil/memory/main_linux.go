@@ -1,6 +1,16 @@
 package memory
 
-//#include <memory.h>
+//#include <sys/mman.h>
+//#include <errno.h>
+//#include <string.h>
+//
+// int getErrno() {
+//     return errno;
+// }
+//
+// void* negativeOne() {
+//     return ((void*)-1);
+// }
 import "C"
 
 import (
@@ -11,8 +21,13 @@ import (
 	"strconv"
 	"unsafe"
 
-	"golang.org/x/sys/windows"
+	"github.com/targodan/go-errors"
 )
+
+func getLastError() error {
+	text := C.GoString(C.strerror(C.getErrno()))
+	return errors.New(text)
+}
 
 func Main() {
 	if len(os.Args) < 3 {
@@ -38,14 +53,22 @@ func Main() {
 		os.Exit(1)
 	}
 
-	addr, err := windows.VirtualAlloc(0, uintptr(size), windows.MEM_RESERVE|windows.MEM_COMMIT, windows.PAGE_READWRITE)
-	if err != nil {
-		fmt.Printf(OutputErrorPrefix+"Could not alloc, reason: %v\n", err)
+	addr := C.mmap(
+		unsafe.Pointer(uintptr(0)),
+		C.size_t(size),
+		C.PROT_READ|C.PROT_WRITE,
+		C.MAP_PRIVATE|C.MAP_ANONYMOUS|C.MAP_POPULATE,
+		-1,
+		0)
+	if addr == C.negativeOne() {
+		fmt.Printf(OutputErrorPrefix+"Could not alloc, reason: %v\n", getLastError())
 		os.Exit(5)
 	}
 	defer func() {
-		windows.VirtualFree(addr, 0, windows.MEM_RELEASE)
+		C.munmap(addr, C.size_t(size))
 	}()
+
+	fmt.Printf("Allocated: 0x%X\n", addr)
 
 	var data []byte
 
@@ -74,10 +97,9 @@ func Main() {
 
 	C.memcpy(unsafe.Pointer(addr), unsafe.Pointer(&data[0]), C.size_t(size))
 
-	var oldProtect uint32
-	err = windows.VirtualProtect(addr, uintptr(len(data)), uint32(protect), &oldProtect)
-	if err != nil {
-		fmt.Printf(OutputErrorPrefix+"Failed to set protect, reason: %v\n", err)
+	ret := C.mprotect(addr, C.size_t(size), C.int(protect))
+	if ret == -1 {
+		fmt.Printf(OutputErrorPrefix+"Failed to set protect, reason: %v\n", getLastError())
 		os.Exit(2)
 	}
 

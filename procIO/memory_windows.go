@@ -29,6 +29,25 @@ func LookupFilePathOfSegment(procHandle win32.HANDLE, seg *MemorySegmentInfo) (s
 	return "", nil
 }
 
+func PermissionsToNative(perms Permissions) win32.DWORD {
+	switch perms.String() {
+	case "R--":
+		return win32.PAGE_READONLY
+	case "RW-":
+		return win32.PAGE_READWRITE
+	case "RC-":
+		return win32.PAGE_WRITECOPY
+	case "--X":
+		return win32.PAGE_EXECUTE
+	case "RWX":
+		return win32.PAGE_EXECUTE_READWRITE
+	case "RCX":
+		return win32.PAGE_EXECUTE_WRITECOPY
+	default:
+		return win32.PAGE_NOACCESS
+	}
+}
+
 func permissionsFromProtectDWORD(protect win32.DWORD) Permissions {
 	mp := Permissions{
 		Read:    false,
