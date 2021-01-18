@@ -1,18 +1,33 @@
 package memory
 
-//#include <memory.h>
-import "C"
-
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"io/ioutil"
+	"math"
 	"os"
 	"strconv"
 	"unsafe"
 
 	"golang.org/x/sys/windows"
 )
+
+//#include <memory.h>
+//#include <stdio.h>
+//#include <stdint.h>
+//
+// void makeStdinBinary() {
+//     freopen(NULL, "rb", stdin);
+// }
+// void my_memcpy(void* dst, const void* src, const size_t bytes) {
+//     uint8_t* dst_bytes = (uint8_t*)dst;
+//     const uint8_t* src_bytes = (const uint8_t*)src;
+//     for(int i = 0; i < bytes; ++i) {
+//	       dst_bytes[i] = src_bytes[i];
+//     }
+// }
+import "C"
 
 func Main() {
 	if len(os.Args) < 3 {
@@ -25,6 +40,8 @@ func Main() {
 	if len(os.Args) >= 4 {
 		filename = os.Args[3]
 	}
+
+	C.makeStdinBinary()
 
 	size, err := strconv.ParseUint(os.Args[1], 10, 64)
 	if err != nil {
@@ -47,7 +64,15 @@ func Main() {
 		windows.VirtualFree(addr, 0, windows.MEM_RELEASE)
 	}()
 
-	var data []byte
+	// Round up to next 4096
+	segmentSize := uint64(math.Ceil(float64(size)/4096.) * 4096.)
+
+	C.memset(unsafe.Pointer(addr), 0xAA, C.size_t(size))
+	C.memset(unsafe.Pointer(addr+uintptr(size)), 0xBB, C.size_t(segmentSize-size))
+
+	fmt.Printf("Allocated: 0x%X\n", addr)
+
+	data := bytes.Repeat([]byte{0xA1}, int(size))
 
 	if filename != "" {
 		f, err := os.Open(filename)
@@ -70,9 +95,13 @@ func Main() {
 			fmt.Printf(OutputErrorPrefix+"Could not read from stdin, reason: %v\n", err)
 			os.Exit(4)
 		}
+		if uint64(len(data)) != size {
+			fmt.Printf(OutputErrorPrefix+"Invalid number of bytes received! Expected %d, got %d!\n", size, len(data))
+			os.Exit(4)
+		}
 	}
 
-	C.memcpy(unsafe.Pointer(addr), unsafe.Pointer(&data[0]), C.size_t(size))
+	C.memcpy(unsafe.Pointer(addr), unsafe.Pointer(&data[0]), C.size_t(len(data)))
 
 	var oldProtect uint32
 	err = windows.VirtualProtect(addr, uintptr(len(data)), uint32(protect), &oldProtect)

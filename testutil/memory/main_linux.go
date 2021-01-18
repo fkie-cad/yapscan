@@ -17,6 +17,7 @@ import (
 	"fmt"
 	"io"
 	"io/ioutil"
+	"math"
 	"os"
 	"strconv"
 	"unsafe"
@@ -53,9 +54,12 @@ func Main() {
 		os.Exit(1)
 	}
 
+	// Round up to next 4096
+	segmentSize := uintptr(math.Ceil(float64(size)/4096.) * 4096.)
+
 	addr := C.mmap(
 		unsafe.Pointer(uintptr(0)),
-		C.size_t(size),
+		C.size_t(segmentSize),
 		C.PROT_READ|C.PROT_WRITE,
 		C.MAP_PRIVATE|C.MAP_ANONYMOUS|C.MAP_POPULATE,
 		-1,

@@ -10,6 +10,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"runtime"
+	"strconv"
 	"strings"
 
 	"github.com/targodan/go-errors"
@@ -36,6 +37,66 @@ func getMemtestPath() (string, error) {
 	return path, err
 }
 
+type TesterCompiler struct {
+	srcPath  string
+	binPath  string
+	compiled bool
+}
+
+func memtestUtilBinaryName() string {
+	name := "yapscan-memtest-util"
+	if runtime.GOOS == "windows" {
+		name += ".exe"
+	}
+	return name
+}
+
+func NewTesterCompiler() (*TesterCompiler, error) {
+	srcPath, err := getMemtestPath()
+	if err != nil {
+		return nil, fmt.Errorf("could not determine path to main.go, reason: %w", err)
+	}
+
+	binPath := filepath.Join(os.TempDir(), memtestUtilBinaryName())
+
+	return &TesterCompiler{
+		srcPath:  srcPath,
+		binPath:  binPath,
+		compiled: false,
+	}, nil
+}
+
+func (c *TesterCompiler) Compile(ctx context.Context) error {
+	cmd := exec.CommandContext(ctx,
+		"go", "build", "-o", c.binPath, c.srcPath)
+	output, err := cmd.Output()
+	if err != nil {
+		exitErr, ok := err.(*exec.ExitError)
+		if ok {
+			return fmt.Errorf("could not build test utility\n==== STDOUT ====\n%s\n==== STDERR ====\n%s", output, exitErr.Stderr)
+		} else {
+			return fmt.Errorf("could not build test utility, reason: %w", err)
+		}
+	}
+
+	c.compiled = true
+	return nil
+}
+
+func (c *TesterCompiler) BinaryPath() string {
+	if !c.compiled {
+		panic("binary path not available, compile first")
+	}
+	return c.binPath
+}
+
+func (c *TesterCompiler) Close() error {
+	if c.compiled {
+		return os.Remove(c.binPath)
+	}
+	return nil
+}
+
 type Tester struct {
 	ctx context.Context
 
@@ -51,16 +112,11 @@ type Tester struct {
 	data []byte
 }
 
-func NewTester(ctx context.Context, data []byte, nativePermis uintptr) (*Tester, error) {
-	mainPath, err := getMemtestPath()
-	if err != nil {
-		return nil, fmt.Errorf("could not determine path to main.go, reason: %w", err)
-	}
-
+func NewTester(ctx context.Context, c *TesterCompiler, data []byte, nativePermis uintptr) (*Tester, error) {
 	cmdCtx, cmdCancel := context.WithCancel(ctx)
 
 	cmd := exec.CommandContext(ctx,
-		"go", "run", mainPath,
+		c.BinaryPath(),
 		fmt.Sprintf("%d", len(data)), fmt.Sprintf("%d", nativePermis))
 
 	cmdIn, err := cmd.StdinPipe()
@@ -115,17 +171,23 @@ func (t *Tester) PID() int {
 
 func (t *Tester) waitForPrefix(prefix string) (string, error) {
 	for {
+		select {
+		case <-t.ctx.Done():
+			return "", t.ctx.Err()
+		default:
+		}
+
 		line, err := t.out.ReadString('\n')
 		if err != nil {
 			return "", err
 		}
 
 		line = strings.TrimSpace(line)
-		if len(line) >= len(prefix) && line[:len(prefix)] == prefix {
+		if strings.HasPrefix(line, prefix) {
 			// Found it
 			return line, nil
 		}
-		if len(line) >= len(OutputErrorPrefix) && line[:len(OutputErrorPrefix)] == OutputErrorPrefix {
+		if strings.HasPrefix(line, OutputErrorPrefix) {
 			// Found an error
 			return "", errors.New(line[len(OutputErrorPrefix):])
 		}
@@ -151,12 +213,12 @@ func (t *Tester) getMemoryAddress() (uintptr, error) {
 	if err != nil {
 		return 0, fmt.Errorf("command did not report memory address: %w", err)
 	}
-	var address uintptr
-	_, err = fmt.Sscanf(addressLine, OutputAddressPrefix+"%d", &address)
+
+	address, err := strconv.ParseUint(addressLine[len(OutputAddressPrefix):], 10, 64)
 	if err != nil {
 		return 0, fmt.Errorf("could not parse memory address: %w", err)
 	}
-	return address, nil
+	return uintptr(address), nil
 }
 
 func (t *Tester) WriteDataAndGetAddress() (uintptr, error) {
