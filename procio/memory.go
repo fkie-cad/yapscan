@@ -1,5 +1,5 @@
 //go:generate go-enum -f=$GOFILE --marshal --lower --names
-package procIO
+package procio
 
 import (
 	"errors"

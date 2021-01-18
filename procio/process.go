@@ -1,4 +1,4 @@
-package procIO
+package procio
 
 import (
 	"crypto/md5"

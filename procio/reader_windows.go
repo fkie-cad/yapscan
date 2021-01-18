@@ -1,4 +1,4 @@
-package procIO
+package procio
 
 import (
 	"errors"
@@ -7,7 +7,7 @@ import (
 
 	"github.com/sirupsen/logrus"
 
-	"github.com/fkie-cad/yapscan/procIO/customWin32"
+	"github.com/fkie-cad/yapscan/procio/customWin32"
 
 	"github.com/0xrawsec/golang-win32/win32"
 )

@@ -3,7 +3,7 @@
 package yapscan
 
 import (
-	procIO "github.com/fkie-cad/yapscan/procIO"
+	procio "github.com/fkie-cad/yapscan/procio"
 	mock "github.com/stretchr/testify/mock"
 )
 
@@ -13,20 +13,20 @@ type mockMemoryReaderFactory struct {
 }
 
 // NewMemoryReader provides a mock function with given fields: proc, seg
-func (_m *mockMemoryReaderFactory) NewMemoryReader(proc procIO.Process, seg *procIO.MemorySegmentInfo) (procIO.MemoryReader, error) {
+func (_m *mockMemoryReaderFactory) NewMemoryReader(proc procio.Process, seg *procio.MemorySegmentInfo) (procio.MemoryReader, error) {
 	ret := _m.Called(proc, seg)
 
-	var r0 procIO.MemoryReader
-	if rf, ok := ret.Get(0).(func(procIO.Process, *procIO.MemorySegmentInfo) procIO.MemoryReader); ok {
+	var r0 procio.MemoryReader
+	if rf, ok := ret.Get(0).(func(procio.Process, *procio.MemorySegmentInfo) procio.MemoryReader); ok {
 		r0 = rf(proc, seg)
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(procIO.MemoryReader)
+			r0 = ret.Get(0).(procio.MemoryReader)
 		}
 	}
 
 	var r1 error
-	if rf, ok := ret.Get(1).(func(procIO.Process, *procIO.MemorySegmentInfo) error); ok {
+	if rf, ok := ret.Get(1).(func(procio.Process, *procio.MemorySegmentInfo) error); ok {
 		r1 = rf(proc, seg)
 	} else {
 		r1 = ret.Error(1)

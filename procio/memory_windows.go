@@ -1,4 +1,4 @@
-package procIO
+package procio
 
 import (
 	"github.com/0xrawsec/golang-win32/win32"

@@ -1,4 +1,4 @@
-package fileIO
+package fileio
 
 import (
 	"context"
@@ -12,7 +12,7 @@ import (
 )
 
 func testDataDir(path ...string) string {
-	path = append([]string{"..", "testdata", "fileIO"}, path...)
+	path = append([]string{"..", "testdata", "fileio"}, path...)
 	return filepath.Join(path...)
 }
 

@@ -1,11 +1,11 @@
-package procIO
+package procio
 
 import (
 	"os"
 	"syscall"
 
 	"github.com/fkie-cad/yapscan/arch"
-	"github.com/fkie-cad/yapscan/procIO/customWin32"
+	"github.com/fkie-cad/yapscan/procio/customWin32"
 
 	"golang.org/x/sys/windows"
 

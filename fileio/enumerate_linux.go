@@ -1,4 +1,4 @@
-package fileIO
+package fileio
 
 func enumerateImpl(typeMask DriveType) ([]string, error) {
 	// TODO: Actually implement this.

@@ -9,9 +9,9 @@ import (
 	"strconv"
 
 	"github.com/fkie-cad/yapscan"
-	"github.com/fkie-cad/yapscan/fileIO"
+	"github.com/fkie-cad/yapscan/fileio"
 	"github.com/fkie-cad/yapscan/output"
-	"github.com/fkie-cad/yapscan/procIO"
+	"github.com/fkie-cad/yapscan/procio"
 
 	"github.com/sirupsen/logrus"
 	"github.com/targodan/go-errors"
@@ -61,7 +61,7 @@ func scan(c *cli.Context) error {
 	}
 
 	if c.Bool("all-processes") {
-		pids, err = procIO.GetRunningPIDs()
+		pids, err = procio.GetRunningPIDs()
 		if err != nil {
 			return errors.Newf("could not enumerate PIDs, reason: %w", err)
 		}
@@ -69,7 +69,7 @@ func scan(c *cli.Context) error {
 
 	if c.Bool("all-drives") {
 		// TODO: Expose the drive types to flags
-		drives, err := fileIO.Enumerate(fileIO.DriveTypeFixed | fileIO.DriveTypeRemovable)
+		drives, err := fileio.Enumerate(fileio.DriveTypeFixed | fileio.DriveTypeRemovable)
 		if err != nil {
 			return fmt.Errorf("could not enumerate local drives, reason: %w", err)
 		}
@@ -78,7 +78,7 @@ func scan(c *cli.Context) error {
 
 	if c.Bool("all-shares") {
 		// TODO: Expose the drive types to flags
-		drives, err := fileIO.Enumerate(fileIO.DriveTypeRemote)
+		drives, err := fileio.Enumerate(fileio.DriveTypeRemote)
 		if err != nil {
 			return fmt.Errorf("could not enumerate net-shares, reason: %w", err)
 		}
@@ -139,7 +139,7 @@ func scan(c *cli.Context) error {
 			continue
 		}
 
-		proc, err := procIO.OpenProcess(pid)
+		proc, err := procio.OpenProcess(pid)
 		if err != nil {
 			logrus.WithError(err).Errorf("could not open process %d for scanning", pid)
 			continue
@@ -219,22 +219,22 @@ func scan(c *cli.Context) error {
 	}
 
 	iteratorCtx := context.Background()
-	var pathIterator fileIO.Iterator
+	var pathIterator fileio.Iterator
 	for _, path := range paths {
-		pIt, err := fileIO.IteratePath(path, fileExtensions, iteratorCtx)
+		pIt, err := fileio.IteratePath(path, fileExtensions, iteratorCtx)
 		if err != nil {
 			fmt.Printf("- %s ERROR: could not intialize scanner for path, reason: %v", path, err)
 			logrus.WithError(err).Errorf("Could not initialize scanner for path \"%s\".", path)
 			continue
 		}
-		pathIterator = fileIO.Concurrent(pathIterator, pIt)
+		pathIterator = fileio.Concurrent(pathIterator, pIt)
 		fmt.Printf("- %s\n", path)
 	}
 
 	if pathIterator != nil {
 		defer pathIterator.Close()
 
-		fsScanner := fileIO.NewFSScanner(yaraScanner)
+		fsScanner := fileio.NewFSScanner(yaraScanner)
 		fsScanner.NGoroutines = c.Int("threads")
 
 		progress, _ := fsScanner.Scan(pathIterator)

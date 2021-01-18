@@ -2,7 +2,7 @@
 
 In this document, an overview of the win32 APIs is given regarding process and memory scanning. If the scanner is a 64-bit application, these calls result in an executable which can scan memory of both 64- and 32-bit processes.
 
-The shown code samples are not valid C code. They are supposed to be more akin to pseudo-code to give you a starting point for researching how to access another processes memory. You can find the shown API calls in the context of Go in these files: [procIO/process_windows.go](procIO/process_windows.go), [procIO/memory_windows.go](procIO/memory_windows.go) and [procIO/reader_windows.go](procIO/reader_windows.go).
+The shown code samples are not valid C code. They are supposed to be more akin to pseudo-code to give you a starting point for researching how to access another processes memory. You can find the shown API calls in the context of Go in these files: [procio/process_windows.go](procio/process_windows.go), [procio/memory_windows.go](procio/memory_windows.go) and [procio/reader_windows.go](procio/reader_windows.go).
 
 ## Listing Processes
 

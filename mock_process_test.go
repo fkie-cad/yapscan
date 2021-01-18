@@ -3,7 +3,7 @@
 package yapscan
 
 import (
-	procIO "github.com/fkie-cad/yapscan/procIO"
+	procio "github.com/fkie-cad/yapscan/procio"
 	mock "github.com/stretchr/testify/mock"
 )
 
@@ -43,15 +43,15 @@ func (_m *mockProcess) Handle() interface{} {
 }
 
 // Info provides a mock function with given fields:
-func (_m *mockProcess) Info() (*procIO.ProcessInfo, error) {
+func (_m *mockProcess) Info() (*procio.ProcessInfo, error) {
 	ret := _m.Called()
 
-	var r0 *procIO.ProcessInfo
-	if rf, ok := ret.Get(0).(func() *procIO.ProcessInfo); ok {
+	var r0 *procio.ProcessInfo
+	if rf, ok := ret.Get(0).(func() *procio.ProcessInfo); ok {
 		r0 = rf()
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).(*procIO.ProcessInfo)
+			r0 = ret.Get(0).(*procio.ProcessInfo)
 		}
 	}
 
@@ -66,15 +66,15 @@ func (_m *mockProcess) Info() (*procIO.ProcessInfo, error) {
 }
 
 // MemorySegments provides a mock function with given fields:
-func (_m *mockProcess) MemorySegments() ([]*procIO.MemorySegmentInfo, error) {
+func (_m *mockProcess) MemorySegments() ([]*procio.MemorySegmentInfo, error) {
 	ret := _m.Called()
 
-	var r0 []*procIO.MemorySegmentInfo
-	if rf, ok := ret.Get(0).(func() []*procIO.MemorySegmentInfo); ok {
+	var r0 []*procio.MemorySegmentInfo
+	if rf, ok := ret.Get(0).(func() []*procio.MemorySegmentInfo); ok {
 		r0 = rf()
 	} else {
 		if ret.Get(0) != nil {
-			r0 = ret.Get(0).([]*procIO.MemorySegmentInfo)
+			r0 = ret.Get(0).([]*procio.MemorySegmentInfo)
 		}
 	}
 

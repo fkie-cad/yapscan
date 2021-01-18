@@ -3,7 +3,7 @@
 package yapscan
 
 import (
-	procIO "github.com/fkie-cad/yapscan/procIO"
+	procio "github.com/fkie-cad/yapscan/procio"
 	mock "github.com/stretchr/testify/mock"
 )
 
@@ -13,11 +13,11 @@ type MockMemorySegmentFilter struct {
 }
 
 // Filter provides a mock function with given fields: info
-func (_m *MockMemorySegmentFilter) Filter(info *procIO.MemorySegmentInfo) *FilterMatch {
+func (_m *MockMemorySegmentFilter) Filter(info *procio.MemorySegmentInfo) *FilterMatch {
 	ret := _m.Called(info)
 
 	var r0 *FilterMatch
-	if rf, ok := ret.Get(0).(func(*procIO.MemorySegmentInfo) *FilterMatch); ok {
+	if rf, ok := ret.Get(0).(func(*procio.MemorySegmentInfo) *FilterMatch); ok {
 		r0 = rf(info)
 	} else {
 		if ret.Get(0) != nil {

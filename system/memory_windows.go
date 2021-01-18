@@ -1,7 +1,7 @@
 package system
 
 import (
-	"github.com/fkie-cad/yapscan/procIO/customWin32"
+	"github.com/fkie-cad/yapscan/procio/customWin32"
 )
 
 func GetTotalRAM() (uintptr, error) {

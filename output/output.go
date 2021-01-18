@@ -18,8 +18,8 @@ import (
 	"sync"
 
 	"github.com/fkie-cad/yapscan"
-	"github.com/fkie-cad/yapscan/fileIO"
-	"github.com/fkie-cad/yapscan/procIO"
+	"github.com/fkie-cad/yapscan/fileio"
+	"github.com/fkie-cad/yapscan/procio"
 	"github.com/fkie-cad/yapscan/system"
 
 	"github.com/fatih/color"
@@ -33,7 +33,7 @@ type Reporter interface {
 	ReportSystemInfo() error
 	ReportRules(rules *yara.Rules) error
 	ConsumeMemoryScanProgress(progress <-chan *yapscan.MemoryScanProgress) error
-	ConsumeFSScanProgress(progress <-chan *fileIO.FSScanProgress) error
+	ConsumeFSScanProgress(progress <-chan *fileio.FSScanProgress) error
 	io.Closer
 }
 
@@ -89,12 +89,12 @@ func (r *MultiReporter) ConsumeMemoryScanProgress(progress <-chan *yapscan.Memor
 	return nil
 }
 
-func (r *MultiReporter) ConsumeFSScanProgress(progress <-chan *fileIO.FSScanProgress) error {
+func (r *MultiReporter) ConsumeFSScanProgress(progress <-chan *fileio.FSScanProgress) error {
 	wg := &sync.WaitGroup{}
-	chans := make([]chan *fileIO.FSScanProgress, len(r.Reporters))
+	chans := make([]chan *fileio.FSScanProgress, len(r.Reporters))
 	wg.Add(len(chans))
 	for i := range chans {
-		chans[i] = make(chan *fileIO.FSScanProgress)
+		chans[i] = make(chan *fileio.FSScanProgress)
 
 		go func(i int) {
 			r.Reporters[i].ConsumeFSScanProgress(chans[i])
@@ -214,7 +214,7 @@ func (r *GatheredAnalysisReporter) ConsumeMemoryScanProgress(progress <-chan *ya
 	return r.reporter.ConsumeMemoryScanProgress(progress)
 }
 
-func (r *GatheredAnalysisReporter) ConsumeFSScanProgress(progress <-chan *fileIO.FSScanProgress) error {
+func (r *GatheredAnalysisReporter) ConsumeFSScanProgress(progress <-chan *fileio.FSScanProgress) error {
 	return r.reporter.ConsumeFSScanProgress(progress)
 }
 
@@ -493,7 +493,7 @@ func (r *AnalysisReporter) ReportRules(rules *yara.Rules) error {
 	return nil
 }
 
-func (r *AnalysisReporter) reportProcess(info *procIO.ProcessInfo) error {
+func (r *AnalysisReporter) reportProcess(info *procio.ProcessInfo) error {
 	if r.ProcessInfoOut == nil {
 		return nil
 	}
@@ -547,7 +547,7 @@ func (r *AnalysisReporter) ConsumeMemoryScanProgress(progress <-chan *yapscan.Me
 	return nil
 }
 
-func (r *AnalysisReporter) ConsumeFSScanProgress(progress <-chan *fileIO.FSScanProgress) error {
+func (r *AnalysisReporter) ConsumeFSScanProgress(progress <-chan *fileio.FSScanProgress) error {
 	if r.seen == nil {
 		r.seen = make(map[int]bool)
 	}
@@ -615,7 +615,7 @@ func (r *progressReporter) Close() error {
 	return r.out.Close()
 }
 
-func (r *progressReporter) reportProcess(proc procIO.Process) error {
+func (r *progressReporter) reportProcess(proc procio.Process) error {
 	info, err := proc.Info()
 	if err != nil {
 		logrus.WithError(err).Warn("Could not retrieve complete process info.")
@@ -698,7 +698,7 @@ func (r *progressReporter) ConsumeMemoryScanProgress(progress <-chan *yapscan.Me
 	return nil
 }
 
-func (r *progressReporter) receiveFS(progress *fileIO.FSScanProgress) {
+func (r *progressReporter) receiveFS(progress *fileio.FSScanProgress) {
 	if progress.Matches != nil && len(progress.Matches) > 0 {
 		r.allClean = false
 	}
@@ -728,7 +728,7 @@ func (r *progressReporter) receiveFS(progress *fileIO.FSScanProgress) {
 	}
 }
 
-func (r *progressReporter) ConsumeFSScanProgress(progress <-chan *fileIO.FSScanProgress) error {
+func (r *progressReporter) ConsumeFSScanProgress(progress <-chan *fileio.FSScanProgress) error {
 	for prog := range progress {
 		r.receiveFS(prog)
 	}
@@ -738,7 +738,7 @@ func (r *progressReporter) ConsumeFSScanProgress(progress <-chan *fileIO.FSScanP
 
 type ProgressFormatter interface {
 	FormatMemoryScanProgress(progress *yapscan.MemoryScanProgress) string
-	FormatFSScanProgress(progress *fileIO.FSScanProgress) string
+	FormatFSScanProgress(progress *fileio.FSScanProgress) string
 	FormatPath(path string, maxlen int) string
 }
 
@@ -753,9 +753,9 @@ func (p prettyFormatter) FormatMemoryScanProgress(progress *yapscan.MemoryScanPr
 		msg := ""
 		// TODO: Maybe enable via a verbose flag
 		//if progress.Error == ErrSkipped {
-		//	msg = "Skipped " + procIO.FormatMemorySegmentAddress(progress.MemorySegment)
+		//	msg = "Skipped " + procio.FormatMemorySegmentAddress(progress.MemorySegment)
 		//} else {
-		//	msg = "Error during scan of segment " + procIO.FormatMemorySegmentAddress(progress.MemorySegment) + ": " + progress.Error.Error()
+		//	msg = "Error during scan of segment " + procio.FormatMemorySegmentAddress(progress.MemorySegment) + ": " + progress.Error.Error()
 		//}
 		return msg
 	}
@@ -768,7 +768,7 @@ func (p prettyFormatter) FormatMemoryScanProgress(progress *yapscan.MemoryScanPr
 	for i, match := range progress.Matches {
 		txt[i] = fmt.Sprintf(
 			color.RedString("MATCH:")+" Rule \"%s\" matches segment %s.",
-			match.Rule, procIO.FormatMemorySegmentAddress(progress.MemorySegment),
+			match.Rule, procio.FormatMemorySegmentAddress(progress.MemorySegment),
 		)
 		if len(match.Strings) > 0 {
 			addrs := yapscan.FormatSlice("0x%X", yapscan.AddressesFromMatches(match.Strings, uint64(progress.MemorySegment.BaseAddress)))
@@ -814,7 +814,7 @@ func (p prettyFormatter) FormatPath(path string, maxlen int) string {
 	return "..." + res[len(res)-maxlen-3:]
 }
 
-func (p prettyFormatter) FormatFSScanProgress(progress *fileIO.FSScanProgress) string {
+func (p prettyFormatter) FormatFSScanProgress(progress *fileio.FSScanProgress) string {
 	if progress.Error != nil {
 		// TODO: Maybe enable via a verbose flag
 		return ""

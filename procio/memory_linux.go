@@ -1,4 +1,4 @@
-package procIO
+package procio
 
 //#include <sys/mman.h>
 import "C"

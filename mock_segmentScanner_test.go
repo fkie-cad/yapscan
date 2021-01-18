@@ -3,7 +3,7 @@
 package yapscan
 
 import (
-	procIO "github.com/fkie-cad/yapscan/procIO"
+	procio "github.com/fkie-cad/yapscan/procio"
 	mock "github.com/stretchr/testify/mock"
 
 	yara "github.com/hillu/go-yara/v4"
@@ -15,11 +15,11 @@ type mockSegmentScanner struct {
 }
 
 // ScanSegment provides a mock function with given fields: seg
-func (_m *mockSegmentScanner) ScanSegment(seg *procIO.MemorySegmentInfo) ([]yara.MatchRule, []byte, error) {
+func (_m *mockSegmentScanner) ScanSegment(seg *procio.MemorySegmentInfo) ([]yara.MatchRule, []byte, error) {
 	ret := _m.Called(seg)
 
 	var r0 []yara.MatchRule
-	if rf, ok := ret.Get(0).(func(*procIO.MemorySegmentInfo) []yara.MatchRule); ok {
+	if rf, ok := ret.Get(0).(func(*procio.MemorySegmentInfo) []yara.MatchRule); ok {
 		r0 = rf(seg)
 	} else {
 		if ret.Get(0) != nil {
@@ -28,7 +28,7 @@ func (_m *mockSegmentScanner) ScanSegment(seg *procIO.MemorySegmentInfo) ([]yara
 	}
 
 	var r1 []byte
-	if rf, ok := ret.Get(1).(func(*procIO.MemorySegmentInfo) []byte); ok {
+	if rf, ok := ret.Get(1).(func(*procio.MemorySegmentInfo) []byte); ok {
 		r1 = rf(seg)
 	} else {
 		if ret.Get(1) != nil {
@@ -37,7 +37,7 @@ func (_m *mockSegmentScanner) ScanSegment(seg *procIO.MemorySegmentInfo) ([]yara
 	}
 
 	var r2 error
-	if rf, ok := ret.Get(2).(func(*procIO.MemorySegmentInfo) error); ok {
+	if rf, ok := ret.Get(2).(func(*procio.MemorySegmentInfo) error); ok {
 		r2 = rf(seg)
 	} else {
 		r2 = ret.Error(2)

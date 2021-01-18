@@ -7,14 +7,13 @@ import (
 	"os"
 	"path"
 
-	"github.com/fkie-cad/yapscan/procIO"
-
+	"github.com/fkie-cad/yapscan/procio"
 	"github.com/targodan/go-errors"
 )
 
 type Dump struct {
 	PID     int
-	Segment *procIO.MemorySegmentInfo
+	Segment *procio.MemorySegmentInfo
 	Data    io.ReadCloser
 }
 
@@ -39,8 +38,8 @@ type ReadableDumpStorage interface {
 }
 
 type fileDump struct {
-	Process  *procIO.ProcessInfo
-	Segment  *procIO.MemorySegmentInfo
+	Process  *procio.ProcessInfo
+	Segment  *procio.MemorySegmentInfo
 	Filename string
 }
 
