@@ -1,34 +1,14 @@
 package memory
 
-//#include <sys/mman.h>
-//#include <errno.h>
-//#include <string.h>
-//
-// int getErrno() {
-//     return errno;
-// }
-//
-// void* negativeOne() {
-//     return ((void*)-1);
-// }
-import "C"
-
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"math"
 	"os"
 	"strconv"
-	"unsafe"
-
-	"github.com/targodan/go-errors"
 )
-
-func getLastError() error {
-	text := C.GoString(C.strerror(C.getErrno()))
-	return errors.New(text)
-}
 
 func Main() {
 	if len(os.Args) < 3 {
@@ -42,39 +22,38 @@ func Main() {
 		filename = os.Args[3]
 	}
 
+	ensureStdinBinary()
+
 	size, err := strconv.ParseUint(os.Args[1], 10, 64)
 	if err != nil {
 		fmt.Printf(OutputErrorPrefix+"Invalid size value, %v\n", err)
 		os.Exit(1)
 	}
 
-	protect, err := strconv.ParseUint(os.Args[2], 10, 32)
+	prot, err := strconv.ParseUint(os.Args[2], 10, 32)
 	if err != nil {
 		fmt.Printf(OutputErrorPrefix+"Invalid protect value, %v\n", err)
 		os.Exit(1)
 	}
 
-	// Round up to next 4096
-	segmentSize := uintptr(math.Ceil(float64(size)/4096.) * 4096.)
-
-	addr := C.mmap(
-		unsafe.Pointer(uintptr(0)),
-		C.size_t(segmentSize),
-		C.PROT_READ|C.PROT_WRITE,
-		C.MAP_PRIVATE|C.MAP_ANONYMOUS|C.MAP_POPULATE,
-		-1,
-		0)
-	if addr == C.negativeOne() {
-		fmt.Printf(OutputErrorPrefix+"Could not alloc, reason: %v\n", getLastError())
+	addr, err := alloc(size)
+	if err != nil {
+		fmt.Printf(OutputErrorPrefix+"Could not alloc, reason: %v\n", err)
 		os.Exit(5)
 	}
 	defer func() {
-		C.munmap(addr, C.size_t(size))
+		free(addr, size)
 	}()
+
+	// Round up to next 4096
+	segmentSize := uint64(math.Ceil(float64(size)/4096.) * 4096.)
+
+	memset(addr, 0xAA, size)
+	memset(addr+uintptr(size), 0xBB, segmentSize-size)
 
 	fmt.Printf("Allocated: 0x%X\n", addr)
 
-	var data []byte
+	data := bytes.Repeat([]byte{0xA1}, int(size))
 
 	if filename != "" {
 		f, err := os.Open(filename)
@@ -97,13 +76,17 @@ func Main() {
 			fmt.Printf(OutputErrorPrefix+"Could not read from stdin, reason: %v\n", err)
 			os.Exit(4)
 		}
+		if uint64(len(data)) != size {
+			fmt.Printf(OutputErrorPrefix+"Invalid number of bytes received! Expected %d, got %d!\n", size, len(data))
+			os.Exit(4)
+		}
 	}
 
-	C.memcpy(unsafe.Pointer(addr), unsafe.Pointer(&data[0]), C.size_t(size))
+	memcpy(addr, data)
 
-	ret := C.mprotect(addr, C.size_t(size), C.int(protect))
-	if ret == -1 {
-		fmt.Printf(OutputErrorPrefix+"Failed to set protect, reason: %v\n", getLastError())
+	protect(addr, size, prot)
+	if err != nil {
+		fmt.Printf(OutputErrorPrefix+"Failed to set protect, reason: %v\n", err)
 		os.Exit(2)
 	}
 
