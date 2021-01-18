@@ -3,6 +3,7 @@ package procIO
 import (
 	"bytes"
 	"context"
+	"io"
 	"io/ioutil"
 	"testing"
 	"time"
@@ -96,6 +97,54 @@ func testFullRead(c C, proc Process, seg *MemorySegmentInfo, address uintptr, ex
 	c.Convey("reading the remote segment should not fail.", func() {
 		So(err, ShouldBeNil)
 	})
+
+	offset := address - seg.BaseAddress
+	c.Convey("the data should be correct.", func() {
+		So(len(readData), ShouldBeGreaterThan, offset)
+		readData = readData[offset:]
+		So(len(readData), ShouldBeGreaterThanOrEqualTo, len(expectedData))
+		So(readData[:len(expectedData)], ShouldResemble, expectedData)
+	})
+
+	_, err = rdr.Seek(0, io.SeekStart)
+	c.Convey("resetting the reader should not fail", func() {
+		So(err, ShouldBeNil)
+	})
+
+	readData, err = ioutil.ReadAll(rdr)
+	c.Convey("reading the remote segment again, should not fail.", func() {
+		So(err, ShouldBeNil)
+	})
+
+	offset = address - seg.BaseAddress
+	c.Convey("the data should still be correct.", func() {
+		So(len(readData), ShouldBeGreaterThan, offset)
+		readData = readData[offset:]
+		So(len(readData), ShouldBeGreaterThanOrEqualTo, len(expectedData))
+		So(readData[:len(expectedData)], ShouldResemble, expectedData)
+	})
+}
+
+func testPartialRead(c C, proc Process, seg *MemorySegmentInfo, address uintptr, expectedData []byte) {
+	rdr, err := NewMemoryReader(proc, seg)
+	c.Convey("creating a reader should not fail.", func() {
+		So(err, ShouldBeNil)
+	})
+	defer rdr.Close()
+
+	start := 2
+	oldPos, err := rdr.Seek(int64(start), io.SeekCurrent)
+	c.Convey("seeking relative should not error", func() {
+		So(oldPos, ShouldEqual, 0)
+		So(err, ShouldBeNil)
+	})
+
+	readData, err := ioutil.ReadAll(io.LimitReader(rdr, int64(len(expectedData)-start)))
+	c.Convey("reading the remote segment should not fail.", func() {
+		So(err, ShouldBeNil)
+	})
+
+	expectedData = expectedData[start:]
 
 	offset := address - seg.BaseAddress
 	c.Convey("the data should be correct.", func() {

@@ -23,11 +23,6 @@ func newMemoryReader(proc Process, seg *MemorySegmentInfo) (memoryReaderImpl, er
 		return nil, errors.Errorf("could not open process memory for reading, reason: %w", err)
 	}
 
-	_, err = memfile.Seek(int64(seg.BaseAddress), io.SeekStart)
-	if err != nil {
-		return nil, errors.Errorf("could not access process memory at address 0x%016X, reason: %w", seg.BaseAddress, err)
-	}
-
 	rdr := &memfileReader{
 		proc: proc,
 		seg:  seg,
@@ -37,7 +32,18 @@ func newMemoryReader(proc Process, seg *MemorySegmentInfo) (memoryReaderImpl, er
 		position: 0,
 	}
 
+	rdr.seekToPosition()
+
 	return rdr, nil
+}
+
+func (rdr *memfileReader) seekToPosition() error {
+	filePos := rdr.seg.BaseAddress + rdr.position
+	_, err := rdr.memfile.Seek(int64(filePos), io.SeekStart)
+	if err != nil {
+		return errors.Errorf("could not access process memory at address 0x%016X, reason: %w", filePos, err)
+	}
+	return nil
 }
 
 func (rdr *memfileReader) Read(data []byte) (int, error) {
@@ -53,6 +59,24 @@ func (rdr *memfileReader) Read(data []byte) (int, error) {
 	n, err := io.LimitReader(rdr.memfile, int64(l)).Read(data)
 	rdr.position += uintptr(n)
 	return n, err
+}
+
+func (rdr *memfileReader) Seek(offset int64, whence int) (pos int64, err error) {
+	switch whence {
+	case io.SeekStart:
+		pos = offset
+	case io.SeekCurrent:
+		pos = int64(rdr.position) + offset
+	case io.SeekEnd:
+		pos = int64(rdr.seg.Size) + offset
+	}
+	if pos < 0 {
+		pos = 0
+		err = errors.New("cannot seek before start of segment")
+	}
+	rdr.position = uintptr(pos)
+	err = rdr.seekToPosition()
+	return
 }
 
 func (rdr *memfileReader) Process() Process {

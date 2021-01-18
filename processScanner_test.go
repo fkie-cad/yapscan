@@ -239,12 +239,12 @@ func (rdr *mockMemoryReaderWithBuffer) Read(p []byte) (n int, err error) {
 	return
 }
 
-func (rdr *mockMemoryReaderWithBuffer) Close() error {
-	return nil
+func (rdr *mockMemoryReaderWithBuffer) Seek(offset int64, whence int) (int64, error) {
+	panic("seeking not implemented in mock")
 }
 
-func (rdr *mockMemoryReaderWithBuffer) Reset() (procIO.MemoryReader, error) {
-	return rdr, nil
+func (rdr *mockMemoryReaderWithBuffer) Close() error {
+	return nil
 }
 
 func TestSegmentScanner(t *testing.T) {

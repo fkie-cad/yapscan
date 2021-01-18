@@ -6,7 +6,7 @@ import (
 
 type MemoryReader interface {
 	io.ReadCloser
-	Reset() (MemoryReader, error)
+	io.Seeker
 }
 
 type MemoryReaderFactory interface {
@@ -21,6 +21,7 @@ func (f *DefaultMemoryReaderFactory) NewMemoryReader(proc Process, seg *MemorySe
 
 type memoryReaderImpl interface {
 	io.ReadCloser
+	io.Seeker
 	Process() Process
 	Segment() *MemorySegmentInfo
 }
@@ -44,11 +45,6 @@ func (rdr *memoryReader) Close() error {
 	return rdr.impl.Close()
 }
 
-func (rdr *memoryReader) Reset() (MemoryReader, error) {
-	seeker, ok := rdr.impl.(io.Seeker)
-	if ok {
-		_, err := seeker.Seek(0, io.SeekStart)
-		return rdr, err
-	}
-	return NewMemoryReader(rdr.impl.Process(), rdr.impl.Segment())
+func (rdr *memoryReader) Seek(offset int64, whence int) (int64, error) {
+	return rdr.impl.Seek(offset, whence)
 }
