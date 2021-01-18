@@ -91,6 +91,9 @@ func TestProcessInformation(t *testing.T) {
 		Convey("opening the process should not error.", func() {
 			So(err, ShouldBeNil)
 		})
+		if err != nil {
+			return
+		}
 		defer proc.Close()
 
 		Convey("the PID should match.", func() {
@@ -103,6 +106,9 @@ func TestProcessInformation(t *testing.T) {
 			Convey("should not error.", func() {
 				So(err, ShouldBeNil)
 			})
+			if err != nil {
+				return
+			}
 
 			Convey("should return the correct PID.", func() {
 				So(info.PID, ShouldEqual, cmd.Process.Pid)
@@ -112,7 +118,5 @@ func TestProcessInformation(t *testing.T) {
 				So(info.ExecutablePath, ShouldEqual, path)
 			})
 		})
-
-		fmt.Fprintln(cmdIn, "exit")
 	})
 }
