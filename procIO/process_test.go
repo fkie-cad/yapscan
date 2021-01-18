@@ -6,9 +6,12 @@ import (
 	"os/exec"
 	"runtime"
 	"testing"
+	"time"
 
 	. "github.com/smartystreets/goconvey/convey"
 )
+
+const cmdPathTimeout = 1 * time.Second
 
 func TestPIDInEnumeration(t *testing.T) {
 	var testExe string
@@ -59,10 +62,10 @@ func TestProcessInformation(t *testing.T) {
 	var testArgs []string
 	if runtime.GOOS == "windows" {
 		testExe = "cmd.exe"
-		testArgs = []string{"/C", "timeout 5"}
+		testArgs = []string{"/C", "timeout 6000"}
 	} else {
 		testExe = "bash"
-		testArgs = []string{"-c", "sleep 5"}
+		testArgs = []string{"-c", "sleep 6000"}
 	}
 
 	path, err := exec.LookPath(testExe)
@@ -73,7 +76,7 @@ func TestProcessInformation(t *testing.T) {
 		panic(err)
 	}
 	Convey("With a started process", t, func() {
-		ctx, cancel := context.WithCancel(context.Background())
+		ctx, cancel := context.WithTimeout(context.Background(), cmdPathTimeout)
 		defer cancel()
 
 		cmd := exec.CommandContext(ctx, path, testArgs...)
