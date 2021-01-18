@@ -37,7 +37,7 @@ type fsIterator struct {
 // IteratePath starts an asynchronous, recursive Iterator over all files and
 // subdirectores in the given path. For each file with one of the given
 // validExtensions, a File will be emitted, which can be read using Iterator.Next.
-func IteratePath(path string, validExtensions []string, ctx context.Context) (Iterator, error) {
+func IteratePath(ctx context.Context, path string, validExtensions []string) (Iterator, error) {
 	stat, err := os.Stat(path)
 	if err != nil {
 		return nil, err

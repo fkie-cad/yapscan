@@ -18,7 +18,7 @@ func testDataDir(path ...string) string {
 
 func TestIterateFail(t *testing.T) {
 	Convey("Iterating through a non-existent directory", t, func() {
-		it, err := IteratePath(filepath.Join("thispath", "shouldnot", "exist"), nil, context.Background())
+		it, err := IteratePath(context.Background(), filepath.Join("thispath", "shouldnot", "exist"), nil)
 
 		Convey("should error.", func() {
 			So(it, ShouldBeNil)
@@ -27,7 +27,7 @@ func TestIterateFail(t *testing.T) {
 	})
 
 	Convey("Opening a file for iteration", t, func() {
-		it, err := IteratePath(testDataDir("filesystem", "f1"), nil, context.Background())
+		it, err := IteratePath(context.Background(), testDataDir("filesystem", "f1"), nil)
 
 		Convey("should error.", func() {
 			So(it, ShouldBeNil)
@@ -38,7 +38,7 @@ func TestIterateFail(t *testing.T) {
 
 func TestIterateSuccess(t *testing.T) {
 	Convey("Iterating through a directory with a single goroutine", t, func() {
-		it, err := IteratePath(testDataDir("filesystem"), nil, context.Background())
+		it, err := IteratePath(context.Background(), testDataDir("filesystem"), nil)
 
 		Convey("should not error.", func() {
 			So(err, ShouldBeNil)
