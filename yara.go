@@ -91,9 +91,8 @@ func LoadYaraRules(path string, recurseIfDir bool) (*yara.Rules, error) {
 	}
 	if stat.IsDir() {
 		return loadYaraRulesDirectory(path, recurseIfDir)
-	} else {
-		return loadYaraRulesSingleFile(path)
 	}
+	return loadYaraRulesSingleFile(path)
 }
 
 // IsYaraRulesFile returns true, if the given filename has one of the extensions
