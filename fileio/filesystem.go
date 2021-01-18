@@ -12,6 +12,8 @@ import (
 )
 
 var (
+	// FilesBuffer sets how many files can be buffered at one time
+	// during iteration.
 	FilesBuffer = 8
 )
 
@@ -32,6 +34,9 @@ type fsIterator struct {
 	next chan *nextEntry
 }
 
+// IteratePath starts an asynchronous, recursive Iterator over all files and
+// subdirectores in the given path. For each file with one of the given
+// validExtensions, a File will be emitted, which can be read using Iterator.Next.
 func IteratePath(path string, validExtensions []string, ctx context.Context) (Iterator, error) {
 	stat, err := os.Stat(path)
 	if err != nil {
@@ -150,6 +155,7 @@ func (it *fsIterator) dirScanner() {
 	}
 }
 
+// Next blocks until the next file is available and returns it or any encountered error.
 func (it *fsIterator) Next() (File, error) {
 	if it.closed {
 		return nil, io.EOF
@@ -163,6 +169,7 @@ func (it *fsIterator) Next() (File, error) {
 	return next.File, next.Err
 }
 
+// Close stops the iterator and frees all of its resources.
 func (it *fsIterator) Close() error {
 	if it.closed {
 		return nil

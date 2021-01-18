@@ -7,6 +7,7 @@ import (
 	"github.com/targodan/go-errors"
 )
 
+// Iterator provides capability to iterate over files.
 type Iterator interface {
 	Next() (File, error)
 	Close() error
@@ -44,6 +45,8 @@ func concat(it1 Iterator, it2 Iterator) Iterator {
 	}
 }
 
+// Concat concatenates multiple Iterators.
+// When one Iterator is exhausted, the next one is used.
 func Concat(iterators ...Iterator) Iterator {
 	var ret Iterator
 	for _, it := range iterators {
@@ -121,6 +124,8 @@ func concurrent(it1 Iterator, it2 Iterator) Iterator {
 	return cit
 }
 
+// Concurrent combines the given Iterators concurrently.
+// Each given Iterator will run in its own goroutine.
 func Concurrent(iterators ...Iterator) Iterator {
 	var cit Iterator
 	for _, it := range iterators {

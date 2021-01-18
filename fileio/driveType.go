@@ -1,6 +1,7 @@
 //go:generate go-enum -f=$GOFILE --marshal --lower --names
 package fileio
 
+// DriveType describes the type of a system drive.
 /*
 ENUM(
 Unknown=0
