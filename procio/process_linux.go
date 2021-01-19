@@ -22,6 +22,7 @@ type processLinux struct {
 	paused bool
 }
 
+// GetRunningPIDs returns the PIDs of all running processes.
 func GetRunningPIDs() ([]int, error) {
 	maps, _ := filepath.Glob("/proc/*/maps")
 
@@ -124,10 +125,9 @@ func (p *processLinux) Suspend() error {
 	if err != nil {
 		var exitErr *exec.ExitError
 		if errors.As(err, exitErr) {
-			return errors.Errorf("could not suspend process, reason: %w", errors.New(string(exitErr.Stderr)))
-		} else {
-			return errors.Errorf("could not suspend process, reason: %w", err)
+			return fmt.Errorf("could not suspend process, reason: %w", errors.New(string(exitErr.Stderr)))
 		}
+		return fmt.Errorf("could not suspend process, reason: %w", err)
 	}
 	p.paused = true
 	return nil
@@ -138,7 +138,7 @@ func (p *processLinux) Resume() error {
 		cmd := exec.Command("kill", "-CONT", strconv.Itoa(p.pid))
 		err := cmd.Run()
 		if err != nil {
-			return errors.Errorf("could not resume process, reason: %w", err)
+			return fmt.Errorf("could not resume process, reason: %w", err)
 		}
 	}
 	return nil

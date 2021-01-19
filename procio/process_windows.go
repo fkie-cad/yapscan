@@ -1,6 +1,7 @@
 package procio
 
 import (
+	"fmt"
 	"os"
 	"syscall"
 
@@ -36,6 +37,7 @@ var specialPIDs = map[int]*ProcessInfo{
 	},
 }
 
+// GetRunningPIDs returns the PIDs of all running processes.
 func GetRunningPIDs() ([]int, error) {
 	snap, err := kernel32.CreateToolhelp32Snapshot(kernel32.TH32CS_SNAPPROCESS, 0)
 	if err != nil {
@@ -106,13 +108,13 @@ func (p *processWindows) Info() (*ProcessInfo, error) {
 
 	info.MemorySegments, tmpErr = p.MemorySegments()
 	if tmpErr != nil {
-		err = errors.NewMultiError(err, errors.Errorf("could not retrieve memory segments info, reason: %w", tmpErr))
+		err = errors.NewMultiError(err, fmt.Errorf("could not retrieve memory segments info, reason: %w", tmpErr))
 	}
 
 	var isWow64 bool
 	err = windows.IsWow64Process(windows.Handle(p.procHandle), &isWow64)
 	if tmpErr != nil {
-		err = errors.NewMultiError(err, errors.Errorf("could not determine process bitness, reason: %w", tmpErr))
+		err = errors.NewMultiError(err, fmt.Errorf("could not determine process bitness, reason: %w", tmpErr))
 	}
 	// Note: This is good for windows on x86 and x86_64.
 	// Docs: https://docs.microsoft.com/en-us/windows/win32/api/wow64apiset/nf-wow64apiset-iswow64process?redirectedfrom=MSDN
@@ -124,31 +126,31 @@ func (p *processWindows) Info() (*ProcessInfo, error) {
 
 	info.ExecutablePath, tmpErr = kernel32.GetModuleFilenameExW(p.procHandle, 0)
 	if tmpErr != nil {
-		err = errors.NewMultiError(err, errors.Errorf("could not retrieve executable path, reason: %w", tmpErr))
+		err = errors.NewMultiError(err, fmt.Errorf("could not retrieve executable path, reason: %w", tmpErr))
 	} else {
 		info.ExecutableMD5, info.ExecutableSHA256, tmpErr = ComputeHashes(info.ExecutablePath)
 		if tmpErr != nil {
-			err = errors.NewMultiError(err, errors.Errorf("could not compute hashes of executable, reason: %w", tmpErr))
+			err = errors.NewMultiError(err, fmt.Errorf("could not compute hashes of executable, reason: %w", tmpErr))
 		}
 	}
 
 	tokenHandle, tmpErr := customWin32.OpenProcessToken(syscall.Handle(p.procHandle), syscall.TOKEN_QUERY)
 	if tmpErr != nil {
-		err = errors.NewMultiError(err, errors.Errorf("could not retrieve process token, reason: %w", tmpErr))
+		err = errors.NewMultiError(err, fmt.Errorf("could not retrieve process token, reason: %w", tmpErr))
 	} else {
 		sid, tmpErr := customWin32.GetTokenOwner(tokenHandle)
 		if tmpErr != nil {
-			err = errors.NewMultiError(err, errors.Errorf("could not get process token owner, reason: %w", tmpErr))
+			err = errors.NewMultiError(err, fmt.Errorf("could not get process token owner, reason: %w", tmpErr))
 		} else {
 			accout, domain, _, tmpErr := sid.LookupAccount("")
 			if tmpErr == nil {
 				info.Username = domain + "\\" + accout
 			} else {
-				err = errors.NewMultiError(err, errors.Errorf("could not lookup username from SID, reason: %w", tmpErr))
+				err = errors.NewMultiError(err, fmt.Errorf("could not lookup username from SID, reason: %w", tmpErr))
 
 				info.Username, tmpErr = customWin32.ConvertSidToStringSid(sid)
 				if tmpErr != nil {
-					err = errors.NewMultiError(err, errors.Errorf("could not convert SID to string, reason: %w", tmpErr))
+					err = errors.NewMultiError(err, fmt.Errorf("could not convert SID to string, reason: %w", tmpErr))
 				}
 			}
 		}

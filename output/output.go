@@ -29,6 +29,7 @@ import (
 	"github.com/yeka/zip"
 )
 
+// Reporter provides capability to report on scanning progress.
 type Reporter interface {
 	ReportSystemInfo() error
 	ReportRules(rules *yara.Rules) error
@@ -37,18 +38,31 @@ type Reporter interface {
 	io.Closer
 }
 
+// SystemInfoFileName is the name of the file, where system info is stored.
 const SystemInfoFileName = "systeminfo.json"
+
+// RulesFileName is the name of the file, where the used rules will be stored.
 const RulesFileName = "rules.yarc"
+
+// ProcessFileName is the name of the file used to report information about processes.
 const ProcessFileName = "processes.json"
+
+// MemoryProgressFileName is the name of the file used to report information about memory scans.
 const MemoryProgressFileName = "memory-scans.json"
+
+// FSProgressFileName is the name of the file used to report information about file scans.
 const FSProgressFileName = "file-scans.json"
 
+// DefaultZIPPassword is the password used for creating the report ZIP file.
 const DefaultZIPPassword = "infected"
 
+// MultiReporter is a Reporter which reports all information it recieves
+// to all given Reporters.
 type MultiReporter struct {
 	Reporters []Reporter
 }
 
+// ReportSystemInfo retrieves and reports info about the running system.
 func (r *MultiReporter) ReportSystemInfo() error {
 	var err error
 	for _, rep := range r.Reporters {
@@ -57,6 +71,7 @@ func (r *MultiReporter) ReportSystemInfo() error {
 	return err
 }
 
+// ReportRules reports the given *yara.Rules.
 func (r *MultiReporter) ReportRules(rules *yara.Rules) error {
 	var err error
 	for _, rep := range r.Reporters {
@@ -65,6 +80,8 @@ func (r *MultiReporter) ReportRules(rules *yara.Rules) error {
 	return err
 }
 
+// ConsumeMemoryScanProgress consumes and reports all *yapscan.MemoryScanProgress
+// instances sent in the given channel.
 func (r *MultiReporter) ConsumeMemoryScanProgress(progress <-chan *yapscan.MemoryScanProgress) error {
 	wg := &sync.WaitGroup{}
 	chans := make([]chan *yapscan.MemoryScanProgress, len(r.Reporters))
@@ -89,6 +106,8 @@ func (r *MultiReporter) ConsumeMemoryScanProgress(progress <-chan *yapscan.Memor
 	return nil
 }
 
+// ConsumeFSScanProgress consumes and reports all *yapscan.FSScanProgress
+// instances sent in the given channel.
 func (r *MultiReporter) ConsumeFSScanProgress(progress <-chan *fileio.FSScanProgress) error {
 	wg := &sync.WaitGroup{}
 	chans := make([]chan *fileio.FSScanProgress, len(r.Reporters))
@@ -113,6 +132,7 @@ func (r *MultiReporter) ConsumeFSScanProgress(progress <-chan *fileio.FSScanProg
 	return nil
 }
 
+// Close closes all reporters.
 func (r *MultiReporter) Close() error {
 	var err error
 	for _, rep := range r.Reporters {
@@ -121,6 +141,8 @@ func (r *MultiReporter) Close() error {
 	return err
 }
 
+// GatheredAnalysisReporter wraps an *AnalysisReporter and creates a single
+// encrypted ZIP file on Close.
 type GatheredAnalysisReporter struct {
 	directory string
 	// If ZIP is set, the output files will be zipped into the
@@ -137,26 +159,29 @@ func isDirEmpty(dir string) (bool, error) {
 		if os.IsNotExist(err) {
 			os.MkdirAll(dir, 0777)
 			return true, nil
-		} else {
-			return false, err
 		}
-	} else {
-		if !fInfo.IsDir() {
-			return false, errors.New("path is not a directory")
-		}
-
-		contents, err := filepath.Glob(path.Join(dir, "*"))
-		if err != nil {
-			return false, err
-		}
-		return len(contents) == 0, nil
+		return false, err
 	}
+
+	if !fInfo.IsDir() {
+		return false, errors.New("path is not a directory")
+	}
+
+	contents, err := filepath.Glob(path.Join(dir, "*"))
+	if err != nil {
+		return false, err
+	}
+	return len(contents) == 0, nil
 }
 
+// NewGatheredAnalysisReporter creates a new *GatheredAnalysisReporter
+// which will store temporary report files in the given outPath and
+// create an encrypted ZIP with the path *GatheredAnalysisReporter.ZIP on
+// *GatheredAnalysisReporter.Close.
 func NewGatheredAnalysisReporter(outPath string) (*GatheredAnalysisReporter, error) {
 	isEmpty, err := isDirEmpty(outPath)
 	if err != nil {
-		return nil, errors.Errorf("could not determine if analysis directory is empty, reason: %w", err)
+		return nil, fmt.Errorf("could not determine if analysis directory is empty, reason: %w", err)
 	}
 	if !isEmpty {
 		return nil, errors.New("analysis output directory is not empty")
@@ -164,23 +189,23 @@ func NewGatheredAnalysisReporter(outPath string) (*GatheredAnalysisReporter, err
 
 	sysinfo, err := os.OpenFile(path.Join(outPath, SystemInfoFileName), os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0666)
 	if err != nil {
-		return nil, errors.Errorf("could not open systeminfo file, reason: %w", err)
+		return nil, fmt.Errorf("could not open systeminfo file, reason: %w", err)
 	}
 	rules, err := os.OpenFile(path.Join(outPath, RulesFileName), os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0666)
 	if err != nil {
-		return nil, errors.Errorf("could not open rules file, reason: %w", err)
+		return nil, fmt.Errorf("could not open rules file, reason: %w", err)
 	}
 	process, err := os.OpenFile(path.Join(outPath, ProcessFileName), os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0666)
 	if err != nil {
-		return nil, errors.Errorf("could not open processes file, reason: %w", err)
+		return nil, fmt.Errorf("could not open processes file, reason: %w", err)
 	}
 	memProgress, err := os.OpenFile(path.Join(outPath, MemoryProgressFileName), os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0666)
 	if err != nil {
-		return nil, errors.Errorf("could not open memory progress file, reason: %w", err)
+		return nil, fmt.Errorf("could not open memory progress file, reason: %w", err)
 	}
 	fileProgress, err := os.OpenFile(path.Join(outPath, FSProgressFileName), os.O_RDWR|os.O_CREATE|os.O_TRUNC, 0666)
 	if err != nil {
-		return nil, errors.Errorf("could not open filesystem progress file, reason: %w", err)
+		return nil, fmt.Errorf("could not open filesystem progress file, reason: %w", err)
 	}
 
 	return &GatheredAnalysisReporter{
@@ -197,27 +222,42 @@ func NewGatheredAnalysisReporter(outPath string) (*GatheredAnalysisReporter, err
 	}, nil
 }
 
-func (r *GatheredAnalysisReporter) WithFileDumpStorage(outPath string) (err error) {
-	r.reporter.DumpStorage, err = NewFileDumpStorage(path.Join(r.directory, outPath))
-	return
+// Directory returns the output directory of the underlying *AnalysisReporter.
+func (r *GatheredAnalysisReporter) Directory() string {
+	return r.directory
 }
 
+// WithDumpStorage registers the given DumpStorage with the underlying
+// *AnalysisReporter and
+func (r *GatheredAnalysisReporter) WithDumpStorage(ds DumpStorage) {
+	r.reporter.DumpStorage = ds
+}
+
+// ReportSystemInfo retrieves and reports info about the running system
+// using the underlying *AnalysisReporter.
 func (r *GatheredAnalysisReporter) ReportSystemInfo() error {
 	return r.reporter.ReportSystemInfo()
 }
 
+// ReportRules reports the given *yara.Rules using the underlying *AnalysisReporter.
 func (r *GatheredAnalysisReporter) ReportRules(rules *yara.Rules) error {
 	return r.reporter.ReportRules(rules)
 }
 
+// ConsumeMemoryScanProgress consumes and reports all *yapscan.MemoryScanProgress
+// instances sent in the given channel using the underlying *AnalysisReporter.
 func (r *GatheredAnalysisReporter) ConsumeMemoryScanProgress(progress <-chan *yapscan.MemoryScanProgress) error {
 	return r.reporter.ConsumeMemoryScanProgress(progress)
 }
 
+// ConsumeFSScanProgress consumes and reports all *yapscan.FSScanProgress
+// instances sent in the given channel using the underlying *AnalysisReporter.
 func (r *GatheredAnalysisReporter) ConsumeFSScanProgress(progress <-chan *fileio.FSScanProgress) error {
 	return r.reporter.ConsumeFSScanProgress(progress)
 }
 
+// SuggestZIPName returns a suggestion for the zip name, based on the
+// hostname of the running system.
 func (r *GatheredAnalysisReporter) SuggestZIPName() string {
 	var fname string
 	hostname, err := os.Hostname()
@@ -233,7 +273,7 @@ func (r *GatheredAnalysisReporter) SuggestZIPName() string {
 func (r *GatheredAnalysisReporter) zip() error {
 	zFile, err := os.OpenFile(r.ZIP, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0666)
 	if err != nil {
-		return errors.Errorf("could not create zip file, reason: %w", err)
+		return fmt.Errorf("could not create zip file, reason: %w", err)
 	}
 	defer zFile.Close()
 
@@ -266,58 +306,58 @@ func (r *GatheredAnalysisReporter) zip() error {
 
 	out, err = zipper(path.Join(hostname, SystemInfoFileName))
 	if err != nil {
-		return errors.Errorf("could not write to zip file, reason: %w", err)
+		return fmt.Errorf("could not write to zip file, reason: %w", err)
 	}
 	in = r.reporter.SystemInfoOut.(*os.File)
 	_, err = in.Seek(0, io.SeekStart)
 	if err != nil {
-		return errors.Errorf("could not write to zip file, reason: %w", err)
+		return fmt.Errorf("could not write to zip file, reason: %w", err)
 	}
 	_, err = io.Copy(out, in)
 	if err != nil {
-		return errors.Errorf("could not write to zip file, reason: %w", err)
+		return fmt.Errorf("could not write to zip file, reason: %w", err)
 	}
 
 	out, err = zipper(path.Join(hostname, RulesFileName))
 	if err != nil {
-		return errors.Errorf("could not write to zip file, reason: %w", err)
+		return fmt.Errorf("could not write to zip file, reason: %w", err)
 	}
 	in = r.reporter.RulesOut.(*os.File)
 	_, err = in.Seek(0, io.SeekStart)
 	if err != nil {
-		return errors.Errorf("could not write to zip file, reason: %w", err)
+		return fmt.Errorf("could not write to zip file, reason: %w", err)
 	}
 	_, err = io.Copy(out, in)
 	if err != nil {
-		return errors.Errorf("could not write to zip file, reason: %w", err)
+		return fmt.Errorf("could not write to zip file, reason: %w", err)
 	}
 
 	out, err = zipper(path.Join(hostname, ProcessFileName))
 	if err != nil {
-		return errors.Errorf("could not write to zip file, reason: %w", err)
+		return fmt.Errorf("could not write to zip file, reason: %w", err)
 	}
 	in = r.reporter.ProcessInfoOut.(*os.File)
 	_, err = in.Seek(0, io.SeekStart)
 	if err != nil {
-		return errors.Errorf("could not write to zip file, reason: %w", err)
+		return fmt.Errorf("could not write to zip file, reason: %w", err)
 	}
 	_, err = io.Copy(out, in)
 	if err != nil {
-		return errors.Errorf("could not write to zip file, reason: %w", err)
+		return fmt.Errorf("could not write to zip file, reason: %w", err)
 	}
 
 	out, err = zipper(path.Join(hostname, MemoryProgressFileName))
 	if err != nil {
-		return errors.Errorf("could not write to zip file, reason: %w", err)
+		return fmt.Errorf("could not write to zip file, reason: %w", err)
 	}
 	in = r.reporter.MemoryScanProgressOut.(*os.File)
 	_, err = in.Seek(0, io.SeekStart)
 	if err != nil {
-		return errors.Errorf("could not write to zip file, reason: %w", err)
+		return fmt.Errorf("could not write to zip file, reason: %w", err)
 	}
 	_, err = io.Copy(out, in)
 	if err != nil {
-		return errors.Errorf("could not write to zip file, reason: %w", err)
+		return fmt.Errorf("could not write to zip file, reason: %w", err)
 	}
 
 	if r.reporter.DumpStorage != nil {
@@ -333,12 +373,12 @@ func (r *GatheredAnalysisReporter) zip() error {
 				out, err := zipper(path.Join(hostname, "dumps", dump.Dump.Filename()))
 				if err != nil {
 					dump.Dump.Data.Close()
-					return errors.Errorf("could not write dump to zip file, reason: %w", err)
+					return fmt.Errorf("could not write dump to zip file, reason: %w", err)
 				}
 				_, err = io.Copy(out, dump.Dump.Data)
 				if err != nil {
 					dump.Dump.Data.Close()
-					return errors.Errorf("could not write dump to zip file, reason: %w", err)
+					return fmt.Errorf("could not write dump to zip file, reason: %w", err)
 				}
 				dump.Dump.Data.Close()
 			}
@@ -348,8 +388,15 @@ func (r *GatheredAnalysisReporter) zip() error {
 	return nil
 }
 
+// Close creates the combined zip if GatheredAnalysisReporter.ZIP is set
+// and closes the underlying *AnalysisReporter.
 func (r *GatheredAnalysisReporter) Close() error {
 	var err error
+
+	err = r.reporter.Close()
+	if err != nil {
+		return err
+	}
 
 	if r.ZIP != "" {
 		err = r.zip()
@@ -371,10 +418,6 @@ func (r *GatheredAnalysisReporter) Close() error {
 		}
 	}
 
-	err = r.reporter.Close()
-	if err != nil {
-		return err
-	}
 	return nil
 }
 
@@ -395,6 +438,7 @@ func tryFlush(w io.Writer) error {
 	return nil
 }
 
+// Match represents the match of a yara Rule.
 type Match struct {
 	Rule      string         `json:"rule"`
 	Namespace string         `json:"namespace"`
@@ -408,7 +452,9 @@ type MatchString struct {
 	Offset uint64 `json:"offset"`
 }
 
-func FilterMatches(mr []yara.MatchRule) []*Match {
+// ConvertYaraMatchRules converts the given slice of yara.MatchRule to
+// a slice of *Match.
+func ConvertYaraMatchRules(mr []yara.MatchRule) []*Match {
 	ret := make([]*Match, len(mr))
 	for i, match := range mr {
 		ret[i] = &Match{
@@ -427,6 +473,8 @@ func FilterMatches(mr []yara.MatchRule) []*Match {
 	return ret
 }
 
+// MemoryScanProgressReport represents all matches on a single memory
+// segment of a process.
 type MemoryScanProgressReport struct {
 	PID           int         `json:"pid"`
 	MemorySegment uintptr     `json:"memorySegment"`
@@ -434,6 +482,7 @@ type MemoryScanProgressReport struct {
 	Error         interface{} `json:"error"`
 }
 
+// FSScanProgressReport represents all matches on a file.
 type FSScanProgressReport struct {
 	Path    string      `json:"path"`
 	Matches []*Match    `json:"match"`
@@ -454,6 +503,7 @@ type AnalysisReporter struct {
 	seen map[int]bool
 }
 
+// ReportSystemInfo retrieves and reports info about the running system.
 func (r *AnalysisReporter) ReportSystemInfo() error {
 	if r.SystemInfoOut == nil {
 		return nil
@@ -476,6 +526,7 @@ func (r *AnalysisReporter) ReportSystemInfo() error {
 	return nil
 }
 
+// ReportRules reports the given *yara.Rules.
 func (r *AnalysisReporter) ReportRules(rules *yara.Rules) error {
 	if r.RulesOut == nil {
 		return nil
@@ -501,6 +552,8 @@ func (r *AnalysisReporter) reportProcess(info *procio.ProcessInfo) error {
 	return json.NewEncoder(r.ProcessInfoOut).Encode(info)
 }
 
+// ConsumeMemoryScanProgress consumes and reports all *yapscan.MemoryScanProgress
+// instances sent in the given channel.
 func (r *AnalysisReporter) ConsumeMemoryScanProgress(progress <-chan *yapscan.MemoryScanProgress) error {
 	if r.seen == nil {
 		r.seen = make(map[int]bool)
@@ -527,7 +580,7 @@ func (r *AnalysisReporter) ConsumeMemoryScanProgress(progress <-chan *yapscan.Me
 		err = json.NewEncoder(r.MemoryScanProgressOut).Encode(&MemoryScanProgressReport{
 			PID:           info.PID,
 			MemorySegment: prog.MemorySegment.BaseAddress,
-			Matches:       FilterMatches(prog.Matches),
+			Matches:       ConvertYaraMatchRules(prog.Matches),
 			Error:         jsonErr,
 		})
 		if err != nil {
@@ -547,6 +600,8 @@ func (r *AnalysisReporter) ConsumeMemoryScanProgress(progress <-chan *yapscan.Me
 	return nil
 }
 
+// ConsumeFSScanProgress consumes and reports all *yapscan.FSScanProgress
+// instances sent in the given channel.
 func (r *AnalysisReporter) ConsumeFSScanProgress(progress <-chan *fileio.FSScanProgress) error {
 	if r.seen == nil {
 		r.seen = make(map[int]bool)
@@ -559,7 +614,7 @@ func (r *AnalysisReporter) ConsumeFSScanProgress(progress <-chan *fileio.FSScanP
 		}
 		err := json.NewEncoder(r.FSScanProgressOut).Encode(&FSScanProgressReport{
 			Path:    prog.File.Path(),
-			Matches: FilterMatches(prog.Matches),
+			Matches: ConvertYaraMatchRules(prog.Matches),
 			Error:   jsonErr,
 		})
 		if err != nil {
@@ -570,6 +625,7 @@ func (r *AnalysisReporter) ConsumeFSScanProgress(progress <-chan *fileio.FSScanP
 	return nil
 }
 
+// Close closes the AnalysisReporter and all associated files.
 func (r *AnalysisReporter) Close() error {
 	var err error
 	err = errors.NewMultiError(err, r.SystemInfoOut.Close())
@@ -591,6 +647,11 @@ type progressReporter struct {
 	allClean         bool
 }
 
+// NewProgressReporter creates a new Reporter, which will write memory and file scanning
+// progress to the given io.WriteCloser out using the ProgressFormatter formatter for
+// formatting.
+// This Reporter is intended for live updates to the console, hence ReportSystemInfo()
+// and ReportRules() do nothing.
 func NewProgressReporter(out io.WriteCloser, formatter ProgressFormatter) Reporter {
 	return &progressReporter{out: out, formatter: formatter, pid: -1, allClean: true}
 }
@@ -637,7 +698,7 @@ func (r *progressReporter) receiveMem(progress *yapscan.MemoryScanProgress) {
 			if l > 0 {
 				r.procSegmentCount += l
 			} else {
-				r.procSegmentCount += 1
+				r.procSegmentCount++
 			}
 		}
 		r.procSegmentIndex = 0
@@ -660,7 +721,7 @@ func (r *progressReporter) receiveMem(progress *yapscan.MemoryScanProgress) {
 		fmt.Fprintln(r.out, "\r", matchOut)
 	}
 
-	r.procSegmentIndex += 1
+	r.procSegmentIndex++
 	percent := int(float64(r.procSegmentIndex)/float64(r.procSegmentCount)*100. + 0.5)
 
 	var format string
@@ -736,6 +797,7 @@ func (r *progressReporter) ConsumeFSScanProgress(progress <-chan *fileio.FSScanP
 	return nil
 }
 
+// ProgressFormatter formats progress information.
 type ProgressFormatter interface {
 	FormatMemoryScanProgress(progress *yapscan.MemoryScanProgress) string
 	FormatFSScanProgress(progress *fileio.FSScanProgress) string
@@ -744,6 +806,7 @@ type ProgressFormatter interface {
 
 type prettyFormatter struct{}
 
+// NewPrettyFormatter creates a new pretty formatter for human readable console output.
 func NewPrettyFormatter() ProgressFormatter {
 	return &prettyFormatter{}
 }

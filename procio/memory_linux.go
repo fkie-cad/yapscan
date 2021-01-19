@@ -4,6 +4,7 @@ package procio
 import "C"
 
 import (
+	"fmt"
 	"strconv"
 	"strings"
 
@@ -33,11 +34,11 @@ func memorySegmentFromLine(line string) (*MemorySegmentInfo, error) {
 	}
 	addrStart, err := strconv.ParseUint(addrS[0], 16, 64)
 	if err != nil {
-		return nil, errors.Errorf("addr is not of format \"<hex>-<hex>\", %w", err)
+		return nil, fmt.Errorf("addr is not of format \"<hex>-<hex>\", %w", err)
 	}
 	addrEnd, err := strconv.ParseUint(addrS[1], 16, 64)
 	if err != nil {
-		return nil, errors.Errorf("addr is not of format \"<hex>-<hex>\", %w", err)
+		return nil, fmt.Errorf("addr is not of format \"<hex>-<hex>\", %w", err)
 	}
 	ret.BaseAddress = uintptr(addrStart)
 	ret.ParentBaseAddress = uintptr(addrStart)
@@ -72,6 +73,8 @@ func memorySegmentFromLine(line string) (*MemorySegmentInfo, error) {
 	return ret, nil
 }
 
+// PermissionsToNative converts the given Permissions to the
+// native linux representation.
 func PermissionsToNative(perms Permissions) int {
 	switch perms.String() {
 	case "R--":

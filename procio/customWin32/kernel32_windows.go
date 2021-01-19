@@ -6,10 +6,9 @@
 package customWin32
 
 import (
+	"fmt"
 	"syscall"
 	"unsafe"
-
-	"github.com/targodan/go-errors"
 
 	"github.com/0xrawsec/golang-win32/win32"
 	k32 "github.com/0xrawsec/golang-win32/win32/kernel32"
@@ -120,18 +119,18 @@ func ListThreads(pid int) ([]int, error) {
 func SuspendProcess(pid int) error {
 	threads, err := ListThreads(pid)
 	if err != nil {
-		return errors.Errorf("could not list process threads, reason: %w", err)
+		return fmt.Errorf("could not list process threads, reason: %w", err)
 	}
 	for _, tid := range threads {
 		hThread, err := k32.OpenThread(k32.THREAD_SUSPEND_RESUME, win32.FALSE, win32.DWORD(tid))
 		if err != nil {
-			return errors.Errorf("could not open thread %d, reason: %w", tid, err)
+			return fmt.Errorf("could not open thread %d, reason: %w", tid, err)
 		}
 		_, err = k32.SuspendThread(hThread)
 		k32.CloseHandle(hThread)
 
 		if err != nil {
-			return errors.Errorf("could not open suspend thread %d, reason: %w", tid, err)
+			return fmt.Errorf("could not open suspend thread %d, reason: %w", tid, err)
 		}
 	}
 	return nil
@@ -140,18 +139,18 @@ func SuspendProcess(pid int) error {
 func ResumeProcess(pid int) error {
 	threads, err := ListThreads(pid)
 	if err != nil {
-		return errors.Errorf("could not list process threads, reason: %w", err)
+		return fmt.Errorf("could not list process threads, reason: %w", err)
 	}
 	for _, tid := range threads {
 		hThread, err := k32.OpenThread(k32.THREAD_SUSPEND_RESUME, win32.FALSE, win32.DWORD(tid))
 		if err != nil {
-			return errors.Errorf("could not open thread %d, reason: %w", tid, err)
+			return fmt.Errorf("could not open thread %d, reason: %w", tid, err)
 		}
 		_, err = k32.ResumeThread(hThread)
 		k32.CloseHandle(hThread)
 
 		if err != nil {
-			return errors.Errorf("could not open resume thread %d, reason: %w", tid, err)
+			return fmt.Errorf("could not open resume thread %d, reason: %w", tid, err)
 		}
 	}
 	return nil

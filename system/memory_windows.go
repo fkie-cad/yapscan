@@ -4,7 +4,8 @@ import (
 	"github.com/fkie-cad/yapscan/procio/customWin32"
 )
 
-func GetTotalRAM() (uintptr, error) {
+// TotalRAM returns the total amount of installed RAM in bytes.
+func TotalRAM() (uintptr, error) {
 	status, err := customWin32.GlobalMemoryStatusEx()
 	if err != nil {
 		return 0, err
@@ -12,7 +13,8 @@ func GetTotalRAM() (uintptr, error) {
 	return uintptr(status.TotalPhys), nil
 }
 
-func GetFreeRAM() (uintptr, error) {
+// FreeRAM returns the amount of free RAM available for allocation in bytes.
+func FreeRAM() (uintptr, error) {
 	status, err := customWin32.GlobalMemoryStatusEx()
 	if err != nil {
 		return 0, err

@@ -11,29 +11,39 @@ import (
 	"github.com/targodan/go-errors"
 )
 
+// Dump contains the dump of a memory segment.
 type Dump struct {
 	PID     int
 	Segment *procio.MemorySegmentInfo
 	Data    io.ReadCloser
 }
 
+// Filename returns a filename with the PID of the process
+// and the address of the Segment of the dump.
 func (d *Dump) Filename() string {
 	return fmt.Sprintf("%d_0x%s.bin", d.PID, d.Segment.String())
 }
 
+// DumpOrError contains either a Dump or an Err.
 type DumpOrError struct {
 	Dump *Dump
 	Err  error
 }
 
+// DumpStorage provides capability to store dumps.
 type DumpStorage interface {
+	// Store stores a Dump.
 	Store(dump *Dump) error
+	// Hint returns a human readable hint about where/how dumps are stored.
 	Hint() string
 	io.Closer
 }
 
+// ReadableDumpStorage is a DumpStorage that can also Retrieve
+// dumps after storing.
 type ReadableDumpStorage interface {
 	DumpStorage
+	// Retrieve retrieves the dumps stored in this DumpStorage.
 	Retrieve(ctx context.Context) <-chan *DumpOrError
 }
 
@@ -48,10 +58,12 @@ type fileDumpStorage struct {
 	storedFiles []*fileDump
 }
 
+// NewFileDumpStorage create a new DumpStorage with a filesystem backend.
+// Dumps will be stored in the given directory.
 func NewFileDumpStorage(dir string) (ReadableDumpStorage, error) {
 	isEmpty, err := isDirEmpty(dir)
 	if err != nil {
-		return nil, errors.Errorf("could not determine if dump directory is empty, reason: %w", err)
+		return nil, fmt.Errorf("could not determine if dump directory is empty, reason: %w", err)
 	}
 	if !isEmpty {
 		return nil, errors.New("dump directory is not empty")

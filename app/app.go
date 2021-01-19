@@ -10,7 +10,6 @@ import (
 	"github.com/fkie-cad/yapscan/output"
 
 	"github.com/sirupsen/logrus"
-	"github.com/targodan/go-errors"
 	"github.com/urfave/cli/v2"
 )
 
@@ -41,7 +40,7 @@ func initAppAction(c *cli.Context) error {
 	default:
 		logfile, err := os.OpenFile(c.String("log-path"), os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0666)
 		if err != nil {
-			return errors.Errorf("could not open logfile for writing, reason: %w", err)
+			return fmt.Errorf("could not open logfile for writing, reason: %w", err)
 		}
 		logrus.SetOutput(logfile)
 		logrus.RegisterExitHandler(func() {
@@ -60,32 +59,32 @@ func filterFromArgs(c *cli.Context) (yapscan.MemorySegmentFilter, error) {
 
 	filters[i], err = BuildFilterPermissions(c.String("filter-permissions"))
 	if err != nil {
-		return nil, errors.Errorf("invalid flag \"--filter-permissions\", reason: %w", err)
+		return nil, fmt.Errorf("invalid flag \"--filter-permissions\", reason: %w", err)
 	}
 	i += 1
 	filters[i], err = BuildFilterPermissionsExact(c.StringSlice("filter-permissions-exact"))
 	if err != nil {
-		return nil, errors.Errorf("invalid flag \"--filter-permissions-exact\", reason: %w", err)
+		return nil, fmt.Errorf("invalid flag \"--filter-permissions-exact\", reason: %w", err)
 	}
 	i += 1
 	filters[i], err = BuildFilterType(c.StringSlice("filter-type"))
 	if err != nil {
-		return nil, errors.Errorf("invalid flag \"--filter-type\", reason: %w", err)
+		return nil, fmt.Errorf("invalid flag \"--filter-type\", reason: %w", err)
 	}
 	i += 1
 	filters[i], err = BuildFilterState(c.StringSlice("filter-state"))
 	if err != nil {
-		return nil, errors.Errorf("invalid flag \"--filter-state\", reason: %w", err)
+		return nil, fmt.Errorf("invalid flag \"--filter-state\", reason: %w", err)
 	}
 	i += 1
 	filters[i], err = BuildFilterSizeMax(c.String("filter-size-max"))
 	if err != nil {
-		return nil, errors.Errorf("invalid flag \"--filter-size-max\", reason: %w", err)
+		return nil, fmt.Errorf("invalid flag \"--filter-size-max\", reason: %w", err)
 	}
 	i += 1
 	filters[i], err = BuildFilterSizeMin(c.String("filter-size-min"))
 	if err != nil {
-		return nil, errors.Errorf("invalid flag \"--filter-size-min\", reason: %w", err)
+		return nil, fmt.Errorf("invalid flag \"--filter-size-min\", reason: %w", err)
 	}
 	i += 1
 

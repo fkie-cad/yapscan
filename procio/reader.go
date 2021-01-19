@@ -4,17 +4,22 @@ import (
 	"io"
 )
 
+// MemoryReader provides capabilities to read and seek through
+// another processes memory.
 type MemoryReader interface {
 	io.ReadCloser
 	io.Seeker
 }
 
+// MemoryReaderFactory is a factory for MemoryReader.
 type MemoryReaderFactory interface {
 	NewMemoryReader(proc Process, seg *MemorySegmentInfo) (MemoryReader, error)
 }
 
+// DefaultMemoryReaderFactory is the default MemoryReaderFactory.
 type DefaultMemoryReaderFactory struct{}
 
+// NewMemoryReader calls NewMemoryReader.
 func (f *DefaultMemoryReaderFactory) NewMemoryReader(proc Process, seg *MemorySegmentInfo) (MemoryReader, error) {
 	return NewMemoryReader(proc, seg)
 }
@@ -30,6 +35,8 @@ type memoryReader struct {
 	impl memoryReaderImpl
 }
 
+// NewMemoryReader creates a new MemoryReader to read the given
+// segment of the given Process.
 func NewMemoryReader(proc Process, seg *MemorySegmentInfo) (MemoryReader, error) {
 	impl, err := newMemoryReader(proc, seg)
 	return &memoryReader{

@@ -1,14 +1,14 @@
 package system
 
 import (
+	"fmt"
 	"net"
 	"os"
 
 	"github.com/fkie-cad/yapscan/arch"
-
-	"github.com/targodan/go-errors"
 )
 
+// Info contains information about the running system.
 type Info struct {
 	OSName    string   `json:"osName"`
 	OSVersion string   `json:"osVersion"`
@@ -20,6 +20,7 @@ type Info struct {
 
 var info *Info
 
+// GetInfo retrieves the Info about the currently running system.
 func GetInfo() (*Info, error) {
 	if info == nil {
 		var err error
@@ -28,17 +29,17 @@ func GetInfo() (*Info, error) {
 		info.OSArch = arch.Native()
 		info.OSName, info.OSVersion, info.OSFlavour, err = getOSInfo()
 		if err != nil {
-			err = errors.Errorf("could not determine OS info, reason: %w", err)
+			err = fmt.Errorf("could not determine OS info, reason: %w", err)
 			return info, err
 		}
 		info.Hostname, err = os.Hostname()
 		if err != nil {
-			err = errors.Errorf("could not determine hostname, reason: %w", err)
+			err = fmt.Errorf("could not determine hostname, reason: %w", err)
 			return info, err
 		}
 		addrs, err := net.InterfaceAddrs()
 		if err != nil {
-			err = errors.Errorf("could not determine IPs, reason: %w", err)
+			err = fmt.Errorf("could not determine IPs, reason: %w", err)
 			return info, err
 		}
 		info.IPs = make([]string, len(addrs))

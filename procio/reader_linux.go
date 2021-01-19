@@ -20,7 +20,7 @@ type memfileReader struct {
 func newMemoryReader(proc Process, seg *MemorySegmentInfo) (memoryReaderImpl, error) {
 	memfile, err := os.OpenFile(fmt.Sprintf("/proc/%d/mem", proc.PID()), os.O_RDONLY, 0600)
 	if err != nil {
-		return nil, errors.Errorf("could not open process memory for reading, reason: %w", err)
+		return nil, fmt.Errorf("could not open process memory for reading, reason: %w", err)
 	}
 
 	rdr := &memfileReader{
@@ -41,7 +41,7 @@ func (rdr *memfileReader) seekToPosition() error {
 	filePos := rdr.seg.BaseAddress + rdr.position
 	_, err := rdr.memfile.Seek(int64(filePos), io.SeekStart)
 	if err != nil {
-		return errors.Errorf("could not access process memory at address 0x%016X, reason: %w", filePos, err)
+		return fmt.Errorf("could not access process memory at address 0x%016X, reason: %w", filePos, err)
 	}
 	return nil
 }

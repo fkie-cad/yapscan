@@ -1,10 +1,9 @@
 package customWin32
 
 import (
+	"fmt"
 	"syscall"
 	"unsafe"
-
-	"github.com/targodan/go-errors"
 )
 
 // #include<windows.h>
@@ -90,7 +89,7 @@ func UsernameFromSID(sid *syscall.SID) (string, error) {
 		nil,
 	)
 	if err != syscall.ERROR_INSUFFICIENT_BUFFER || nameLength == 0 || domainLength == 0 {
-		return "", errors.Errorf("could not determine username length, reason: %w", err)
+		return "", fmt.Errorf("could not determine username length, reason: %w", err)
 	}
 
 	accountName := make([]uint16, nameLength/2+1)

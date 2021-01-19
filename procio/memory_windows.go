@@ -5,6 +5,8 @@ import (
 	"github.com/0xrawsec/golang-win32/win32/kernel32"
 )
 
+// SegmentFromMemoryBasicInformation converts the winapi win32.MemoryBasicInformation
+// into a *MemorySegmentInfo.
 func SegmentFromMemoryBasicInformation(info win32.MemoryBasicInformation) *MemorySegmentInfo {
 	return &MemorySegmentInfo{
 		ParentBaseAddress:    uintptr(info.AllocationBase),
@@ -18,6 +20,8 @@ func SegmentFromMemoryBasicInformation(info win32.MemoryBasicInformation) *Memor
 	}
 }
 
+// LookupFilePathOfSegment attempts to lookup the module filename associated
+// with the given *MemorySegmentInfo.
 func LookupFilePathOfSegment(procHandle win32.HANDLE, seg *MemorySegmentInfo) (string, error) {
 	if seg.BaseAddress != seg.ParentBaseAddress {
 		// Only check root segments
@@ -29,6 +33,8 @@ func LookupFilePathOfSegment(procHandle win32.HANDLE, seg *MemorySegmentInfo) (s
 	return "", nil
 }
 
+// PermissionsToNative converts the given Permissions to the
+// native windows representation.
 func PermissionsToNative(perms Permissions) win32.DWORD {
 	switch perms.String() {
 	case "R--":

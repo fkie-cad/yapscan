@@ -2,29 +2,28 @@ package system
 
 import (
 	"encoding/csv"
+	"fmt"
 	"os/exec"
 	"strings"
-
-	"github.com/targodan/go-errors"
 )
 
 func getOSInfo() (name, version, flavour string, err error) {
 	cmd := exec.Command("systeminfo", "/FO", "CSV")
 	buf, err := cmd.Output()
 	if err != nil {
-		err = errors.Errorf("could not execute systeminfo, reason: %s", err)
+		err = fmt.Errorf("could not execute systeminfo, reason: %s", err)
 		return
 	}
 
 	info := csv.NewReader(strings.NewReader(string(buf)))
 	headings, err := info.Read()
 	if err != nil {
-		err = errors.Errorf("could not parse systeminfo output, reason: %s", err)
+		err = fmt.Errorf("could not parse systeminfo output, reason: %s", err)
 		return
 	}
 	data, err := info.Read()
 	if err != nil {
-		err = errors.Errorf("could not parse systeminfo output, reason: %s", err)
+		err = fmt.Errorf("could not parse systeminfo output, reason: %s", err)
 		return
 	}
 
@@ -43,7 +42,7 @@ func getOSInfo() (name, version, flavour string, err error) {
 
 	parts := strings.Split(strings.TrimSpace(data[iOSName]), " ")
 	if len(parts) < 3 {
-		err = errors.Errorf("invalid OS name \"%s\"", data[iOSName])
+		err = fmt.Errorf("invalid OS name \"%s\"", data[iOSName])
 		return
 	}
 	// Examples:

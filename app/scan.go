@@ -92,16 +92,17 @@ func scan(c *cli.Context) error {
 		logrus.Debug("Full report temp dir: ", tmpDir)
 		gatherRep, err := output.NewGatheredAnalysisReporter(tmpDir)
 		if err != nil {
-			return errors.Errorf("could not initialize analysis reporter, reason: %w", err)
+			return fmt.Errorf("could not initialize analysis reporter, reason: %w", err)
 		}
 		gatherRep.ZIP = filepath.Join(c.String("report-dir"), gatherRep.SuggestZIPName())
 		gatherRep.DeleteAfterZipping = !c.Bool("keep")
 		fmt.Printf("Full report will be written to \"%s\".\n", gatherRep.ZIP)
 		if c.Bool("store-dumps") {
-			err = gatherRep.WithFileDumpStorage("dumps")
+			ds, err := output.NewFileDumpStorage(filepath.Join(gatherRep.Directory(), "dumps"))
 			if err != nil {
-				return errors.Errorf("could not initialize analysis reporter, reason: %w", err)
+				return fmt.Errorf("could not initialize dump storage reporter, reason: %w", err)
 			}
+			gatherRep.WithDumpStorage(ds)
 			gatherRep.ZIPPassword = c.String("password")
 		}
 		reporter = &output.MultiReporter{
