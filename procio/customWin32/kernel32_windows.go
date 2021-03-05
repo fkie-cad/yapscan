@@ -21,7 +21,10 @@ var (
 	process32NextW       = kernel32.NewProc("Process32NextW")
 	thread32First        = kernel32.NewProc("Thread32First")
 	thread32Next         = kernel32.NewProc("Thread32Next")
+	createRemoteThread   = kernel32.NewProc("CreateRemoteThread")
 )
+
+const ERROR_NOT_ENOUGH_MEMORY = 0x8
 
 func ReadProcessMemory(hProcess win32.HANDLE, lpBaseAddress win32.LPCVOID, buffer []byte) (int, error) {
 	numberOfBytesRead := win32.SIZE_T(0)
@@ -154,4 +157,20 @@ func ResumeProcess(pid int) error {
 		}
 	}
 	return nil
+}
+
+func CreateRemoteThreadMinimal(hProcess win32.HANDLE, startAddress uintptr) error {
+	_, _, lastErr := createRemoteThread.Call(
+		uintptr(hProcess),
+		uintptr(0),
+		uintptr(0),
+		startAddress,
+		uintptr(0),
+		uintptr(0),
+		uintptr(0),
+	)
+	if lastErr.(syscall.Errno) == 0 {
+		return nil
+	}
+	return lastErr
 }

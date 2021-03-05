@@ -78,9 +78,10 @@ func open(pid int) (Process, error) {
 		// We'll create special processes without handle, so the info can at least be retreived
 		return &processWindows{pid: pid, procHandle: 0}, nil
 	}
-
 	handle, err := kernel32.OpenProcess(
-		kernel32.PROCESS_VM_READ|kernel32.PROCESS_QUERY_INFORMATION|kernel32.PROCESS_SUSPEND_RESUME,
+		kernel32.PROCESS_VM_READ|kernel32.PROCESS_QUERY_INFORMATION|kernel32.PROCESS_SUSPEND_RESUME|
+			// Specifically needed for CreateRemoteThread:
+			kernel32.PROCESS_CREATE_THREAD|kernel32.PROCESS_VM_OPERATION|kernel32.PROCESS_VM_WRITE,
 		win32.FALSE,
 		win32.DWORD(pid),
 	)
@@ -253,4 +254,18 @@ func (p *processWindows) MemorySegments() ([]*MemorySegmentInfo, error) {
 	err := <-errors
 
 	return segmentsSlice, err
+}
+
+func (p *processWindows) Crash(m CrashMethod) error {
+	if m == CrashMethodCreateThreadOnNull {
+		err := customWin32.CreateRemoteThreadMinimal(p.procHandle, 0)
+		if err != nil {
+			if err.(syscall.Errno) == customWin32.ERROR_NOT_ENOUGH_MEMORY {
+				return fmt.Errorf("could not crash process, \"%w\", this may be due to the remote process being too privileged", err)
+			}
+			return fmt.Errorf("could not crash process, %w", err)
+		}
+		return nil
+	}
+	return &arch.ErrNotImplemented{fmt.Sprintf("crash method \"%s\" is not implemented on windows", m.String())}
 }

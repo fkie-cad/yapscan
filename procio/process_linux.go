@@ -177,3 +177,7 @@ func (p *processLinux) MemorySegments() ([]*MemorySegmentInfo, error) {
 
 	return segments, nil
 }
+
+func (p *processLinux) Crash(m CrashMethod) error {
+	return &arch.ErrNotImplemented{"crashing processes is not implemented on linux"}
+}

@@ -409,6 +409,20 @@ func RunApp(args []string) {
 					},
 				},
 			},
+			&cli.Command{
+				Name:    "crash-processe",
+				Aliases: []string{"crash"},
+				Usage:   "crash a processe",
+				Action:  crashProcess,
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:    "method",
+						Aliases: []string{"m"},
+						Usage:   "output errors if any are encountered",
+						Value:   "CreateThreadOnNull",
+					},
+				},
+			},
 		},
 	}
 

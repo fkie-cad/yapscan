@@ -43,6 +43,7 @@ type Process interface {
 	MemorySegments() ([]*MemorySegmentInfo, error)
 	Suspend() error
 	Resume() error
+	Crash(CrashMethod) error
 }
 
 // CachingProcess is a Process that caches *ProcessInfo and
@@ -134,4 +135,8 @@ func ComputeHashes(file string) (md5sum, sha256sum string, err error) {
 	sha256sum = hex.EncodeToString(h256.Sum(nil))
 
 	return
+}
+
+func (c *cachingProcess) Crash(m CrashMethod) error {
+	return c.proc.Crash(m)
 }
