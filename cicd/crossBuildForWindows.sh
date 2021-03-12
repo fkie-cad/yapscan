@@ -3,11 +3,13 @@
 if [[ "$#" == "0" ]]; then
     # Build all by default
     buildYapscan=1
+    buildYapscanSvc=1
     buildYapscanDll=1
     buildMemtest=1
 else
     # Build depends on arguments
     buildYapscan=0
+    buildYapscanSvc=0
     buildYapscanDll=0
     buildMemtest=0
 fi
@@ -16,6 +18,9 @@ for arg in "$@"; do
     case "$arg" in
     yapscan)
         buildYapscan=1
+        ;;
+    yapscan-svc)
+      buildYapscanSvc=1
         ;;
     yapscan-dll)
         buildYapscanDll=1
@@ -64,13 +69,19 @@ export GOOS=windows
 
 if [[ "$buildMemtest" == "1" ]]; then
     pushd yapscan/cmd/memtest
-    go build -trimpath -o /opt/yapscan/cicd/build/memtest.exe
+    go build -trimpath -o /opt/yapscan/cicd/build/memtest.exe -buildmode=exe
     popd &>/dev/null
 fi
 
 if [[ "$buildYapscan" == "1" ]]; then
     pushd yapscan/cmd/yapscan
-    go build -trimpath -o /opt/yapscan/cicd/build/yapscan.exe -tags yara_static
+    go build -trimpath -o /opt/yapscan/cicd/build/yapscan.exe -tags yara_static -buildmode=exe
+    popd &>/dev/null
+fi
+
+if [[ "$buildYapscanSvc" == "1" ]]; then
+    pushd yapscan/cmd/yapscan-svc
+    go build -trimpath -o /opt/yapscan/cicd/build/yapscan-svc.exe -tags yara_static -buildmode=exe
     popd &>/dev/null
 fi
 
