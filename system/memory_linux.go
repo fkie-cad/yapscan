@@ -6,7 +6,8 @@ import (
 	"github.com/targodan/go-errors"
 )
 
-func GetTotalRAM() (uintptr, error) {
+// TotalRAM returns the total amount of installed RAM in bytes.
+func TotalRAM() (uintptr, error) {
 	si := &syscall.Sysinfo_t{}
 
 	// XXX is a raw syscall thread safe?
@@ -18,7 +19,8 @@ func GetTotalRAM() (uintptr, error) {
 	return uintptr(si.Totalram), nil
 }
 
-func GetFreeRAM() (uintptr, error) {
+// FreeRAM returns the amount of free RAM available for allocation in bytes.
+func FreeRAM() (uintptr, error) {
 	si := &syscall.Sysinfo_t{}
 
 	// XXX is a raw syscall thread safe?

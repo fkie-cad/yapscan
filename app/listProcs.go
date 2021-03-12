@@ -6,8 +6,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/fkie-cad/yapscan/procIO"
-
+	"github.com/fkie-cad/yapscan/procio"
 	"github.com/targodan/go-errors"
 	"github.com/urfave/cli/v2"
 )
@@ -18,19 +17,19 @@ func listProcesses(c *cli.Context) error {
 		return err
 	}
 
-	pids, err := procIO.GetRunningPIDs()
+	pids, err := procio.GetRunningPIDs()
 	if err != nil {
 		return errors.Newf("could not enumerate PIDs, reason: %w", err)
 	}
 
-	procInfos := make([]*procIO.ProcessInfo, len(pids))
+	procInfos := make([]*procio.ProcessInfo, len(pids))
 	maxPidlen := 0
 	maxNamelen := 0
 	maxUserlen := 0
 	errorsOutput := false
 	for i, pid := range pids {
 		// Default info in case of errors
-		info := &procIO.ProcessInfo{
+		info := &procio.ProcessInfo{
 			PID:              pid,
 			ExecutablePath:   "ERROR",
 			ExecutableMD5:    "ERROR",
@@ -39,7 +38,7 @@ func listProcesses(c *cli.Context) error {
 			MemorySegments:   nil,
 		}
 
-		proc, err := procIO.OpenProcess(pid)
+		proc, err := procio.OpenProcess(pid)
 		if err != nil {
 			err = errors.Newf("could not open process %d, reason: %w", pid, err)
 		} else {

@@ -7,7 +7,7 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/fkie-cad/yapscan/procIO"
+	"github.com/fkie-cad/yapscan/procio"
 )
 
 func main() {
@@ -27,7 +27,7 @@ func main() {
 	}
 
 	fmt.Printf("Reading segments from process %d...\n", pid)
-	proc, err := procIO.OpenProcess(pid)
+	proc, err := procio.OpenProcess(pid)
 	if err != nil {
 		panic(err)
 	}
@@ -39,7 +39,7 @@ func main() {
 
 	readSeg := segments[0]
 
-	rdr, _ := procIO.NewMemoryReader(proc, readSeg)
+	rdr, _ := procio.NewMemoryReader(proc, readSeg)
 	defer rdr.Close()
 
 	if length > 0 {

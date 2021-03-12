@@ -6,8 +6,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/fkie-cad/yapscan/procIO"
-
+	"github.com/fkie-cad/yapscan/procio"
 	"github.com/hillu/go-yara/v4"
 	"github.com/targodan/go-errors"
 
@@ -44,33 +43,33 @@ func TestPorcessScan(t *testing.T) {
 		})
 
 		Convey("scanning a valid process", func() {
-			segments := []*procIO.MemorySegmentInfo{
-				&procIO.MemorySegmentInfo{ // This should not be scanned, it's not a leaf
+			segments := []*procio.MemorySegmentInfo{
+				&procio.MemorySegmentInfo{ // This should not be scanned, it's not a leaf
 					ParentBaseAddress:    1,
 					BaseAddress:          1,
-					AllocatedPermissions: procIO.Permissions{},
-					CurrentPermissions:   procIO.Permissions{},
+					AllocatedPermissions: procio.Permissions{},
+					CurrentPermissions:   procio.Permissions{},
 					Size:                 0,
 					State:                0,
 					Type:                 0,
 					FilePath:             "",
-					SubSegments: []*procIO.MemorySegmentInfo{
-						&procIO.MemorySegmentInfo{
+					SubSegments: []*procio.MemorySegmentInfo{
+						&procio.MemorySegmentInfo{
 							ParentBaseAddress:    1,
 							BaseAddress:          2,
-							AllocatedPermissions: procIO.Permissions{},
-							CurrentPermissions:   procIO.Permissions{},
+							AllocatedPermissions: procio.Permissions{},
+							CurrentPermissions:   procio.Permissions{},
 							Size:                 0,
 							State:                0,
 							Type:                 0,
 							FilePath:             "",
 							SubSegments:          nil,
 						},
-						&procIO.MemorySegmentInfo{
+						&procio.MemorySegmentInfo{
 							ParentBaseAddress:    1,
 							BaseAddress:          3,
-							AllocatedPermissions: procIO.Permissions{},
-							CurrentPermissions:   procIO.Permissions{},
+							AllocatedPermissions: procio.Permissions{},
+							CurrentPermissions:   procio.Permissions{},
 							Size:                 0,
 							State:                0,
 							Type:                 0,
@@ -79,22 +78,22 @@ func TestPorcessScan(t *testing.T) {
 						},
 					},
 				},
-				&procIO.MemorySegmentInfo{
+				&procio.MemorySegmentInfo{
 					ParentBaseAddress:    4,
 					BaseAddress:          4,
-					AllocatedPermissions: procIO.Permissions{},
-					CurrentPermissions:   procIO.Permissions{},
+					AllocatedPermissions: procio.Permissions{},
+					CurrentPermissions:   procio.Permissions{},
 					Size:                 0,
 					State:                0,
 					Type:                 0,
 					FilePath:             "",
 					SubSegments:          nil,
 				},
-				&procIO.MemorySegmentInfo{
+				&procio.MemorySegmentInfo{
 					ParentBaseAddress:    5,
 					BaseAddress:          5,
-					AllocatedPermissions: procIO.Permissions{},
-					CurrentPermissions:   procIO.Permissions{},
+					AllocatedPermissions: procio.Permissions{},
+					CurrentPermissions:   procio.Permissions{},
 					Size:                 0,
 					State:                0,
 					Type:                 0,
@@ -239,12 +238,12 @@ func (rdr *mockMemoryReaderWithBuffer) Read(p []byte) (n int, err error) {
 	return
 }
 
-func (rdr *mockMemoryReaderWithBuffer) Close() error {
-	return nil
+func (rdr *mockMemoryReaderWithBuffer) Seek(offset int64, whence int) (int64, error) {
+	panic("seeking not implemented in mock")
 }
 
-func (rdr *mockMemoryReaderWithBuffer) Reset() (procIO.MemoryReader, error) {
-	return rdr, nil
+func (rdr *mockMemoryReaderWithBuffer) Close() error {
+	return nil
 }
 
 func TestSegmentScanner(t *testing.T) {
@@ -268,7 +267,7 @@ func TestSegmentScanner(t *testing.T) {
 			Reason: "skipped",
 		})
 
-		match, data, err := sc.ScanSegment(&procIO.MemorySegmentInfo{})
+		match, data, err := sc.ScanSegment(&procio.MemorySegmentInfo{})
 
 		Convey("should yield the appropriate skip error.", func() {
 			So(match, ShouldBeNil)
@@ -305,7 +304,7 @@ func TestSegmentScanner(t *testing.T) {
 			mockedFactory.On("NewMemoryReader", mock.Anything, mock.Anything).Return(nil, expErr)
 
 			sc.rdrFactory = mockedFactory
-			match, data, err := sc.ScanSegment(&procIO.MemorySegmentInfo{})
+			match, data, err := sc.ScanSegment(&procio.MemorySegmentInfo{})
 
 			Convey("should yield the underlying error.", func() {
 				So(match, ShouldBeNil)
@@ -329,7 +328,7 @@ func TestSegmentScanner(t *testing.T) {
 				Return(mockRdr, nil)
 
 			sc.rdrFactory = mockedFactory
-			match, data, err := sc.ScanSegment(&procIO.MemorySegmentInfo{})
+			match, data, err := sc.ScanSegment(&procio.MemorySegmentInfo{})
 
 			Convey("should yield the error.", func() {
 				So(match, ShouldBeNil)
@@ -357,7 +356,7 @@ func TestSegmentScanner(t *testing.T) {
 			mockedMemoryScanner.On("ScanMem", memoryData).Return(expMatches, expErr).Once()
 
 			sc.rdrFactory = mockedFactory
-			match, data, err := sc.ScanSegment(&procIO.MemorySegmentInfo{})
+			match, data, err := sc.ScanSegment(&procio.MemorySegmentInfo{})
 
 			Convey("should yield the expected data.", func() {
 				So(match, ShouldResemble, expMatches)

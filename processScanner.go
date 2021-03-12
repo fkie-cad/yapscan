@@ -4,24 +4,23 @@ import (
 	"io/ioutil"
 	"os"
 
+	"github.com/fkie-cad/yapscan/procio"
 	"github.com/hillu/go-yara/v4"
 
 	"github.com/sirupsen/logrus"
-
-	"github.com/fkie-cad/yapscan/procIO"
 
 	"github.com/targodan/go-errors"
 )
 
 type segmentScanner interface {
-	ScanSegment(seg *procIO.MemorySegmentInfo) ([]yara.MatchRule, []byte, error)
+	ScanSegment(seg *procio.MemorySegmentInfo) ([]yara.MatchRule, []byte, error)
 }
 
 // ProcessScanner implements scanning of memory segments, allocated by a process.
 // This scanning is done using an underlying MemoryScanner on segments, matching
 // a MemorySegmentFilter.
 type ProcessScanner struct {
-	proc    procIO.Process
+	proc    procio.Process
 	scanner segmentScanner
 }
 
@@ -32,35 +31,35 @@ type MemoryScanner interface {
 }
 
 type process interface {
-	procIO.Process
+	procio.Process
 }
 
 type memoryReader interface {
-	procIO.MemoryReader
+	procio.MemoryReader
 }
 
 type memoryReaderFactory interface {
-	procIO.MemoryReaderFactory
+	procio.MemoryReaderFactory
 }
 
 type defaultSegmentScanner struct {
-	proc       procIO.Process
+	proc       procio.Process
 	filter     MemorySegmentFilter
 	scanner    MemoryScanner
-	rdrFactory procIO.MemoryReaderFactory
+	rdrFactory procio.MemoryReaderFactory
 }
 
-// NewProcessScanner create a new ProcessScanner with for the given procIO.Process.
+// NewProcessScanner create a new ProcessScanner with for the given procio.Process.
 // It uses the given MemoryScanner in order to scan memory segments of the process,
 // which match the given MemoryScanner.
-func NewProcessScanner(proc procIO.Process, filter MemorySegmentFilter, scanner MemoryScanner) *ProcessScanner {
+func NewProcessScanner(proc procio.Process, filter MemorySegmentFilter, scanner MemoryScanner) *ProcessScanner {
 	return &ProcessScanner{
 		proc: proc,
 		scanner: &defaultSegmentScanner{
 			proc:       proc,
 			filter:     filter,
 			scanner:    scanner,
-			rdrFactory: &procIO.DefaultMemoryReaderFactory{},
+			rdrFactory: &procio.DefaultMemoryReaderFactory{},
 		},
 	}
 }
@@ -72,9 +71,9 @@ var ErrSkipped = errors.New("skipped")
 // MemoryScanProgress contains all information, generated during scanning.
 type MemoryScanProgress struct {
 	// Process contains information about the process being scanned.
-	Process procIO.Process
+	Process procio.Process
 	// MemorySegment contains information about the specific memory segment which was just scanned.
-	MemorySegment *procIO.MemorySegmentInfo
+	MemorySegment *procio.MemorySegmentInfo
 	// Dump contains the raw contents of the memory segment.
 	Dump []byte
 	// Matches contains the yara.MatchRule results.
@@ -83,7 +82,7 @@ type MemoryScanProgress struct {
 	Error error
 }
 
-func (s *ProcessScanner) handleSegment(progress chan<- *MemoryScanProgress, segment *procIO.MemorySegmentInfo) bool {
+func (s *ProcessScanner) handleSegment(progress chan<- *MemoryScanProgress, segment *procio.MemorySegmentInfo) bool {
 	if len(segment.SubSegments) == 0 {
 		// Only scan leaf segments
 		matches, data, err := s.scanner.ScanSegment(segment)
@@ -136,7 +135,7 @@ func (s *ProcessScanner) Scan() (<-chan *MemoryScanProgress, error) {
 	return progress, nil
 }
 
-func (s *defaultSegmentScanner) ScanSegment(seg *procIO.MemorySegmentInfo) ([]yara.MatchRule, []byte, error) {
+func (s *defaultSegmentScanner) ScanSegment(seg *procio.MemorySegmentInfo) ([]yara.MatchRule, []byte, error) {
 	match := s.filter.Filter(seg)
 	if !match.Result {
 		logrus.WithFields(logrus.Fields{

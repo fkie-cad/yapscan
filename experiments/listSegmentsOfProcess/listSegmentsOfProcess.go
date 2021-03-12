@@ -5,9 +5,8 @@ import (
 	"os"
 	"strconv"
 
-	"github.com/fkie-cad/yapscan/procIO"
-
 	"github.com/dustin/go-humanize"
+	"github.com/fkie-cad/yapscan/procio"
 )
 
 func main() {
@@ -27,7 +26,7 @@ func main() {
 	}
 
 	fmt.Printf("Reading segments from process %d...\n", pid)
-	proc, err := procIO.OpenProcess(pid)
+	proc, err := procio.OpenProcess(pid)
 	if err != nil {
 		panic(err)
 	}

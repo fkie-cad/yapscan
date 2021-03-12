@@ -8,8 +8,7 @@ import (
 	"path"
 	"strconv"
 
-	"github.com/fkie-cad/yapscan/procIO"
-
+	"github.com/fkie-cad/yapscan/procio"
 	"github.com/targodan/go-errors"
 	"github.com/urfave/cli/v2"
 )
@@ -51,7 +50,7 @@ func dumpMemory(c *cli.Context) error {
 		}
 	}
 
-	proc, err := procIO.OpenProcess(pid)
+	proc, err := procio.OpenProcess(pid)
 	if err != nil {
 		return errors.Newf("could not open process %d, reason: %w", pid, err)
 	}
@@ -61,7 +60,7 @@ func dumpMemory(c *cli.Context) error {
 		return errors.Newf("could not retrieve memory segments of process %d, reason: %w", pid, err)
 	}
 	// Unpack segments
-	segments := make([]*procIO.MemorySegmentInfo, 0, len(baseSegments))
+	segments := make([]*procio.MemorySegmentInfo, 0, len(baseSegments))
 	for _, seg := range baseSegments {
 		if seg.SubSegments == nil || len(seg.SubSegments) == 0 {
 			segments = append(segments, seg)
@@ -83,7 +82,7 @@ func dumpMemory(c *cli.Context) error {
 			continue
 		}
 		if found {
-			rdr, err := procIO.NewMemoryReader(proc, seg)
+			rdr, err := procio.NewMemoryReader(proc, seg)
 			if err != nil {
 				fmt.Println(errors.Newf("could not read memory of process %d at address 0x%016X, reason %w", pid, seg.BaseAddress, err))
 				continue

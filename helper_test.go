@@ -98,7 +98,7 @@ func TestFormatSlice(t *testing.T) {
 
 	Convey("Formatting a slice of ints", t, func() {
 		ints := []int{42, 666, 1337}
-		Convey("with no additional agruments", func() {
+		Convey("with no additional arguments", func() {
 			Convey("should yield correctly formatted strings.", func() {
 				So(FormatSlice("int: %d", ints), ShouldResemble, []string{
 					"int: 42", "int: 666", "int: 1337",

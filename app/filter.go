@@ -1,12 +1,13 @@
 package app
 
 import (
+	"fmt"
 	"regexp"
 	"strconv"
 	"strings"
 
 	"github.com/fkie-cad/yapscan"
-	"github.com/fkie-cad/yapscan/procIO"
+	"github.com/fkie-cad/yapscan/procio"
 	"github.com/fkie-cad/yapscan/system"
 
 	"github.com/sirupsen/logrus"
@@ -21,9 +22,9 @@ func BuildFilterPermissions(fStr string) (yapscan.MemorySegmentFilter, error) {
 		return nil, nil
 	}
 
-	perm, err := procIO.ParsePermissions(fStr)
+	perm, err := procio.ParsePermissions(fStr)
 	if err != nil {
-		return nil, errors.Errorf("could not parse permissions \"%s\", reason: %w", fStr, err)
+		return nil, fmt.Errorf("could not parse permissions \"%s\", reason: %w", fStr, err)
 	}
 
 	return yapscan.NewPermissionsFilter(perm), nil
@@ -36,11 +37,11 @@ func BuildFilterPermissionsExact(fStr []string) (yapscan.MemorySegmentFilter, er
 		return nil, nil
 	}
 
-	perms := make([]procIO.Permissions, len(fStr))
+	perms := make([]procio.Permissions, len(fStr))
 	for i, s := range fStr {
-		perms[i], err = procIO.ParsePermissions(s)
+		perms[i], err = procio.ParsePermissions(s)
 		if err != nil {
-			return nil, errors.Errorf("could not parse permissions \"%s\", reason: %w", s, err)
+			return nil, fmt.Errorf("could not parse permissions \"%s\", reason: %w", s, err)
 		}
 	}
 
@@ -54,14 +55,14 @@ func BuildFilterType(fStr []string) (yapscan.MemorySegmentFilter, error) {
 		return nil, nil
 	}
 
-	types := make([]procIO.Type, len(fStr))
+	types := make([]procio.Type, len(fStr))
 	for i, s := range fStr {
 		if s == "" {
 			continue
 		}
-		types[i], err = procIO.ParseType(strings.ToUpper(s[0:1]) + strings.ToLower(s[1:]))
+		types[i], err = procio.ParseType(strings.ToUpper(s[0:1]) + strings.ToLower(s[1:]))
 		if err != nil {
-			return nil, errors.Errorf("could not parse type \"%s\", reason: %w", s, err)
+			return nil, fmt.Errorf("could not parse type \"%s\", reason: %w", s, err)
 		}
 	}
 
@@ -75,14 +76,14 @@ func BuildFilterState(fStr []string) (yapscan.MemorySegmentFilter, error) {
 		return nil, nil
 	}
 
-	states := make([]procIO.State, len(fStr))
+	states := make([]procio.State, len(fStr))
 	for i, s := range fStr {
 		if s == "" {
 			continue
 		}
-		states[i], err = procIO.ParseState(strings.ToUpper(s[0:1]) + strings.ToLower(s[1:]))
+		states[i], err = procio.ParseState(strings.ToUpper(s[0:1]) + strings.ToLower(s[1:]))
 		if err != nil {
-			return nil, errors.Errorf("could not parse state \"%s\", reason: %w", s, err)
+			return nil, fmt.Errorf("could not parse state \"%s\", reason: %w", s, err)
 		}
 	}
 
@@ -96,7 +97,7 @@ func BuildFilterSizeMin(fStr string) (yapscan.MemorySegmentFilter, error) {
 
 	size, err := ParseSizeArgument(fStr)
 	if err != nil {
-		return nil, errors.Errorf("could not parse size \"%s\", reason: %w", fStr, err)
+		return nil, fmt.Errorf("could not parse size \"%s\", reason: %w", fStr, err)
 	}
 
 	logrus.Infof("Filtering for minimum size %s", humanize.Bytes(uint64(size)))
@@ -111,7 +112,7 @@ func BuildFilterSizeMax(fStr string) (yapscan.MemorySegmentFilter, error) {
 
 	size, err := ParseSizeArgument(fStr)
 	if err != nil {
-		return nil, errors.Errorf("could not parse size \"%s\", reason: %w", fStr, err)
+		return nil, fmt.Errorf("could not parse size \"%s\", reason: %w", fStr, err)
 	}
 
 	logrus.Infof("Filtering for maximum size %s", humanize.Bytes(uint64(size)))
@@ -149,16 +150,16 @@ func ParseRelativeSize(s string) (uintptr, error) {
 	case "t":
 		fallthrough
 	case "total":
-		max, err = system.GetTotalRAM()
+		max, err = system.TotalRAM()
 		if err != nil {
-			err = errors.Errorf("could not get total RAM, reason: %w", err)
+			err = fmt.Errorf("could not get total RAM, reason: %w", err)
 		}
 	case "f":
 		fallthrough
 	case "free":
-		max, err = system.GetFreeRAM()
+		max, err = system.FreeRAM()
 		if err != nil {
-			err = errors.Errorf("could not get free RAM, reason: %w", err)
+			err = fmt.Errorf("could not get free RAM, reason: %w", err)
 		}
 	default:
 		err = errors.Newf("unknown relative definition \"%s\", must be \"[t]otal\" or \"[f]ree\"", relToWhat)

@@ -10,7 +10,6 @@ import (
 	"github.com/fkie-cad/yapscan/output"
 
 	"github.com/sirupsen/logrus"
-	"github.com/targodan/go-errors"
 	"github.com/urfave/cli/v2"
 )
 
@@ -41,7 +40,7 @@ func initAppAction(c *cli.Context) error {
 	default:
 		logfile, err := os.OpenFile(c.String("log-path"), os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0666)
 		if err != nil {
-			return errors.Errorf("could not open logfile for writing, reason: %w", err)
+			return fmt.Errorf("could not open logfile for writing, reason: %w", err)
 		}
 		logrus.SetOutput(logfile)
 		logrus.RegisterExitHandler(func() {
@@ -60,32 +59,32 @@ func filterFromArgs(c *cli.Context) (yapscan.MemorySegmentFilter, error) {
 
 	filters[i], err = BuildFilterPermissions(c.String("filter-permissions"))
 	if err != nil {
-		return nil, errors.Errorf("invalid flag \"--filter-permissions\", reason: %w", err)
+		return nil, fmt.Errorf("invalid flag \"--filter-permissions\", reason: %w", err)
 	}
 	i += 1
 	filters[i], err = BuildFilterPermissionsExact(c.StringSlice("filter-permissions-exact"))
 	if err != nil {
-		return nil, errors.Errorf("invalid flag \"--filter-permissions-exact\", reason: %w", err)
+		return nil, fmt.Errorf("invalid flag \"--filter-permissions-exact\", reason: %w", err)
 	}
 	i += 1
 	filters[i], err = BuildFilterType(c.StringSlice("filter-type"))
 	if err != nil {
-		return nil, errors.Errorf("invalid flag \"--filter-type\", reason: %w", err)
+		return nil, fmt.Errorf("invalid flag \"--filter-type\", reason: %w", err)
 	}
 	i += 1
 	filters[i], err = BuildFilterState(c.StringSlice("filter-state"))
 	if err != nil {
-		return nil, errors.Errorf("invalid flag \"--filter-state\", reason: %w", err)
+		return nil, fmt.Errorf("invalid flag \"--filter-state\", reason: %w", err)
 	}
 	i += 1
 	filters[i], err = BuildFilterSizeMax(c.String("filter-size-max"))
 	if err != nil {
-		return nil, errors.Errorf("invalid flag \"--filter-size-max\", reason: %w", err)
+		return nil, fmt.Errorf("invalid flag \"--filter-size-max\", reason: %w", err)
 	}
 	i += 1
 	filters[i], err = BuildFilterSizeMin(c.String("filter-size-min"))
 	if err != nil {
-		return nil, errors.Errorf("invalid flag \"--filter-size-min\", reason: %w", err)
+		return nil, fmt.Errorf("invalid flag \"--filter-size-min\", reason: %w", err)
 	}
 	i += 1
 
@@ -204,7 +203,7 @@ func RunApp(args []string) {
 		Name:        "yapscan",
 		HelpName:    "yapscan",
 		Description: "A yara based scanner for files and process memory with some extras.",
-		Version:     "0.4.0",
+		Version:     "0.5.0",
 		Writer:      os.Stdout,
 		ErrWriter:   os.Stderr,
 		Authors: []*cli.Author{
@@ -410,7 +409,38 @@ func RunApp(args []string) {
 					},
 				},
 			},
+			&cli.Command{
+				Name:    "crash-processe",
+				Aliases: []string{"crash"},
+				Usage:   "crash a processe",
+				Action:  crashProcess,
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:    "method",
+						Aliases: []string{"m"},
+						Usage:   "output errors if any are encountered",
+						Value:   "CreateThreadOnNull",
+					},
+				},
+			},
 		},
+	}
+
+	if runtime.GOOS == "windows" {
+		app.Commands = append(app.Commands,
+			&cli.Command{
+				Name:  "as-service",
+				Usage: "executes yapscan as a windows service",
+				Action: func(c *cli.Context) error {
+					// This is a dummy
+					return cli.Exit("\"as-service\" must be the first argument", 1)
+				},
+			})
+
+		if len(args) >= 2 && args[1] == "as-service" {
+			asService(args)
+			return
+		}
 	}
 
 	err := app.Run(args)

@@ -1,6 +1,7 @@
 //go:generate go-enum -f=$GOFILE --marshal --lower --names
 package arch
 
+// Bitness describes the bitness of an architecture.
 /*
 ENUM(
 Invalid
@@ -16,6 +17,7 @@ var bitnessShortNames = map[Bitness]string{
 	Bitness32Bit:   "32",
 }
 
+// Short returns a short, human readable representation of a Bitness.
 func (b Bitness) Short() string {
 	return bitnessShortNames[b]
 }

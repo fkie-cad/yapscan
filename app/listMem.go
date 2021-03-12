@@ -4,9 +4,8 @@ import (
 	"fmt"
 	"strconv"
 
-	"github.com/fkie-cad/yapscan/procIO"
-
 	"github.com/dustin/go-humanize"
+	"github.com/fkie-cad/yapscan/procio"
 	"github.com/targodan/go-errors"
 	"github.com/urfave/cli/v2"
 )
@@ -31,7 +30,7 @@ func listMemory(c *cli.Context) error {
 		return err
 	}
 
-	proc, err := procIO.OpenProcess(pid)
+	proc, err := procio.OpenProcess(pid)
 	if err != nil {
 		return errors.Newf("could not open process with pid %d, reason: %w", pid, err)
 	}
@@ -48,11 +47,11 @@ func listMemory(c *cli.Context) error {
 
 		format := "%19s %8s %3s %7s %7s %s\n"
 
-		fmt.Printf(format, procIO.FormatMemorySegmentAddress(seg), humanize.Bytes(uint64(seg.Size)), seg.CurrentPermissions, seg.Type, seg.State, seg.FilePath)
+		fmt.Printf(format, procio.FormatMemorySegmentAddress(seg), humanize.Bytes(uint64(seg.Size)), seg.CurrentPermissions, seg.Type, seg.State, seg.FilePath)
 
 		if c.Bool("list-subdivided") {
 			for i, sseg := range seg.SubSegments {
-				addr := procIO.FormatMemorySegmentAddress(sseg)
+				addr := procio.FormatMemorySegmentAddress(sseg)
 				if i+1 < len(seg.SubSegments) {
 					addr = "├" + addr
 				} else {

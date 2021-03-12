@@ -7,21 +7,25 @@ import (
 	"strings"
 	"text/template"
 
-	"github.com/fkie-cad/yapscan/procIO"
-
 	"github.com/dustin/go-humanize"
+	"github.com/fkie-cad/yapscan/procio"
 )
 
+// FilterMatch contains information about the matching of a MemorySegmentFilter.
 type FilterMatch struct {
 	Result bool
-	MSI    *procIO.MemorySegmentInfo
+	MSI    *procio.MemorySegmentInfo
 	Reason string // Reason for filter mismatch, if Result is false
 }
 
-type MemorySegmentFilterFunc func(info *procIO.MemorySegmentInfo) bool
+// MemorySegmentFilterFunc is a callback, used to filter *procio.MemorySegmentInfo
+// instances.
+type MemorySegmentFilterFunc func(info *procio.MemorySegmentInfo) bool
 
+// MemorySegmentFilter describes an interface, capable of filtering
+// *procio.MemorySegmentInfo instances.
 type MemorySegmentFilter interface {
-	Filter(info *procIO.MemorySegmentInfo) *FilterMatch
+	Filter(info *procio.MemorySegmentInfo) *FilterMatch
 }
 
 type baseFilter struct {
@@ -30,7 +34,7 @@ type baseFilter struct {
 	reasonTemplate string
 }
 
-func (f *baseFilter) renderReason(info *procIO.MemorySegmentInfo) string {
+func (f *baseFilter) renderReason(info *procio.MemorySegmentInfo) string {
 	t := template.New("filterReason")
 
 	t.Funcs(template.FuncMap{
@@ -64,7 +68,7 @@ func (f *baseFilter) renderReason(info *procIO.MemorySegmentInfo) string {
 	buf := &bytes.Buffer{}
 	err = t.Execute(buf, &struct {
 		Filter MemorySegmentFilter
-		MSI    *procIO.MemorySegmentInfo
+		MSI    *procio.MemorySegmentInfo
 	}{
 		Filter: f,
 		MSI:    info,
@@ -77,7 +81,7 @@ func (f *baseFilter) renderReason(info *procIO.MemorySegmentInfo) string {
 	return buf.String()
 }
 
-func (f *baseFilter) Filter(info *procIO.MemorySegmentInfo) *FilterMatch {
+func (f *baseFilter) Filter(info *procio.MemorySegmentInfo) *FilterMatch {
 	var reasonForMismatch string
 
 	matches := f.filter(info)
@@ -92,6 +96,7 @@ func (f *baseFilter) Filter(info *procIO.MemorySegmentInfo) *FilterMatch {
 	}
 }
 
+// NewFilterFromFunc creates a new filter from a given MemorySegmentFilterFunc.
 func NewFilterFromFunc(filter MemorySegmentFilterFunc, parameter interface{}, reasonTemplate string) MemorySegmentFilter {
 	return &baseFilter{
 		filter:         filter,
@@ -100,9 +105,11 @@ func NewFilterFromFunc(filter MemorySegmentFilterFunc, parameter interface{}, re
 	}
 }
 
+// NewMaxSizeFilter creates a new filter, matching *procio.MemorySegmentInfo
+// with the given maximum size.
 func NewMaxSizeFilter(size uintptr) MemorySegmentFilter {
 	return NewFilterFromFunc(
-		func(info *procIO.MemorySegmentInfo) bool {
+		func(info *procio.MemorySegmentInfo) bool {
 			return info.Size <= size
 		},
 		size,
@@ -110,9 +117,11 @@ func NewMaxSizeFilter(size uintptr) MemorySegmentFilter {
 	)
 }
 
+// NewMinSizeFilter creates a new filter, matching *procio.MemorySegmentInfo
+// with the given minimum size.
 func NewMinSizeFilter(size uintptr) MemorySegmentFilter {
 	return NewFilterFromFunc(
-		func(info *procIO.MemorySegmentInfo) bool {
+		func(info *procio.MemorySegmentInfo) bool {
 			return info.Size >= size
 		},
 		size,
@@ -120,9 +129,11 @@ func NewMinSizeFilter(size uintptr) MemorySegmentFilter {
 	)
 }
 
-func NewStateFilter(states []procIO.State) MemorySegmentFilter {
+// NewStateFilter creates a new filter, matching *procio.MemorySegmentInfo
+// with a procio.State equal to one of the given states.
+func NewStateFilter(states []procio.State) MemorySegmentFilter {
 	return NewFilterFromFunc(
-		func(info *procIO.MemorySegmentInfo) bool {
+		func(info *procio.MemorySegmentInfo) bool {
 			for _, s := range states {
 				if info.State == s {
 					return true
@@ -135,9 +146,11 @@ func NewStateFilter(states []procIO.State) MemorySegmentFilter {
 	)
 }
 
-func NewTypeFilter(types []procIO.Type) MemorySegmentFilter {
+// NewTypeFilter creates a new filter, matching *procio.MemorySegmentInfo
+// with a procio.Type equal to one of the given types.
+func NewTypeFilter(types []procio.Type) MemorySegmentFilter {
 	return NewFilterFromFunc(
-		func(info *procIO.MemorySegmentInfo) bool {
+		func(info *procio.MemorySegmentInfo) bool {
 			for _, t := range types {
 				if info.Type == t {
 					return true
@@ -150,9 +163,11 @@ func NewTypeFilter(types []procIO.Type) MemorySegmentFilter {
 	)
 }
 
-func NewPermissionsFilterExact(perms []procIO.Permissions) MemorySegmentFilter {
+// NewPermissionsFilterExact creates a new filter, matching *procio.MemorySegmentInfo
+// with procio.Permissions exactly equal to one of the given perms.
+func NewPermissionsFilterExact(perms []procio.Permissions) MemorySegmentFilter {
 	return NewFilterFromFunc(
-		func(info *procIO.MemorySegmentInfo) bool {
+		func(info *procio.MemorySegmentInfo) bool {
 			for _, p := range perms {
 				if info.CurrentPermissions.EqualTo(p) {
 					return true
@@ -165,9 +180,11 @@ func NewPermissionsFilterExact(perms []procIO.Permissions) MemorySegmentFilter {
 	)
 }
 
-func NewPermissionsFilter(perm procIO.Permissions) MemorySegmentFilter {
+// NewPermissionsFilter creates a new filter, matching *procio.MemorySegmentInfo
+// with procio.Permissions equal to or more permissive than the given perm.
+func NewPermissionsFilter(perm procio.Permissions) MemorySegmentFilter {
 	return NewFilterFromFunc(
-		func(info *procIO.MemorySegmentInfo) bool {
+		func(info *procio.MemorySegmentInfo) bool {
 			return info.CurrentPermissions.IsMoreOrEquallyPermissiveThan(perm)
 		},
 		perm,
@@ -179,13 +196,15 @@ type andFilter struct {
 	filters []MemorySegmentFilter
 }
 
+// NewAndFilter creates a new filter, which is the logical AND-combination
+// of all given MemorySegmentFilter instances.
 func NewAndFilter(filters ...MemorySegmentFilter) MemorySegmentFilter {
 	return &andFilter{
 		filters: filters,
 	}
 }
 
-func (f *andFilter) Filter(info *procIO.MemorySegmentInfo) *FilterMatch {
+func (f *andFilter) Filter(info *procio.MemorySegmentInfo) *FilterMatch {
 	result := &FilterMatch{
 		Result: true,
 		MSI:    info,
