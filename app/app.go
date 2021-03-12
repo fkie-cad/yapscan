@@ -426,6 +426,23 @@ func RunApp(args []string) {
 		},
 	}
 
+	if runtime.GOOS == "windows" {
+		app.Commands = append(app.Commands,
+			&cli.Command{
+				Name:  "as-service",
+				Usage: "executes yapscan as a windows service",
+				Action: func(c *cli.Context) error {
+					// This is a dummy
+					return cli.Exit("\"as-service\" must be the first argument", 1)
+				},
+			})
+
+		if len(args) >= 2 && args[1] == "as-service" {
+			asService(args)
+			return
+		}
+	}
+
 	err := app.Run(args)
 	if err != nil {
 		fmt.Println(err)
