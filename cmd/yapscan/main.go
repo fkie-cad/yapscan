@@ -1,7 +1,6 @@
 package main
 
 import (
-	"errors"
 	"os"
 
 	"github.com/fkie-cad/yapscan/service"
@@ -17,7 +16,7 @@ func svcMain(args []string) error {
 
 func main() {
 	err := service.Initialize(svcMain)
-	if errors.Is(err, &service.NotInServiceModeError{}) {
+	if service.IsNotInServiceModeError(err) {
 		// Not a service, run normally
 		app.RunApp(os.Args)
 	} else if err != nil {

@@ -261,7 +261,7 @@ func (p *processWindows) Crash(m CrashMethod) error {
 		err := customWin32.CreateRemoteThreadMinimal(p.procHandle, 0)
 		if err != nil {
 			if err.(syscall.Errno) == customWin32.ERROR_NOT_ENOUGH_MEMORY {
-				return fmt.Errorf("could not crash process, \"%w\", this may be due to the remote process being too privileged", err)
+				return fmt.Errorf("could not crash process, \"%w\", this may be due to service/non-service mode, note that only services can inject into services and services cannot inject into non-service processes", err)
 			}
 			return fmt.Errorf("could not crash process, %w", err)
 		}

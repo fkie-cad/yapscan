@@ -115,7 +115,7 @@ func SvcMain(dwNumServicesArgs C.DWORD, lpServiceArgVectors **C.char) {
 }
 
 func initializeNative() error {
-	if C.startServiceDispatcher() == C.int(0) {
+	if C.startServiceDispatcher() != C.int(0) {
 		return &NotInServiceModeError{Underlying: syscall.GetLastError()}
 	}
 	return nil

@@ -16,7 +16,7 @@ func (e *NotInServiceModeError) Unwrap() error {
 	return e.Underlying
 }
 
-func (e *NotInServiceModeError) Is(err error) bool {
+func IsNotInServiceModeError(err error) bool {
 	_, ok := err.(*NotInServiceModeError)
 	return ok
 }
