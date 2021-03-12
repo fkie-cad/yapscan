@@ -29,7 +29,7 @@ script:
     - go test -race -coverprofile=coverage.txt -covermode=atomic -v ./...
     - mkdir -p build/ &>/dev/null
     - pushd cmd/yapscan
-    - go build -trimpath -o ../../build/yapscan
+    - go build -trimpath -o ../../cicd/build/yapscan
     - popd
     - pushd cicd/
     - ./crossBuildForWindows.sh
