@@ -106,6 +106,8 @@ func SvcMain(dwNumServicesArgs C.DWORD, lpServiceArgVectors **C.char) {
 	exiter := func(code int) {
 		C.report_stopped()
 	}
+	defer exiter(0)
+
 	cli.OsExiter = exiter
 	logrus.RegisterExitHandler(func() {
 		exiter(-1)
