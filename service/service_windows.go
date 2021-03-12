@@ -1,12 +1,12 @@
-package main
+package service
 
 import (
 	"os"
-
-	"github.com/sirupsen/logrus"
-	"github.com/urfave/cli/v2"
+	"syscall"
 
 	"github.com/fkie-cad/yapscan/app"
+	"github.com/sirupsen/logrus"
+	"github.com/urfave/cli/v2"
 )
 
 // Built using this example: https://docs.microsoft.com/en-us/windows/win32/services/writing-a-servicemain-function
@@ -18,12 +18,12 @@ import (
 // static SERVICE_STATUS_HANDLE   gSvcStatusHandle = NULL;
 // static HANDLE                  ghSvcStopEvent = NULL;
 //
-// extern void __declspec(dllexport) ServiceMain(DWORD dwNumServicesArgs, LPSTR *lpServiceArgVectors);
-// extern void __declspec(dllexport) ServiceCtrlHandler(DWORD dwCtrl);
+// extern void __declspec(dllexport) SvcMain(DWORD dwNumServicesArgs, LPSTR *lpServiceArgVectors);
+// extern void __declspec(dllexport) SvcCtrlHandler(DWORD dwCtrl);
 //
 // static int startServiceDispatcher() {
 //     SERVICE_TABLE_ENTRY serviceTable[] = {
-//	       {SERVICE_NAME, (LPSERVICE_MAIN_FUNCTION)ServiceMain},
+//	       {SERVICE_NAME, (LPSERVICE_MAIN_FUNCTION)SvcMain},
 // 		   {NULL, NULL}
 //     };
 //     if(StartServiceCtrlDispatcher(serviceTable) == FALSE) {
@@ -58,7 +58,7 @@ import (
 // }
 //
 // static int init_status() {
-//     gSvcStatusHandle = RegisterServiceCtrlHandler(SERVICE_NAME, ServiceCtrlHandler);
+//     gSvcStatusHandle = RegisterServiceCtrlHandler(SERVICE_NAME, SvcCtrlHandler);
 //     if(!gSvcStatusHandle) {
 //         return 1;
 //     }
@@ -84,13 +84,13 @@ import (
 // }
 import "C"
 
-//export ServiceCtrlHandler
-func ServiceCtrlHandler(dwCtrl C.DWORD) {
+//export SvcCtrlHandler
+func SvcCtrlHandler(dwCtrl C.DWORD) {
 	// We could handle commands from the service manager, but let's just not...
 }
 
-//export ServiceMain
-func ServiceMain(dwNumServicesArgs C.DWORD, lpServiceArgVectors **C.char) {
+//export SvcMain
+func SvcMain(dwNumServicesArgs C.DWORD, lpServiceArgVectors **C.char) {
 	if C.init_status() != C.int(0) {
 		return
 	}
@@ -114,13 +114,9 @@ func ServiceMain(dwNumServicesArgs C.DWORD, lpServiceArgVectors **C.char) {
 	app.RunApp(args)
 }
 
-func main() {
+func initializeNative() error {
 	if C.startServiceDispatcher() == C.int(0) {
-		// Started as service.
-		// The ServiceMain is called by the service manager, we can just exit.
-		return
-	} else {
-		// Not a service, run normally
-		app.RunApp(os.Args)
+		return &NotInServiceModeError{Underlying: syscall.GetLastError()}
 	}
+	return nil
 }
