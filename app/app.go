@@ -203,7 +203,7 @@ func RunApp(args []string) {
 		Name:        "yapscan",
 		HelpName:    "yapscan",
 		Description: "A yara based scanner for files and process memory with some extras.",
-		Version:     "0.2.0",
+		Version:     "0.5.0",
 		Writer:      os.Stdout,
 		ErrWriter:   os.Stderr,
 		Authors: []*cli.Author{
