@@ -511,7 +511,7 @@ func (r *AnalysisReporter) ReportSystemInfo() error {
 
 	info, err := system.GetInfo()
 	if err != nil {
-		return err
+		logrus.WithError(err).Warn("Could not determine complete system info.")
 	}
 	err = json.NewEncoder(r.SystemInfoOut).Encode(info)
 	if err != nil {

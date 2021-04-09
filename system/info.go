@@ -5,6 +5,8 @@ import (
 	"net"
 	"os"
 
+	"github.com/targodan/go-errors"
+
 	"github.com/fkie-cad/yapscan/arch"
 )
 
@@ -24,27 +26,28 @@ var info *Info
 func GetInfo() (*Info, error) {
 	if info == nil {
 		var err error
+		var tmpErr error
 
 		info = new(Info)
 		info.OSArch = arch.Native()
-		info.OSName, info.OSVersion, info.OSFlavour, err = getOSInfo()
-		if err != nil {
-			err = fmt.Errorf("could not determine OS info, reason: %w", err)
-			return info, err
+		info.OSName, info.OSVersion, info.OSFlavour, tmpErr = getOSInfo()
+		if tmpErr != nil {
+			info.OSName, info.OSVersion, info.OSFlavour = "UNKNOWN", "UNKNOWN", "UNKNOWN"
+			err = errors.NewMultiError(err, fmt.Errorf("could not determine OS info, reason: %w", tmpErr))
 		}
-		info.Hostname, err = os.Hostname()
-		if err != nil {
-			err = fmt.Errorf("could not determine hostname, reason: %w", err)
-			return info, err
+		info.Hostname, tmpErr = os.Hostname()
+		if tmpErr != nil {
+			err = errors.NewMultiError(err, fmt.Errorf("could not determine hostname, reason: %w", tmpErr))
 		}
-		addrs, err := net.InterfaceAddrs()
-		if err != nil {
-			err = fmt.Errorf("could not determine IPs, reason: %w", err)
-			return info, err
-		}
-		info.IPs = make([]string, len(addrs))
-		for i := range addrs {
-			info.IPs[i] = addrs[i].String()
+		addrs, tmpErr := net.InterfaceAddrs()
+		if tmpErr != nil {
+			err = errors.NewMultiError(err, fmt.Errorf("could not determine IPs, reason: %w", tmpErr))
+			info.IPs = []string{"UNKNOWN"}
+		} else {
+			info.IPs = make([]string, len(addrs))
+			for i := range addrs {
+				info.IPs[i] = addrs[i].String()
+			}
 		}
 	}
 	return info, nil
