@@ -89,10 +89,6 @@ func scan(c *cli.Context) error {
 		paths = append(paths, drives...)
 	}
 
-	var archiverCtx context.Context
-	var archiverDone chan interface{}
-	var reportCloser func()
-
 	reporter := output.NewProgressReporter(os.Stdout, output.NewPrettyFormatter())
 	if c.Bool("full-report") || c.Bool("store-dumps") {
 		tmpDir := path.Join(os.TempDir(), "yapscan")
@@ -100,10 +96,10 @@ func scan(c *cli.Context) error {
 		logrus.Debug("Full report temp dir: ", tmpDir)
 
 		analRep := output.NewInMemoryAnalysisReporter()
+		analRep.WithOutputDecorator(output.ZSTDCompressionDecorator())
 		if c.String("password") != "" {
 			analRep.WithOutputDecorator(output.PGPSymmetricEncryptionDecorator(c.String("password")))
 		}
-		analRep.WithOutputDecorator(output.ZSTDCompressionDecorator())
 
 		hostname, err := os.Hostname()
 		if err != nil {
@@ -114,7 +110,7 @@ func scan(c *cli.Context) error {
 			hostname = hex.EncodeToString(h.Sum(nil))
 		}
 
-		archivePath := fmt.Sprintf("%s_%s.tar", hostname, time.Now().Format("2006-01-02_15-04-05"))
+		archivePath := fmt.Sprintf("%s_%s.tar", hostname, time.Now().UTC().Format("2006-01-02_15-04-05"))
 		tar, err := os.OpenFile(archivePath, os.O_CREATE|os.O_RDWR, 0600)
 		if err != nil {
 			return fmt.Errorf("could not create output archive, reason: %w", err)
@@ -123,23 +119,20 @@ func scan(c *cli.Context) error {
 		if err != nil {
 			return fmt.Errorf("could not initialize output archiver, reason: %w", err)
 		}
-		defer analRep.Close()
-		defer archiver.Close()
 
-		// This needs to be called manually because otherwise the archiver.Wait will never resolve
-		reportCloser = func() {
-			err := analRep.Close()
-			if err != nil {
-				logrus.WithError(err).Warn("Closing report errored.")
-			}
-		}
-
-		archiverCtx = context.Background()
-		archiverDone = make(chan interface{})
+		archiverCtx := context.Background()
+		archiverDone := make(chan interface{})
+		defer func() {
+			<-archiverDone
+		}()
 		go func() {
 			err = archiver.Wait(archiverCtx)
 			if err != nil {
-				logrus.WithError(err).Warn("There have been errors during archiving.")
+				logrus.WithError(err).Error("There have been errors during archiving.")
+			}
+			err = archiver.Close()
+			if err != nil {
+				logrus.WithError(err).Error("Could not finalize archive.")
 			}
 			archiverDone <- nil
 		}()
@@ -293,12 +286,6 @@ func scan(c *cli.Context) error {
 		if err != nil {
 			logrus.WithError(err).Error("an error occurred during progress report, there may be no other output")
 		}
-	}
-
-	// Wait for archiver if necessary
-	if reportCloser != nil {
-		reportCloser()
-		<-archiverDone
 	}
 
 	return nil

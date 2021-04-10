@@ -44,7 +44,7 @@ func (r *AnalysisReporter) WithArchiver(archiver Archiver, filePrefix string) (*
 	}
 
 	archiveContents[1], err = NewAutoArchivedFromDecorated(
-		filePrefix+RulesFileName+suggestedFileExtension(r.SystemInfoOut),
+		filePrefix+RulesFileName+suggestedFileExtension(r.RulesOut),
 		r.RulesOut)
 	r.RulesOut = archiveContents[1]
 	if err != nil {
@@ -52,7 +52,7 @@ func (r *AnalysisReporter) WithArchiver(archiver Archiver, filePrefix string) (*
 	}
 
 	archiveContents[2], err = NewAutoArchivedFromDecorated(
-		filePrefix+SystemInfoFileName+suggestedFileExtension(r.ProcessInfoOut),
+		filePrefix+ProcessFileName+suggestedFileExtension(r.ProcessInfoOut),
 		r.ProcessInfoOut)
 	r.ProcessInfoOut = archiveContents[2]
 	if err != nil {
@@ -60,7 +60,7 @@ func (r *AnalysisReporter) WithArchiver(archiver Archiver, filePrefix string) (*
 	}
 
 	archiveContents[3], err = NewAutoArchivedFromDecorated(
-		filePrefix+SystemInfoFileName+suggestedFileExtension(r.MemoryScanProgressOut),
+		filePrefix+MemoryProgressFileName+suggestedFileExtension(r.MemoryScanProgressOut),
 		r.MemoryScanProgressOut)
 	r.MemoryScanProgressOut = archiveContents[3]
 	if err != nil {
@@ -68,7 +68,7 @@ func (r *AnalysisReporter) WithArchiver(archiver Archiver, filePrefix string) (*
 	}
 
 	archiveContents[4], err = NewAutoArchivedFromDecorated(
-		filePrefix+SystemInfoFileName+suggestedFileExtension(r.FSScanProgressOut),
+		filePrefix+FSProgressFileName+suggestedFileExtension(r.FSScanProgressOut),
 		r.FSScanProgressOut)
 	r.FSScanProgressOut = archiveContents[4]
 	if err != nil {

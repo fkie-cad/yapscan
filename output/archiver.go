@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"context"
 	"fmt"
+	"github.com/sirupsen/logrus"
 	"github.com/yeka/zip"
 	"io"
 	"os"
@@ -42,6 +43,10 @@ func (b *baseAutoArchived) Write(p []byte) (n int, err error) {
 }
 
 func (b *baseAutoArchived) notifyAndClose(notify AutoArchivingWriter) error {
+	if b.writer == nil {
+		return nil
+	}
+
 	err := b.writer.Close()
 	if err != nil {
 		b.notify <- nil
@@ -80,7 +85,6 @@ func NewAutoArchivedBuffer(name string, buffer *bytes.Buffer) AutoArchivingWrite
 
 func (b *autoArchivedBuffer) Reader() (io.ReadCloser, error) {
 	rdr := io.NopCloser(b.buffer)
-	b.baseAutoArchived.writer = nil
 	b.size = int64(b.buffer.Len())
 	b.buffer = nil
 	return rdr, nil
@@ -159,6 +163,7 @@ func (a *AutoArchiver) Wait(ctx context.Context) error {
 	for archivingDone := 0; archivingDone < len(a.contents); archivingDone++ {
 		select {
 		case completedWriter := <-a.notifyChan:
+			logrus.Tracef("ARCHIVER GOT ONE: %v", completedWriter)
 			if completedWriter == nil {
 				// Something went wrong with closing, error is handled elsewhere
 				continue

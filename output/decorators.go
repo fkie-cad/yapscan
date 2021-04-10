@@ -2,13 +2,14 @@ package output
 
 import (
 	"bytes"
+	"github.com/targodan/go-errors"
 	"golang.org/x/crypto/openpgp"
 	"io"
 	"os"
 )
 
 type decoratedWriteCloser struct {
-	writer io.Writer
+	writer io.WriteCloser
 	base   io.Closer
 	meta   map[string]interface{}
 }
@@ -18,7 +19,8 @@ func (w *decoratedWriteCloser) Write(p []byte) (n int, err error) {
 }
 
 func (w *decoratedWriteCloser) Close() error {
-	return w.base.Close()
+	err := w.writer.Close()
+	return errors.NewMultiError(err, w.base.Close())
 }
 
 func (w *decoratedWriteCloser) GetMeta(key string) interface{} {
@@ -78,17 +80,18 @@ func ZSTDCompressionDecorator() OutputDecorator {
 }
 
 func unwrapDecorated(v interface{}) interface{} {
+	nopWC, ok := v.(*nopWriteCloser)
+	if ok {
+		return unwrapDecorated(nopWC.w)
+	}
+
 	decorated, ok := v.(*decoratedWriteCloser)
 	if !ok {
 		return v
 	}
 	base := decorated.Unwrap()
 
-	nopWC, ok := base.(*nopWriteCloser)
-	if ok {
-		return unwrapDecorated(nopWC.w)
-	}
-	return base
+	return unwrapDecorated(base)
 }
 
 func NewAutoArchivedFromDecorated(name string, decorated io.WriteCloser) (AutoArchivingWriter, error) {
