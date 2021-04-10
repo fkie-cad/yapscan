@@ -3,6 +3,7 @@ package output
 import (
 	"archive/tar"
 	"bytes"
+	"context"
 	"fmt"
 	"github.com/yeka/zip"
 	"io"
@@ -63,10 +64,10 @@ func (b *baseAutoArchived) SetNotifyChannel(c chan<- AutoArchivingWriter) {
 type autoArchivedBuffer struct {
 	baseAutoArchived
 	buffer *bytes.Buffer
+	size   int64
 }
 
-func NewAutoArchivedBuffer(name string) io.WriteCloser {
-	buffer := &bytes.Buffer{}
+func NewAutoArchivedBuffer(name string, buffer *bytes.Buffer) AutoArchivingWriter {
 	return &autoArchivedBuffer{
 		baseAutoArchived: baseAutoArchived{
 			writer: &nopWriteCloser{buffer},
@@ -79,12 +80,14 @@ func NewAutoArchivedBuffer(name string) io.WriteCloser {
 
 func (b *autoArchivedBuffer) Reader() (io.ReadCloser, error) {
 	rdr := io.NopCloser(b.buffer)
+	b.baseAutoArchived.writer = nil
+	b.size = int64(b.buffer.Len())
 	b.buffer = nil
 	return rdr, nil
 }
 
 func (b *autoArchivedBuffer) Size() (int64, error) {
-	return int64(b.buffer.Len()), nil
+	return b.size, nil
 }
 
 func (b *autoArchivedBuffer) Close() error {
@@ -96,7 +99,7 @@ type autoArchivedFile struct {
 	file *os.File
 }
 
-func NewAutoArchivedFile(file *os.File, inZipName string) (io.WriteCloser, error) {
+func NewAutoArchivedFile(inZipName string, file *os.File) (AutoArchivingWriter, error) {
 	return &autoArchivedFile{
 		baseAutoArchived: baseAutoArchived{
 			writer: file,
@@ -151,7 +154,7 @@ func NewAutoArchiver(archiver Archiver, contents ...AutoArchivingWriter) *AutoAr
 	}
 }
 
-func (a *AutoArchiver) Wait() error {
+func (a *AutoArchiver) Wait(ctx context.Context) error {
 	var err error
 	for archivingDone := 0; archivingDone < len(a.contents); archivingDone++ {
 		select {
@@ -166,7 +169,8 @@ func (a *AutoArchiver) Wait() error {
 				err = errors.NewMultiError(err, tmpErr)
 			}
 
-			// TODO: Probably want a context here as well
+		case <-ctx.Done():
+			return err
 		}
 	}
 	return err
@@ -176,27 +180,17 @@ func (a *AutoArchiver) Close() error {
 	return a.archiver.Close()
 }
 
-type nopWriteCloser struct {
-	w io.Writer
-}
-
-func (w *nopWriteCloser) Write(p []byte) (n int, err error) {
-	return w.w.Write(p)
-}
-
-func (w *nopWriteCloser) Close() error {
-	return nil
-}
-
 type zipArchiver struct {
-	zipWriter *zip.Writer
-	outCloser io.Closer
+	zipWriter         *zip.Writer
+	outCloser         io.Closer
+	compressionMethod uint16
 }
 
-func NewZipArchiver(out io.WriteCloser) Archiver {
+func NewZipArchiver(out io.WriteCloser, compressionMethod uint16) Archiver {
 	return &zipArchiver{
-		zipWriter: zip.NewWriter(out),
-		outCloser: out,
+		zipWriter:         zip.NewWriter(out),
+		outCloser:         out,
+		compressionMethod: compressionMethod,
 	}
 }
 
@@ -207,7 +201,10 @@ func (z *zipArchiver) Archive(completed AutoArchivingWriter) error {
 	}
 	defer rdr.Close()
 
-	w, err := z.zipWriter.Create(completed.Name())
+	w, err := z.zipWriter.CreateHeader(&zip.FileHeader{
+		Name:   completed.Name(),
+		Method: z.compressionMethod,
+	})
 	if err != nil {
 		return err
 	}
@@ -248,6 +245,11 @@ func (t *tarArchiver) ensureDirectoryExists(path string) error {
 	}
 
 	paths := strings.Split(path, "/")
+	// Last element is filename, don't create that
+	if len(paths) == 1 {
+		return nil
+	}
+	paths = paths[0 : len(paths)-1]
 	return t.ensureDirectoryExistsRecursive(paths[0], paths[1:])
 }
 
@@ -257,6 +259,9 @@ func (t *tarArchiver) ensureDirectoryExistsRecursive(path string, subPaths []str
 		if err != nil {
 			return err
 		}
+	}
+	if len(subPaths) == 0 {
+		return nil
 	}
 	return t.ensureDirectoryExistsRecursive(path+"/"+subPaths[0], subPaths[1:])
 }

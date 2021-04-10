@@ -7,8 +7,6 @@ import (
 	"strings"
 
 	"github.com/fkie-cad/yapscan"
-	"github.com/fkie-cad/yapscan/output"
-
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
 )
@@ -367,8 +365,7 @@ func RunApp(args []string) {
 					},
 					&cli.StringFlag{
 						Name:  "password",
-						Usage: "the password of the encrypted report, ignored unless --store-dumps is set",
-						Value: output.DefaultZIPPassword,
+						Usage: "setting this will encrypt the report with the given password; ignored without --full-report",
 					},
 				}, segmentFilterFlags...), suspendFlags...),
 			},

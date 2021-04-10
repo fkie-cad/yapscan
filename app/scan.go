@@ -2,11 +2,15 @@ package app
 
 import (
 	"context"
+	"crypto/md5"
+	"encoding/binary"
+	"encoding/hex"
 	"fmt"
+	"math/rand"
 	"os"
 	"path"
-	"path/filepath"
 	"strconv"
+	"time"
 
 	"github.com/fkie-cad/yapscan"
 	"github.com/fkie-cad/yapscan/fileio"
@@ -85,30 +89,76 @@ func scan(c *cli.Context) error {
 		paths = append(paths, drives...)
 	}
 
+	var archiverCtx context.Context
+	var archiverDone chan interface{}
+	var reportCloser func()
+
 	reporter := output.NewProgressReporter(os.Stdout, output.NewPrettyFormatter())
 	if c.Bool("full-report") || c.Bool("store-dumps") {
 		tmpDir := path.Join(os.TempDir(), "yapscan")
 		fmt.Println("Full report temp dir: ", tmpDir)
 		logrus.Debug("Full report temp dir: ", tmpDir)
-		gatherRep, err := output.NewGatheredAnalysisReporter(tmpDir)
+
+		analRep := output.NewInMemoryAnalysisReporter()
+		if c.String("password") != "" {
+			analRep.WithOutputDecorator(output.PGPSymmetricEncryptionDecorator(c.String("password")))
+		}
+		analRep.WithOutputDecorator(output.ZSTDCompressionDecorator())
+
+		hostname, err := os.Hostname()
 		if err != nil {
-			return fmt.Errorf("could not initialize analysis reporter, reason: %w", err)
+			logrus.WithError(err).Warn("Could not determine hostname.")
+			h := md5.New()
+			binary.Write(h, binary.LittleEndian, rand.Int())
+			binary.Write(h, binary.LittleEndian, rand.Int())
+			hostname = hex.EncodeToString(h.Sum(nil))
 		}
-		gatherRep.ZIP = filepath.Join(c.String("report-dir"), gatherRep.SuggestZIPName())
-		gatherRep.DeleteAfterZipping = !c.Bool("keep")
-		fmt.Printf("Full report will be written to \"%s\".\n", gatherRep.ZIP)
-		if c.Bool("store-dumps") {
-			ds, err := output.NewFileDumpStorage(filepath.Join(gatherRep.Directory(), "dumps"))
+
+		archivePath := fmt.Sprintf("%s_%s.tar", hostname, time.Now().Format("2006-01-02_15-04-05"))
+		tar, err := os.OpenFile(archivePath, os.O_CREATE|os.O_RDWR, 0600)
+		if err != nil {
+			return fmt.Errorf("could not create output archive, reason: %w", err)
+		}
+		archiver, err := analRep.WithArchiver(output.NewTarArchiver(tar), hostname+"/")
+		if err != nil {
+			return fmt.Errorf("could not initialize output archiver, reason: %w", err)
+		}
+		defer analRep.Close()
+		defer archiver.Close()
+
+		// This needs to be called manually because otherwise the archiver.Wait will never resolve
+		reportCloser = func() {
+			err := analRep.Close()
 			if err != nil {
-				return fmt.Errorf("could not initialize dump storage reporter, reason: %w", err)
+				logrus.WithError(err).Warn("Closing report errored.")
 			}
-			gatherRep.WithDumpStorage(ds)
-			gatherRep.ZIPPassword = c.String("password")
 		}
+
+		archiverCtx = context.Background()
+		archiverDone = make(chan interface{})
+		go func() {
+			err = archiver.Wait(archiverCtx)
+			if err != nil {
+				logrus.WithError(err).Warn("There have been errors during archiving.")
+			}
+			archiverDone <- nil
+		}()
+
+		fmt.Printf("Full report will be written to \"%s\".\n", archivePath)
+
+		//gatherRep.DeleteAfterZipping = !c.Bool("keep")
+		//if c.Bool("store-dumps") {
+		//	ds, err := output.NewFileDumpStorage(filepath.Join(gatherRep.Directory(), "dumps"))
+		//	if err != nil {
+		//		return fmt.Errorf("could not initialize dump storage reporter, reason: %w", err)
+		//	}
+		//	gatherRep.WithDumpStorage(ds)
+		//	gatherRep.ZIPPassword = c.String("password")
+		//}
 		reporter = &output.MultiReporter{
 			Reporters: []output.Reporter{
 				reporter,
-				gatherRep,
+				analRep,
 			},
 		}
 	}
@@ -243,6 +293,12 @@ func scan(c *cli.Context) error {
 		if err != nil {
 			logrus.WithError(err).Error("an error occurred during progress report, there may be no other output")
 		}
+	}
+
+	// Wait for archiver if necessary
+	if reportCloser != nil {
+		reportCloser()
+		<-archiverDone
 	}
 
 	return nil
