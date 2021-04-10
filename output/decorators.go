@@ -98,11 +98,11 @@ func NewAutoArchivedFromDecorated(name string, decorated io.WriteCloser) (AutoAr
 	bufferOrFile := unwrapDecorated(decorated)
 	buffer, ok := bufferOrFile.(*bytes.Buffer)
 	if ok {
-		return NewAutoArchivedBuffer(name, buffer), nil
+		return NewAutoArchivedBuffer(name, buffer, decorated), nil
 	}
 	file, ok := bufferOrFile.(*os.File)
 	if ok {
-		return NewAutoArchivedFile(name, file)
+		return NewAutoArchivedFile(name, file, decorated)
 	}
 	panic("could not decorate unexpected type of WriteCloser with AutoArchiving")
 }
@@ -118,8 +118,8 @@ func suggestedFileExtension(v interface{}) string {
 	ext := ""
 
 	extensions := decorated.FindMeta(metaKeySuggestedFileExtension)
-	for i := len(extensions) - 1; i >= 0; i-- {
-		ext += extensions[i].(string)
+	for _, v := range extensions {
+		ext += v.(string)
 	}
 
 	return ext

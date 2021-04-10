@@ -72,10 +72,10 @@ type autoArchivedBuffer struct {
 	size   int64
 }
 
-func NewAutoArchivedBuffer(name string, buffer *bytes.Buffer) AutoArchivingWriter {
+func NewAutoArchivedBuffer(name string, buffer *bytes.Buffer, writer io.WriteCloser) AutoArchivingWriter {
 	return &autoArchivedBuffer{
 		baseAutoArchived: baseAutoArchived{
-			writer: &nopWriteCloser{buffer},
+			writer: writer,
 			name:   name,
 			notify: nil,
 		},
@@ -103,10 +103,10 @@ type autoArchivedFile struct {
 	file *os.File
 }
 
-func NewAutoArchivedFile(inZipName string, file *os.File) (AutoArchivingWriter, error) {
+func NewAutoArchivedFile(inZipName string, file *os.File, writer io.WriteCloser) (AutoArchivingWriter, error) {
 	return &autoArchivedFile{
 		baseAutoArchived: baseAutoArchived{
-			writer: file,
+			writer: writer,
 			name:   inZipName,
 			notify: nil,
 		},

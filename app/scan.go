@@ -96,10 +96,10 @@ func scan(c *cli.Context) error {
 		logrus.Debug("Full report temp dir: ", tmpDir)
 
 		analRep := output.NewInMemoryAnalysisReporter()
-		analRep.WithOutputDecorator(output.ZSTDCompressionDecorator())
 		if c.String("password") != "" {
 			analRep.WithOutputDecorator(output.PGPSymmetricEncryptionDecorator(c.String("password")))
 		}
+		analRep.WithOutputDecorator(output.ZSTDCompressionDecorator())
 
 		hostname, err := os.Hostname()
 		if err != nil {

@@ -31,6 +31,8 @@ type AnalysisReporter struct {
 	seen map[int]bool
 }
 
+// WithArchiver overwrites the writers with AutoArchivedWriters.
+// This should be called after all WithOutputDecorator calls, otherwise behaviour might not be as expected.
 func (r *AnalysisReporter) WithArchiver(archiver Archiver, filePrefix string) (*AutoArchiver, error) {
 	var err error
 	archiveContents := make([]AutoArchivingWriter, 5)
@@ -79,6 +81,10 @@ func (r *AnalysisReporter) WithArchiver(archiver Archiver, filePrefix string) (*
 	return ar, nil
 }
 
+// WithOutputDecorator decorates all writers with the given decorator.
+// The original writers will be used as output for the new writer. Said
+// new writer will take the place of the original ones. This leads to the
+// decorator, which was added last, being the first one executed in the chain.
 func (r *AnalysisReporter) WithOutputDecorator(decorator OutputDecorator) error {
 	var err error
 	r.SystemInfoOut, err = decorator(r.SystemInfoOut)
