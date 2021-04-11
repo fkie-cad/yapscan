@@ -65,10 +65,10 @@ func (b *WriteCloserBuilder) Build(finalOutput io.WriteCloser) (io.WriteCloser, 
 	return out, nil
 }
 
-func PGPEncryptionDecorator(recipient *openpgp.Entity) *OutputDecorator {
+func PGPEncryptionDecorator(recipient *openpgp.Entity, dataIsBinary bool) *OutputDecorator {
 	return &OutputDecorator{
 		decorate: func(out io.WriteCloser) (io.WriteCloser, error) {
-			in, err := NewPGPEncryptor(recipient, out)
+			in, err := NewPGPEncryptor(recipient, dataIsBinary, out)
 			return &cascadingWriteCloser{
 				writer: in,
 				base:   out,
@@ -78,10 +78,10 @@ func PGPEncryptionDecorator(recipient *openpgp.Entity) *OutputDecorator {
 	}
 }
 
-func PGPSymmetricEncryptionDecorator(password string) *OutputDecorator {
+func PGPSymmetricEncryptionDecorator(password string, dataIsBinary bool) *OutputDecorator {
 	return &OutputDecorator{
 		decorate: func(out io.WriteCloser) (io.WriteCloser, error) {
-			in, err := NewPGPSymmetricEncryptor(password, out)
+			in, err := NewPGPSymmetricEncryptor(password, dataIsBinary, out)
 			return &cascadingWriteCloser{
 				writer: in,
 				base:   out,

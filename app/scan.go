@@ -92,7 +92,7 @@ func scan(c *cli.Context) error {
 	if c.Bool("full-report") || c.Bool("store-dumps") {
 		wcBuilder := output.NewWriteCloserBuilder()
 		if c.String("password") != "" {
-			wcBuilder.Append(output.PGPSymmetricEncryptionDecorator(c.String("password")))
+			wcBuilder.Append(output.PGPSymmetricEncryptionDecorator(c.String("password"), true))
 		}
 		wcBuilder.Append(output.ZSTDCompressionDecorator())
 

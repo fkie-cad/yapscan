@@ -23,10 +23,10 @@ func ReadPublicKeyFile(publicKeyFile string) (*openpgp.Entity, error) {
 	return openpgp.ReadEntity(rdr)
 }
 
-func NewPGPEncryptor(recipient *openpgp.Entity, output io.Writer) (io.WriteCloser, error) {
-	return openpgp.Encrypt(output, []*openpgp.Entity{recipient}, nil, nil, pgpConfig)
+func NewPGPEncryptor(recipient *openpgp.Entity, isBinary bool, output io.Writer) (io.WriteCloser, error) {
+	return openpgp.Encrypt(output, []*openpgp.Entity{recipient}, nil, &openpgp.FileHints{IsBinary: isBinary}, pgpConfig)
 }
 
-func NewPGPSymmetricEncryptor(password string, output io.Writer) (io.WriteCloser, error) {
-	return openpgp.SymmetricallyEncrypt(output, []byte(password), nil, pgpConfig)
+func NewPGPSymmetricEncryptor(password string, isBinary bool, output io.Writer) (io.WriteCloser, error) {
+	return openpgp.SymmetricallyEncrypt(output, []byte(password), &openpgp.FileHints{IsBinary: isBinary}, pgpConfig)
 }
