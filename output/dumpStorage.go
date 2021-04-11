@@ -6,6 +6,7 @@ import (
 	"io"
 	"os"
 	"path"
+	"path/filepath"
 
 	"github.com/fkie-cad/yapscan/procio"
 	"github.com/targodan/go-errors"
@@ -126,4 +127,25 @@ func (s *fileDumpStorage) Retrieve(ctx context.Context) <-chan *DumpOrError {
 	}()
 
 	return c
+}
+
+func isDirEmpty(dir string) (bool, error) {
+	fInfo, err := os.Stat(dir)
+	if err != nil {
+		if os.IsNotExist(err) {
+			os.MkdirAll(dir, 0777)
+			return true, nil
+		}
+		return false, err
+	}
+
+	if !fInfo.IsDir() {
+		return false, errors.New("path is not a directory")
+	}
+
+	contents, err := filepath.Glob(path.Join(dir, "*"))
+	if err != nil {
+		return false, err
+	}
+	return len(contents) == 0, nil
 }

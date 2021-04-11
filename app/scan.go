@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"math/rand"
 	"os"
-	"path"
 	"strconv"
 	"time"
 
@@ -91,15 +90,11 @@ func scan(c *cli.Context) error {
 
 	reporter := output.NewProgressReporter(os.Stdout, output.NewPrettyFormatter())
 	if c.Bool("full-report") || c.Bool("store-dumps") {
-		tmpDir := path.Join(os.TempDir(), "yapscan")
-		fmt.Println("Full report temp dir: ", tmpDir)
-		logrus.Debug("Full report temp dir: ", tmpDir)
-
-		analRep := output.NewInMemoryAnalysisReporter()
+		wcBuilder := output.NewWriteCloserBuilder()
 		if c.String("password") != "" {
-			analRep.WithOutputDecorator(output.PGPSymmetricEncryptionDecorator(c.String("password")))
+			wcBuilder.Append(output.PGPSymmetricEncryptionDecorator(c.String("password")))
 		}
-		analRep.WithOutputDecorator(output.ZSTDCompressionDecorator())
+		wcBuilder.Append(output.ZSTDCompressionDecorator())
 
 		hostname, err := os.Hostname()
 		if err != nil {
@@ -110,32 +105,24 @@ func scan(c *cli.Context) error {
 			hostname = hex.EncodeToString(h.Sum(nil))
 		}
 
-		archivePath := fmt.Sprintf("%s_%s.tar", hostname, time.Now().UTC().Format("2006-01-02_15-04-05"))
+		archivePath := fmt.Sprintf("%s_%s.tar%s",
+			hostname,
+			time.Now().UTC().Format("2006-01-02_15-04-05"),
+			wcBuilder.SuggestedFileExtension())
 		tar, err := os.OpenFile(archivePath, os.O_CREATE|os.O_RDWR, 0600)
 		if err != nil {
 			return fmt.Errorf("could not create output archive, reason: %w", err)
 		}
-		archiver, err := analRep.WithArchiver(output.NewTarArchiver(tar), hostname+"/")
-		if err != nil {
-			return fmt.Errorf("could not initialize output archiver, reason: %w", err)
-		}
 
-		archiverCtx := context.Background()
-		archiverDone := make(chan interface{})
-		defer func() {
-			<-archiverDone
-		}()
-		go func() {
-			err = archiver.Wait(archiverCtx)
-			if err != nil {
-				logrus.WithError(err).Error("There have been errors during archiving.")
-			}
-			err = archiver.Close()
-			if err != nil {
-				logrus.WithError(err).Error("Could not finalize archive.")
-			}
-			archiverDone <- nil
-		}()
+		decoratedTar, err := wcBuilder.Build(tar)
+		if err != nil {
+			return fmt.Errorf("could not initialize archive, reason: %w", err)
+		}
+		archiver := output.NewTarArchiver(decoratedTar)
+
+		repFac := output.NewAnalysisReporterFactory(archiver).
+			AutoCloseArchiver().
+			WithFilenamePrefix(hostname + "/")
 
 		fmt.Printf("Full report will be written to \"%s\".\n", archivePath)
 
@@ -151,7 +138,7 @@ func scan(c *cli.Context) error {
 		reporter = &output.MultiReporter{
 			Reporters: []output.Reporter{
 				reporter,
-				analRep,
+				repFac.Build(),
 			},
 		}
 	}

@@ -3,14 +3,11 @@ package output
 import (
 	"archive/tar"
 	"bytes"
-	"context"
-	"fmt"
-	"github.com/sirupsen/logrus"
-	"github.com/yeka/zip"
 	"io"
-	"os"
 	"path/filepath"
 	"strings"
+
+	"github.com/yeka/zip"
 
 	"github.com/targodan/go-errors"
 )
@@ -20,212 +17,60 @@ const (
 	tarFileMode = 0666
 )
 
-type AutoArchivingWriter interface {
-	io.WriteCloser
-
-	Name() string
-	Reader() (io.ReadCloser, error)
-	SetNotifyChannel(c chan<- AutoArchivingWriter)
-	Size() (int64, error)
-}
-
-type baseAutoArchived struct {
-	writer io.WriteCloser
-	name   string
-	notify chan<- AutoArchivingWriter
-}
-
-func (b *baseAutoArchived) Write(p []byte) (n int, err error) {
-	if b.writer == nil {
-		panic("buffer was already closed")
-	}
-	return b.writer.Write(p)
-}
-
-func (b *baseAutoArchived) notifyAndClose(notify AutoArchivingWriter) error {
-	if b.writer == nil {
-		return nil
-	}
-
-	err := b.writer.Close()
-	if err != nil {
-		b.notify <- nil
-		return err
-	}
-
-	b.writer = nil
-	b.notify <- notify
-	return nil
-}
-
-func (b *baseAutoArchived) Name() string {
-	return b.name
-}
-
-func (b *baseAutoArchived) SetNotifyChannel(c chan<- AutoArchivingWriter) {
-	b.notify = c
-}
-
-type autoArchivedBuffer struct {
-	baseAutoArchived
-	buffer *bytes.Buffer
-	size   int64
-}
-
-func NewAutoArchivedBuffer(name string, buffer *bytes.Buffer, writer io.WriteCloser) AutoArchivingWriter {
-	return &autoArchivedBuffer{
-		baseAutoArchived: baseAutoArchived{
-			writer: writer,
-			name:   name,
-			notify: nil,
-		},
-		buffer: buffer,
-	}
-}
-
-func (b *autoArchivedBuffer) Reader() (io.ReadCloser, error) {
-	rdr := io.NopCloser(b.buffer)
-	b.size = int64(b.buffer.Len())
-	b.buffer = nil
-	return rdr, nil
-}
-
-func (b *autoArchivedBuffer) Size() (int64, error) {
-	return b.size, nil
-}
-
-func (b *autoArchivedBuffer) Close() error {
-	return b.notifyAndClose(b)
-}
-
-type autoArchivedFile struct {
-	baseAutoArchived
-	file *os.File
-}
-
-func NewAutoArchivedFile(inZipName string, file *os.File, writer io.WriteCloser) (AutoArchivingWriter, error) {
-	return &autoArchivedFile{
-		baseAutoArchived: baseAutoArchived{
-			writer: writer,
-			name:   inZipName,
-			notify: nil,
-		},
-		file: file,
-	}, nil
-}
-
-func (f *autoArchivedFile) Reader() (io.ReadCloser, error) {
-	return os.OpenFile(f.file.Name(), os.O_RDONLY, 0600)
-}
-
-func (f *autoArchivedFile) Size() (int64, error) {
-	stat, err := os.Stat(f.file.Name())
-	if err != nil {
-		return 0, nil
-	}
-	return stat.Size(), nil
-}
-
-func (f *autoArchivedFile) Close() error {
-	f.file.Close()
-	return f.notifyAndClose(f)
-}
-
 type Archiver interface {
+	Create(name string) (io.WriteCloser, error)
 	io.Closer
-	Archive(AutoArchivingWriter) error
-}
-
-type AutoArchiver struct {
-	archiver Archiver
-
-	contents   []AutoArchivingWriter
-	notifyChan <-chan AutoArchivingWriter
-}
-
-func NewAutoArchiver(archiver Archiver, contents ...AutoArchivingWriter) *AutoArchiver {
-	c := make(chan AutoArchivingWriter, len(contents))
-
-	for _, z := range contents {
-		z.SetNotifyChannel(c)
-	}
-
-	return &AutoArchiver{
-		archiver: archiver,
-
-		contents:   contents,
-		notifyChan: c,
-	}
-}
-
-func (a *AutoArchiver) Wait(ctx context.Context) error {
-	var err error
-	for archivingDone := 0; archivingDone < len(a.contents); archivingDone++ {
-		select {
-		case completedWriter := <-a.notifyChan:
-			logrus.Tracef("ARCHIVER GOT ONE: %v", completedWriter)
-			if completedWriter == nil {
-				// Something went wrong with closing, error is handled elsewhere
-				continue
-			}
-
-			tmpErr := a.archiver.Archive(completedWriter)
-			if tmpErr != nil {
-				err = errors.NewMultiError(err, tmpErr)
-			}
-
-		case <-ctx.Done():
-			return err
-		}
-	}
-	return err
-}
-
-func (a *AutoArchiver) Close() error {
-	return a.archiver.Close()
 }
 
 type zipArchiver struct {
 	zipWriter         *zip.Writer
-	outCloser         io.Closer
 	compressionMethod uint16
+	hasOpenWriter     bool
 }
 
-func NewZipArchiver(out io.WriteCloser, compressionMethod uint16) Archiver {
+func NewZipArchiver(out io.Writer, compressionMethod uint16) Archiver {
 	return &zipArchiver{
 		zipWriter:         zip.NewWriter(out),
-		outCloser:         out,
 		compressionMethod: compressionMethod,
 	}
 }
 
-func (z *zipArchiver) Archive(completed AutoArchivingWriter) error {
-	rdr, err := completed.Reader()
-	if err != nil {
-		return err
+func (z *zipArchiver) Create(name string) (io.WriteCloser, error) {
+	if z.hasOpenWriter {
+		return nil, errors.New("cannot create a new entry in archive before last writer was closed")
 	}
-	defer rdr.Close()
 
 	w, err := z.zipWriter.CreateHeader(&zip.FileHeader{
-		Name:   completed.Name(),
+		Name:   name,
 		Method: z.compressionMethod,
 	})
 	if err != nil {
-		return err
+		return nil, err
 	}
-	_, err = io.Copy(w, rdr)
-	return err
+
+	z.hasOpenWriter = true
+
+	return &callbackWriteCloser{
+		writer: w,
+		close: func() error {
+			z.hasOpenWriter = false
+			return nil
+		},
+	}, nil
 }
 
 func (z *zipArchiver) Close() error {
-	err1 := z.zipWriter.Close()
-	err2 := z.outCloser.Close()
-	return errors.NewMultiError(err1, err2)
+	if z.hasOpenWriter {
+		return errors.New("cannot close archiver before all Created writers have been closed")
+	}
+
+	return z.zipWriter.Close()
 }
 
 type tarArchiver struct {
-	tarWriter *tar.Writer
-	outCloser io.Closer
+	tarWriter  *tar.Writer
+	outCloser  io.Closer
+	lastBuffer *bytes.Buffer
 
 	createdDirectories map[string]bool
 }
@@ -283,38 +128,43 @@ func (t *tarArchiver) createDirectory(path string) error {
 	return err
 }
 
-func (t *tarArchiver) Archive(completed AutoArchivingWriter) error {
-	rdr, err := completed.Reader()
-	if err != nil {
-		return err
-	}
-	defer rdr.Close()
-
-	path := filepath.ToSlash(completed.Name())
-
-	err = t.ensureDirectoryExists(path)
-	if err != nil {
-		return err
+func (t *tarArchiver) Create(name string) (io.WriteCloser, error) {
+	if t.lastBuffer != nil {
+		return nil, errors.New("cannot create a new entry in archive before last writer was closed")
 	}
 
-	size, err := completed.Size()
+	name = filepath.ToSlash(name)
+
+	err := t.ensureDirectoryExists(name)
 	if err != nil {
-		return fmt.Errorf("could not determine size of file-to-be-archived: %w", err)
+		return nil, err
 	}
-	err = t.tarWriter.WriteHeader(&tar.Header{
-		Typeflag: tar.TypeReg,
-		Name:     path,
-		Size:     size,
-		Mode:     tarFileMode,
-	})
-	if err != nil {
-		return err
-	}
-	_, err = io.Copy(t.tarWriter, rdr)
-	return err
+
+	t.lastBuffer = &bytes.Buffer{}
+
+	return &callbackWriteCloser{
+		writer: t.lastBuffer,
+		close: func() error {
+			err := t.tarWriter.WriteHeader(&tar.Header{
+				Typeflag: tar.TypeReg,
+				Name:     name,
+				Size:     int64(t.lastBuffer.Len()),
+				Mode:     tarFileMode,
+			})
+			if err != nil {
+				return err
+			}
+			_, err = io.Copy(t.tarWriter, t.lastBuffer)
+			t.lastBuffer = nil
+			return err
+		},
+	}, nil
 }
 
 func (t *tarArchiver) Close() error {
+	if t.lastBuffer != nil {
+		return errors.New("cannot close archiver before all Created writers have been closed")
+	}
 	err1 := t.tarWriter.Close()
 	err2 := t.outCloser.Close()
 	return errors.NewMultiError(err1, err2)

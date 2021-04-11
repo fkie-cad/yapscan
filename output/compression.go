@@ -1,21 +1,16 @@
 package output
 
 import (
-	"github.com/klauspost/compress/zstd"
 	"io"
+
+	"github.com/klauspost/compress/zstd"
 )
 
-func NewZSTDCompressor(out io.WriteCloser) io.WriteCloser {
+func NewZSTDCompressor(out io.Writer) io.WriteCloser {
 	zstdWriter, err := zstd.NewWriter(out)
 	if err != nil {
 		// This should only happen if we (the dev) screw up with the options
 		panic(err)
 	}
-	return &decoratedWriteCloser{
-		writer: zstdWriter,
-		base:   out,
-		meta: map[string]interface{}{
-			metaKeySuggestedFileExtension: ".zstd",
-		},
-	}
+	return zstdWriter
 }

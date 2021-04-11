@@ -1,126 +1,105 @@
 package output
 
 import (
-	"bytes"
+	"io"
+	"strings"
+
 	"github.com/targodan/go-errors"
 	"golang.org/x/crypto/openpgp"
-	"io"
-	"os"
 )
-
-type decoratedWriteCloser struct {
-	writer io.WriteCloser
-	base   io.Closer
-	meta   map[string]interface{}
-}
-
-func (w *decoratedWriteCloser) Write(p []byte) (n int, err error) {
-	return w.writer.Write(p)
-}
-
-func (w *decoratedWriteCloser) Close() error {
-	err := w.writer.Close()
-	return errors.NewMultiError(err, w.base.Close())
-}
-
-func (w *decoratedWriteCloser) GetMeta(key string) interface{} {
-	if w.meta == nil {
-		return nil
-	}
-	value, ok := w.meta[key]
-	if !ok {
-		return nil
-	}
-	return value
-}
-
-func (w *decoratedWriteCloser) FindMeta(key string) []interface{} {
-	return w.findMeta(key, make([]interface{}, 0))
-}
-
-func (w *decoratedWriteCloser) findMeta(key string, collected []interface{}) []interface{} {
-	value := w.GetMeta(key)
-	if value != nil {
-		collected = append(collected, value)
-	}
-
-	underlying, ok := w.base.(*decoratedWriteCloser)
-	if !ok {
-		return collected
-	}
-	return underlying.findMeta(key, collected)
-}
-
-func (w *decoratedWriteCloser) Unwrap() interface{} {
-	underlying, ok := w.base.(*decoratedWriteCloser)
-	if !ok {
-		return w.base
-	}
-	return underlying.Unwrap()
-}
-
-type OutputDecorator func(io.WriteCloser) (io.WriteCloser, error)
-
-func PGPEncryptionDecorator(recipient *openpgp.Entity) OutputDecorator {
-	return func(out io.WriteCloser) (io.WriteCloser, error) {
-		return NewPGPEncryptor(recipient, out)
-	}
-}
-
-func PGPSymmetricEncryptionDecorator(password string) OutputDecorator {
-	return func(out io.WriteCloser) (io.WriteCloser, error) {
-		return NewPGPSymmetricEncryptor(password, out)
-	}
-}
-
-func ZSTDCompressionDecorator() OutputDecorator {
-	return func(out io.WriteCloser) (io.WriteCloser, error) {
-		return NewZSTDCompressor(out), nil
-	}
-}
-
-func unwrapDecorated(v interface{}) interface{} {
-	nopWC, ok := v.(*nopWriteCloser)
-	if ok {
-		return unwrapDecorated(nopWC.w)
-	}
-
-	decorated, ok := v.(*decoratedWriteCloser)
-	if !ok {
-		return v
-	}
-	base := decorated.Unwrap()
-
-	return unwrapDecorated(base)
-}
-
-func NewAutoArchivedFromDecorated(name string, decorated io.WriteCloser) (AutoArchivingWriter, error) {
-	bufferOrFile := unwrapDecorated(decorated)
-	buffer, ok := bufferOrFile.(*bytes.Buffer)
-	if ok {
-		return NewAutoArchivedBuffer(name, buffer, decorated), nil
-	}
-	file, ok := bufferOrFile.(*os.File)
-	if ok {
-		return NewAutoArchivedFile(name, file, decorated)
-	}
-	panic("could not decorate unexpected type of WriteCloser with AutoArchiving")
-}
 
 const metaKeySuggestedFileExtension = "SuggestedFileExtension"
 
-func suggestedFileExtension(v interface{}) string {
-	decorated, ok := v.(*decoratedWriteCloser)
-	if !ok {
-		return ""
+type cascadingWriteCloser struct {
+	writer io.WriteCloser
+	base   io.Closer
+}
+
+func (w *cascadingWriteCloser) Write(p []byte) (n int, err error) {
+	return w.writer.Write(p)
+}
+
+func (w *cascadingWriteCloser) Close() error {
+	err1 := w.writer.Close()
+	err2 := w.base.Close()
+	return errors.NewMultiError(err1, err2)
+}
+
+type OutputDecorator struct {
+	decorate               func(io.WriteCloser) (io.WriteCloser, error)
+	suggestedFileExtension string
+}
+
+type WriteCloserBuilder struct {
+	decorators []*OutputDecorator
+}
+
+func NewWriteCloserBuilder() *WriteCloserBuilder {
+	return &WriteCloserBuilder{}
+}
+
+// Append appends a decorator. The appended decorator will be the first one to
+// mutate any input.
+func (b *WriteCloserBuilder) Append(decorator *OutputDecorator) *WriteCloserBuilder {
+	b.decorators = append(b.decorators, decorator)
+	return b
+}
+
+func (b *WriteCloserBuilder) SuggestedFileExtension() string {
+	sb := &strings.Builder{}
+	for i := len(b.decorators) - 1; i >= 0; i-- {
+		sb.WriteString(b.decorators[i].suggestedFileExtension)
 	}
+	return sb.String()
+}
 
-	ext := ""
-
-	extensions := decorated.FindMeta(metaKeySuggestedFileExtension)
-	for _, v := range extensions {
-		ext += v.(string)
+func (b *WriteCloserBuilder) Build(finalOutput io.WriteCloser) (io.WriteCloser, error) {
+	var err error
+	out := finalOutput
+	for _, dec := range b.decorators {
+		out, err = dec.decorate(out)
+		if err != nil {
+			return nil, err
+		}
 	}
+	return out, nil
+}
 
-	return ext
+func PGPEncryptionDecorator(recipient *openpgp.Entity) *OutputDecorator {
+	return &OutputDecorator{
+		decorate: func(out io.WriteCloser) (io.WriteCloser, error) {
+			in, err := NewPGPEncryptor(recipient, out)
+			return &cascadingWriteCloser{
+				writer: in,
+				base:   out,
+			}, err
+		},
+		suggestedFileExtension: ".pgp",
+	}
+}
+
+func PGPSymmetricEncryptionDecorator(password string) *OutputDecorator {
+	return &OutputDecorator{
+		decorate: func(out io.WriteCloser) (io.WriteCloser, error) {
+			in, err := NewPGPSymmetricEncryptor(password, out)
+			return &cascadingWriteCloser{
+				writer: in,
+				base:   out,
+			}, err
+		},
+		suggestedFileExtension: ".pgp",
+	}
+}
+
+func ZSTDCompressionDecorator() *OutputDecorator {
+	return &OutputDecorator{
+		decorate: func(out io.WriteCloser) (io.WriteCloser, error) {
+			in := NewZSTDCompressor(out)
+			return &cascadingWriteCloser{
+				writer: in,
+				base:   out,
+			}, nil
+		},
+		suggestedFileExtension: ".zstd",
+	}
 }

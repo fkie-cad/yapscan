@@ -23,30 +23,10 @@ func ReadPublicKeyFile(publicKeyFile string) (*openpgp.Entity, error) {
 	return openpgp.ReadEntity(rdr)
 }
 
-func NewPGPEncryptor(recipient *openpgp.Entity, output io.WriteCloser) (io.WriteCloser, error) {
-	in, err := openpgp.Encrypt(output, []*openpgp.Entity{recipient}, nil, nil, pgpConfig)
-	if err != nil {
-		return nil, err
-	}
-	return &decoratedWriteCloser{
-		writer: in,
-		base:   output,
-		meta: map[string]interface{}{
-			metaKeySuggestedFileExtension: ".pgp",
-		},
-	}, nil
+func NewPGPEncryptor(recipient *openpgp.Entity, output io.Writer) (io.WriteCloser, error) {
+	return openpgp.Encrypt(output, []*openpgp.Entity{recipient}, nil, nil, pgpConfig)
 }
 
-func NewPGPSymmetricEncryptor(password string, output io.WriteCloser) (io.WriteCloser, error) {
-	in, err := openpgp.SymmetricallyEncrypt(output, []byte(password), nil, pgpConfig)
-	if err != nil {
-		return nil, err
-	}
-	return &decoratedWriteCloser{
-		writer: in,
-		base:   output,
-		meta: map[string]interface{}{
-			metaKeySuggestedFileExtension: ".pgp",
-		},
-	}, nil
+func NewPGPSymmetricEncryptor(password string, output io.Writer) (io.WriteCloser, error) {
+	return openpgp.SymmetricallyEncrypt(output, []byte(password), nil, pgpConfig)
 }

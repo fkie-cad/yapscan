@@ -3,6 +3,8 @@ package output
 import (
 	"bytes"
 	"encoding/json"
+	"io/ioutil"
+
 	"github.com/fkie-cad/yapscan"
 	"github.com/fkie-cad/yapscan/fileio"
 	"github.com/fkie-cad/yapscan/procio"
@@ -10,183 +12,123 @@ import (
 	"github.com/hillu/go-yara/v4"
 	"github.com/sirupsen/logrus"
 	"github.com/targodan/go-errors"
-	"io"
-	"io/ioutil"
 )
+
+// SystemInfoFileName is the name of the file, where system info is stored.
+const SystemInfoFileName = "systeminfo.json"
+
+// RulesFileName is the name of the file, where the used rules will be stored.
+const RulesFileName = "rules.yarc"
+
+// ProcessFileName is the name of the file used to report information about processes.
+const ProcessFileName = "processes.json"
+
+// MemoryProgressFileName is the name of the file used to report information about memory scans.
+const MemoryProgressFileName = "memory-scans.json"
+
+// FSProgressFileName is the name of the file used to report information about file scans.
+const FSProgressFileName = "file-scans.json"
 
 // AnalysisReporter implements a Reporter, which is
 // specifically intended for later analysis of the report
 // in order to determine rule quality.
 type AnalysisReporter struct {
-	SystemInfoOut         io.WriteCloser
-	RulesOut              io.WriteCloser
-	ProcessInfoOut        io.WriteCloser
-	MemoryScanProgressOut io.WriteCloser
-	FSScanProgressOut     io.WriteCloser
-	DumpStorage           DumpStorage
+	archiver      Archiver
+	closeArchiver bool
 
-	systemInfoOutClosed bool
-	rulesOutClosed      bool
+	filenamePrefix string
+	dumpStorage    DumpStorage
 
-	seen map[int]bool
-}
-
-// WithArchiver overwrites the writers with AutoArchivedWriters.
-// This should be called after all WithOutputDecorator calls, otherwise behaviour might not be as expected.
-func (r *AnalysisReporter) WithArchiver(archiver Archiver, filePrefix string) (*AutoArchiver, error) {
-	var err error
-	archiveContents := make([]AutoArchivingWriter, 5)
-
-	archiveContents[0], err = NewAutoArchivedFromDecorated(
-		filePrefix+SystemInfoFileName+suggestedFileExtension(r.SystemInfoOut),
-		r.SystemInfoOut)
-	r.SystemInfoOut = archiveContents[0]
-	if err != nil {
-		return nil, err
-	}
-
-	archiveContents[1], err = NewAutoArchivedFromDecorated(
-		filePrefix+RulesFileName+suggestedFileExtension(r.RulesOut),
-		r.RulesOut)
-	r.RulesOut = archiveContents[1]
-	if err != nil {
-		return nil, err
-	}
-
-	archiveContents[2], err = NewAutoArchivedFromDecorated(
-		filePrefix+ProcessFileName+suggestedFileExtension(r.ProcessInfoOut),
-		r.ProcessInfoOut)
-	r.ProcessInfoOut = archiveContents[2]
-	if err != nil {
-		return nil, err
-	}
-
-	archiveContents[3], err = NewAutoArchivedFromDecorated(
-		filePrefix+MemoryProgressFileName+suggestedFileExtension(r.MemoryScanProgressOut),
-		r.MemoryScanProgressOut)
-	r.MemoryScanProgressOut = archiveContents[3]
-	if err != nil {
-		return nil, err
-	}
-
-	archiveContents[4], err = NewAutoArchivedFromDecorated(
-		filePrefix+FSProgressFileName+suggestedFileExtension(r.FSScanProgressOut),
-		r.FSScanProgressOut)
-	r.FSScanProgressOut = archiveContents[4]
-	if err != nil {
-		return nil, err
-	}
-
-	ar := NewAutoArchiver(archiver, archiveContents...)
-	return ar, nil
-}
-
-// WithOutputDecorator decorates all writers with the given decorator.
-// The original writers will be used as output for the new writer. Said
-// new writer will take the place of the original ones. This leads to the
-// decorator, which was added last, being the first one executed in the chain.
-func (r *AnalysisReporter) WithOutputDecorator(decorator OutputDecorator) error {
-	var err error
-	r.SystemInfoOut, err = decorator(r.SystemInfoOut)
-	if err != nil {
-		return err
-	}
-	r.RulesOut, err = decorator(r.RulesOut)
-	if err != nil {
-		return err
-	}
-	r.ProcessInfoOut, err = decorator(r.ProcessInfoOut)
-	if err != nil {
-		return err
-	}
-	r.MemoryScanProgressOut, err = decorator(r.MemoryScanProgressOut)
-	if err != nil {
-		return err
-	}
-	r.FSScanProgressOut, err = decorator(r.FSScanProgressOut)
-	if err != nil {
-		return err
-	}
-
-	// TODO: Handle DumpStorage?
-
-	return nil
+	processInfos map[int]*procio.ProcessInfo
 }
 
 // ReportSystemInfo retrieves and reports info about the running system.
+// This function may only called once, otherwise the behaviour depends on the
+// used Archiver.
 func (r *AnalysisReporter) ReportSystemInfo() error {
-	if r.SystemInfoOut == nil {
-		return nil
-	}
-	if r.systemInfoOutClosed {
-		return errors.New("SystemInfo already reported, can only report once")
+	w, err := r.archiver.Create(r.filenamePrefix + SystemInfoFileName)
+	if err != nil {
+		return err
 	}
 
 	info, err := system.GetInfo()
 	if err != nil {
 		logrus.WithError(err).Warn("Could not determine complete system info.")
 	}
-	err = json.NewEncoder(r.SystemInfoOut).Encode(info)
+	err = json.NewEncoder(w).Encode(info)
 	if err != nil {
-		return err
+		return errors.NewMultiError(err, w.Close())
 	}
 
-	r.systemInfoOutClosed = true
-	return r.SystemInfoOut.Close()
+	return w.Close()
 }
 
 // ReportRules reports the given *yara.Rules.
+// This function may only called once, otherwise the behaviour depends on the
+// used Archiver.
 func (r *AnalysisReporter) ReportRules(rules *yara.Rules) error {
-	if r.RulesOut == nil {
-		return nil
-	}
-	if r.rulesOutClosed {
-		return errors.New("rules already reported, can only report once")
-	}
-
-	err := rules.Write(r.RulesOut)
+	w, err := r.archiver.Create(r.filenamePrefix + RulesFileName)
 	if err != nil {
 		return err
 	}
 
-	r.rulesOutClosed = true
-	return r.RulesOut.Close()
-}
-
-func (r *AnalysisReporter) reportProcess(info *procio.ProcessInfo) error {
-	if r.ProcessInfoOut == nil {
-		return nil
+	err = rules.Write(w)
+	if err != nil {
+		return errors.NewMultiError(err, w.Close())
 	}
 
-	return json.NewEncoder(r.ProcessInfoOut).Encode(info)
+	return w.Close()
+}
+
+func (r *AnalysisReporter) reportProcessInfos() error {
+	w, err := r.archiver.Create(r.filenamePrefix + ProcessFileName)
+	if err != nil {
+		return err
+	}
+
+	if r.processInfos == nil {
+		return w.Close()
+	}
+
+	encoder := json.NewEncoder(w)
+
+	for _, info := range r.processInfos {
+		err = encoder.Encode(info)
+		logrus.WithError(err).Error("Could not report process info.")
+	}
+
+	return w.Close()
 }
 
 // ConsumeMemoryScanProgress consumes and reports all *yapscan.MemoryScanProgress
 // instances sent in the given channel.
+// This function may only called once, otherwise the behaviour depends on the
+// used Archiver.
 func (r *AnalysisReporter) ConsumeMemoryScanProgress(progress <-chan *yapscan.MemoryScanProgress) error {
-	if r.seen == nil {
-		r.seen = make(map[int]bool)
+	w, err := r.archiver.Create(r.filenamePrefix + MemoryProgressFileName)
+	if err != nil {
+		return err
 	}
+
+	if r.processInfos == nil {
+		r.processInfos = make(map[int]*procio.ProcessInfo)
+	}
+
+	encoder := json.NewEncoder(w)
 
 	for prog := range progress {
 		info, err := prog.Process.Info()
 		if err != nil {
 			logrus.WithError(err).Warn("Could not retrieve complete process info.")
 		}
-		_, seen := r.seen[info.PID]
-		if !seen {
-			r.seen[info.PID] = true
-			err = r.reportProcess(info)
-			if err != nil {
-				logrus.WithError(err).Error("Could not report process info.")
-			}
-		}
+		// Store info for later output
+		r.processInfos[info.PID] = info
 
 		var jsonErr interface{}
 		if prog.Error != nil {
 			jsonErr = prog.Error.Error()
 		}
-		err = json.NewEncoder(r.MemoryScanProgressOut).Encode(&MemoryScanProgressReport{
+		err = encoder.Encode(&MemoryScanProgressReport{
 			PID:           info.PID,
 			MemorySegment: prog.MemorySegment.BaseAddress,
 			Matches:       ConvertYaraMatchRules(prog.Matches),
@@ -195,8 +137,8 @@ func (r *AnalysisReporter) ConsumeMemoryScanProgress(progress <-chan *yapscan.Me
 		if err != nil {
 			logrus.WithError(err).Error("Could not report progress.")
 		}
-		if r.DumpStorage != nil && prog.Error == nil && prog.Matches != nil && len(prog.Matches) > 0 {
-			err = r.DumpStorage.Store(&Dump{
+		if r.dumpStorage != nil && prog.Error == nil && prog.Matches != nil && len(prog.Matches) > 0 {
+			err = r.dumpStorage.Store(&Dump{
 				PID:     info.PID,
 				Segment: prog.MemorySegment,
 				Data:    ioutil.NopCloser(bytes.NewReader(prog.Dump)),
@@ -206,22 +148,27 @@ func (r *AnalysisReporter) ConsumeMemoryScanProgress(progress <-chan *yapscan.Me
 			}
 		}
 	}
-	return nil
+	return w.Close()
 }
 
 // ConsumeFSScanProgress consumes and reports all *yapscan.FSScanProgress
 // instances sent in the given channel.
+// This function may only called once, otherwise the behaviour depends on the
+// used Archiver.
 func (r *AnalysisReporter) ConsumeFSScanProgress(progress <-chan *fileio.FSScanProgress) error {
-	if r.seen == nil {
-		r.seen = make(map[int]bool)
+	w, err := r.archiver.Create(r.filenamePrefix + FSProgressFileName)
+	if err != nil {
+		return err
 	}
+
+	encoder := json.NewEncoder(w)
 
 	for prog := range progress {
 		var jsonErr interface{}
 		if prog.Error != nil {
 			jsonErr = prog.Error.Error()
 		}
-		err := json.NewEncoder(r.FSScanProgressOut).Encode(&FSScanProgressReport{
+		err := encoder.Encode(&FSScanProgressReport{
 			Path:    prog.File.Path(),
 			Matches: ConvertYaraMatchRules(prog.Matches),
 			Error:   jsonErr,
@@ -231,20 +178,15 @@ func (r *AnalysisReporter) ConsumeFSScanProgress(progress <-chan *fileio.FSScanP
 		}
 		// TODO: Maybe add dumping capability by copying the offending file.
 	}
-	return nil
+	return w.Close()
 }
 
 // Close closes the AnalysisReporter and all associated files.
 func (r *AnalysisReporter) Close() error {
-	var err error
-	if !r.systemInfoOutClosed {
-		err = errors.NewMultiError(err, r.SystemInfoOut.Close())
+	var err1, err2 error
+	err1 = r.reportProcessInfos()
+	if r.closeArchiver {
+		err2 = r.archiver.Close()
 	}
-	if !r.rulesOutClosed {
-		err = errors.NewMultiError(err, r.RulesOut.Close())
-	}
-	err = errors.NewMultiError(err, r.ProcessInfoOut.Close())
-	err = errors.NewMultiError(err, r.MemoryScanProgressOut.Close())
-	err = errors.NewMultiError(err, r.FSScanProgressOut.Close())
-	return err
+	return errors.NewMultiError(err1, err2)
 }
