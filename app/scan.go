@@ -91,8 +91,18 @@ func scan(c *cli.Context) error {
 	reporter := output.NewProgressReporter(os.Stdout, output.NewPrettyFormatter())
 	if c.Bool("full-report") || c.Bool("store-dumps") {
 		wcBuilder := output.NewWriteCloserBuilder()
+		if c.String("password") != "" && c.String("pgpkey") != "" {
+			return fmt.Errorf("cannot encrypt with both pgp key and a password")
+		}
 		if c.String("password") != "" {
 			wcBuilder.Append(output.PGPSymmetricEncryptionDecorator(c.String("password"), true))
+		}
+		if c.String("pgpkey") != "" {
+			ring, err := output.ReadKeyRing(c.String("pgpkey"))
+			if err != nil {
+				return fmt.Errorf("could not read specified public pgp key, reason: %w", err)
+			}
+			wcBuilder.Append(output.PGPEncryptionDecorator(ring, true))
 		}
 		wcBuilder.Append(output.ZSTDCompressionDecorator())
 

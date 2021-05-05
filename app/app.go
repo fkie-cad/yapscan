@@ -350,8 +350,9 @@ func RunApp(args []string) {
 						Value: false,
 					},
 					&cli.StringFlag{
-						Name:  "report-dir",
-						Usage: "the directory in which the report zip will be written",
+						Name:        "report-dir",
+						Usage:       "the directory in which the report zip will be written",
+						DefaultText: "current working directory",
 					},
 					&cli.BoolFlag{
 						Name:  "store-dumps",
@@ -366,6 +367,10 @@ func RunApp(args []string) {
 					&cli.StringFlag{
 						Name:  "password",
 						Usage: "setting this will encrypt the report with the given password; ignored without --full-report",
+					},
+					&cli.StringFlag{
+						Name:  "pgpkey",
+						Usage: "setting this will encrypt the report with the public key in the given file; ignored without --full-report",
 					},
 				}, segmentFilterFlags...), suspendFlags...),
 			},
