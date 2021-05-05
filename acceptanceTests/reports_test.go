@@ -56,6 +56,11 @@ func TestMatchIsFound_Fuzzy(t *testing.T) {
 	}
 
 	f := func(data []byte) bool {
+		if len(data) == 0 {
+			// Skip empty data as that is not supported
+			return true
+		}
+
 		yaraRulesPath, pid, addressOfData := withYaraRulesFileAndMatchingMemoryTester(t, data)
 		stdout, stderr, cleanupCapture := withCapturedOutput(t)
 
@@ -78,31 +83,6 @@ func TestMatchIsFound_Fuzzy(t *testing.T) {
 		t.Error(err)
 	}
 }
-
-//func TestDoesNotMatchFalsePositive_Fuzzy_FailedInput(t *testing.T) {
-//	Convey("With data of a previously observed fuzzy failure", t, func() {
-//		data := []byte{0x68, 0xd6, 0x1e, 0x53, 0xf5, 0xe3, 0x62, 0x0, 0x1d, 0xa5, 0x39, 0xf5, 0xe4, 0x95, 0x4b, 0xda, 0xe7, 0x9f, 0xa6, 0x52, 0x64, 0x86, 0xd7, 0x2e, 0xca, 0x98, 0x72, 0xcd, 0x71, 0x2c, 0xc3, 0x7c, 0x5b, 0x4a, 0x82, 0x43, 0x17, 0x74}
-//
-//		yaraRulesPath, pid, addressOfData := withYaraRulesFileAndNotMatchingMemoryTester(t, data)
-//		stdout, stderr, cleanupCapture := withCapturedOutput(t)
-//
-//		Convey("yapscan should not have this false positive anymore.", func() {
-//			args := []string{"yapscan",
-//				"scan",
-//				"-r", yaraRulesPath,
-//				strconv.Itoa(pid)}
-//			ctx, cancel := context.WithTimeout(context.Background(), yapscanTimeout)
-//			err := app.MakeApp(args).RunContext(ctx, args)
-//			cancel()
-//
-//			cleanupCapture()
-//
-//			So(err, ShouldBeNil)
-//			So(stderr.String(), ShouldBeEmpty)
-//			So(stdout.String(), ShouldNotContainSubstring, fmt.Sprintf("Rule-strings matched at 0x%X.", addressOfData))
-//		})
-//	})
-//}
 
 func TestDoesNotMatchFalsePositive_Fuzzy(t *testing.T) {
 	if testing.Short() {

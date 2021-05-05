@@ -38,7 +38,7 @@ func Main() {
 
 	addr, err := alloc(size)
 	if err != nil {
-		fmt.Printf(OutputErrorPrefix+"Could not alloc, reason: %v\n", err)
+		fmt.Printf(OutputErrorPrefix+"Could not alloc with size %d, reason: %v\n", size, err)
 		os.Exit(5)
 	}
 	defer func() {
