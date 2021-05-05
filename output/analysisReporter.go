@@ -183,10 +183,13 @@ func (r *AnalysisReporter) ConsumeFSScanProgress(progress <-chan *fileio.FSScanP
 
 // Close closes the AnalysisReporter and all associated files.
 func (r *AnalysisReporter) Close() error {
-	var err1, err2 error
+	var err1, err2, err3 error
 	err1 = r.reportProcessInfos()
 	if r.closeArchiver {
 		err2 = r.archiver.Close()
 	}
-	return errors.NewMultiError(err1, err2)
+	if r.dumpStorage != nil {
+		err3 = r.dumpStorage.Close()
+	}
+	return errors.NewMultiError(err1, err2, err3)
 }

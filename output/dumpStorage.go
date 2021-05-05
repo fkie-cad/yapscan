@@ -4,12 +4,8 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"os"
-	"path"
-	"path/filepath"
 
 	"github.com/fkie-cad/yapscan/procio"
-	"github.com/targodan/go-errors"
 )
 
 // Dump contains the dump of a memory segment.
@@ -35,8 +31,6 @@ type DumpOrError struct {
 type DumpStorage interface {
 	// Store stores a Dump.
 	Store(dump *Dump) error
-	// Hint returns a human readable hint about where/how dumps are stored.
-	Hint() string
 	io.Closer
 }
 
@@ -54,30 +48,26 @@ type fileDump struct {
 	Filename string
 }
 
-type fileDumpStorage struct {
-	directory   string
-	storedFiles []*fileDump
+// ArchiveDumpStorage stores dumps using an Archiver.
+type ArchiveDumpStorage struct {
+	archiver Archiver
+
+	// The prefix of filenames created in the Archiver.
+	FilePrefix string
 }
 
-// NewFileDumpStorage create a new DumpStorage with a filesystem backend.
-// Dumps will be stored in the given directory.
-func NewFileDumpStorage(dir string) (ReadableDumpStorage, error) {
-	isEmpty, err := isDirEmpty(dir)
-	if err != nil {
-		return nil, fmt.Errorf("could not determine if dump directory is empty, reason: %w", err)
+// NewArchiveDumpStorage creates a new ArchiveDumpStorage with an Archiver backend.
+func NewArchiveDumpStorage(archiver Archiver) *ArchiveDumpStorage {
+	return &ArchiveDumpStorage{
+		archiver:   archiver,
+		FilePrefix: "",
 	}
-	if !isEmpty {
-		return nil, errors.New("dump directory is not empty")
-	}
-
-	return &fileDumpStorage{
-		directory:   dir,
-		storedFiles: make([]*fileDump, 0),
-	}, nil
 }
 
-func (s *fileDumpStorage) Store(dump *Dump) error {
-	f, err := os.OpenFile(path.Join(s.directory, dump.Filename()), os.O_WRONLY|os.O_CREATE|os.O_CREATE, 0666)
+// Store stores a new dump.
+// Depending on the underlying Archiver, this must not be called in parallel.
+func (s *ArchiveDumpStorage) Store(dump *Dump) error {
+	f, err := s.archiver.Create(s.FilePrefix + dump.Filename())
 	if err != nil {
 		return err
 	}
@@ -87,65 +77,6 @@ func (s *fileDumpStorage) Store(dump *Dump) error {
 	return err
 }
 
-func (s *fileDumpStorage) Hint() string {
-	return fmt.Sprintf("dumps are stored in directory \"%s\"", s.directory)
-}
-
-func (s *fileDumpStorage) Close() error {
-	return nil
-}
-
-func (s *fileDumpStorage) Retrieve(ctx context.Context) <-chan *DumpOrError {
-	c := make(chan *DumpOrError)
-
-	go func() {
-		defer close(c)
-		for _, dump := range s.storedFiles {
-			out := &DumpOrError{}
-
-			f, err := os.OpenFile(dump.Filename, os.O_RDONLY, 0666)
-			if err != nil {
-				out.Err = err
-			} else {
-				out.Dump = &Dump{
-					PID:     dump.Process.PID,
-					Segment: dump.Segment,
-					Data:    f,
-				}
-			}
-
-			select {
-			case c <- out:
-			case <-ctx.Done():
-				if out.Err == nil {
-					// Not emitting the struct, so we need to close the file ourselves
-					f.Close()
-				}
-				break
-			}
-		}
-	}()
-
-	return c
-}
-
-func isDirEmpty(dir string) (bool, error) {
-	fInfo, err := os.Stat(dir)
-	if err != nil {
-		if os.IsNotExist(err) {
-			os.MkdirAll(dir, 0777)
-			return true, nil
-		}
-		return false, err
-	}
-
-	if !fInfo.IsDir() {
-		return false, errors.New("path is not a directory")
-	}
-
-	contents, err := filepath.Glob(path.Join(dir, "*"))
-	if err != nil {
-		return false, err
-	}
-	return len(contents) == 0, nil
+func (s *ArchiveDumpStorage) Close() error {
+	return s.archiver.Close()
 }

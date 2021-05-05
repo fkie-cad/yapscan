@@ -41,7 +41,7 @@ func (z *zipArchiver) Create(name string) (io.WriteCloser, error) {
 	}
 
 	w, err := z.zipWriter.CreateHeader(&zip.FileHeader{
-		Name:   name,
+		Name:   filepath.ToSlash(name),
 		Method: z.compressionMethod,
 	})
 	if err != nil {

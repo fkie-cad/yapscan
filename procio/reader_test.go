@@ -8,6 +8,8 @@ import (
 	"testing"
 	"time"
 
+	"github.com/fkie-cad/yapscan/testutil"
+
 	"github.com/fkie-cad/yapscan/testutil/memory"
 
 	. "github.com/smartystreets/goconvey/convey"
@@ -16,7 +18,7 @@ import (
 const testCompilerTimeout = 30 * time.Second
 const testerTimeout = 1 * time.Second
 
-func testWithData(c C, tc *memory.TesterCompiler, data []byte) {
+func testWithData(c C, tc *testutil.Compiler, data []byte) {
 	ctx, cancel := context.WithTimeout(context.Background(), testerTimeout)
 	defer cancel()
 

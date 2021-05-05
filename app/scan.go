@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"math/rand"
 	"os"
+	"path/filepath"
 	"strconv"
 	"time"
 
@@ -20,6 +21,8 @@ import (
 	"github.com/targodan/go-errors"
 	"github.com/urfave/cli/v2"
 )
+
+const filenameDateFormat = "2006-01-02_15-04-05"
 
 func scan(c *cli.Context) error {
 	err := initAppAction(c)
@@ -115,36 +118,56 @@ func scan(c *cli.Context) error {
 			hostname = hex.EncodeToString(h.Sum(nil))
 		}
 
-		archivePath := fmt.Sprintf("%s_%s.tar%s",
+		reportArchivePath := fmt.Sprintf("%s_%s.tar%s",
 			hostname,
-			time.Now().UTC().Format("2006-01-02_15-04-05"),
+			time.Now().UTC().Format(filenameDateFormat),
 			wcBuilder.SuggestedFileExtension())
-		tar, err := os.OpenFile(archivePath, os.O_CREATE|os.O_RDWR, 0600)
-		if err != nil {
-			return fmt.Errorf("could not create output archive, reason: %w", err)
+		if c.String("report-dir") != "" {
+			reportArchivePath = filepath.Join(c.String("report-dir"), reportArchivePath)
 		}
+		reportTar, err := os.OpenFile(reportArchivePath, os.O_CREATE|os.O_RDWR, 0600)
+		if err != nil {
+			return fmt.Errorf("could not create output report archive, reason: %w", err)
+		}
+		// reportTar is closed by the wrapping WriteCloser
 
-		decoratedTar, err := wcBuilder.Build(tar)
+		decoratedReportTar, err := wcBuilder.Build(reportTar)
 		if err != nil {
 			return fmt.Errorf("could not initialize archive, reason: %w", err)
 		}
-		archiver := output.NewTarArchiver(decoratedTar)
+		reportArchiver := output.NewTarArchiver(decoratedReportTar)
 
-		repFac := output.NewAnalysisReporterFactory(archiver).
+		repFac := output.NewAnalysisReporterFactory(reportArchiver).
 			AutoCloseArchiver().
 			WithFilenamePrefix(hostname + "/")
 
-		fmt.Printf("Full report will be written to \"%s\".\n", archivePath)
+		fmt.Printf("Full report will be written to \"%s\".\n", reportArchivePath)
 
-		//gatherRep.DeleteAfterZipping = !c.Bool("keep")
-		//if c.Bool("store-dumps") {
-		//	ds, err := output.NewFileDumpStorage(filepath.Join(gatherRep.Directory(), "dumps"))
-		//	if err != nil {
-		//		return fmt.Errorf("could not initialize dump storage reporter, reason: %w", err)
-		//	}
-		//	gatherRep.WithDumpStorage(ds)
-		//	gatherRep.ZIPPassword = c.String("password")
-		//}
+		if c.Bool("store-dumps") {
+			dumpArchivePath := fmt.Sprintf("%s_%s_dumps.tar%s",
+				hostname,
+				time.Now().UTC().Format(filenameDateFormat),
+				wcBuilder.SuggestedFileExtension())
+			if c.String("report-dir") != "" {
+				dumpArchivePath = filepath.Join(c.String("report-dir"), dumpArchivePath)
+			}
+			dumpTar, err := os.OpenFile(dumpArchivePath, os.O_CREATE|os.O_RDWR, 0600)
+			if err != nil {
+				return fmt.Errorf("could not create output dump archive, reason: %w", err)
+			}
+			// dumpTar is closed by the wrapping WriteCloser
+
+			decoratedDumpTar, err := wcBuilder.Build(dumpTar)
+			if err != nil {
+				return fmt.Errorf("could not initialize archive, reason: %w", err)
+			}
+			dumpArchiver := output.NewTarArchiver(decoratedDumpTar)
+
+			ds := output.NewArchiveDumpStorage(dumpArchiver)
+			repFac.WithDumpStorage(ds)
+
+			fmt.Printf("Dumps will be written to \"%s\".\n", dumpArchivePath)
+		}
 		reporter = &output.MultiReporter{
 			Reporters: []output.Reporter{
 				reporter,
