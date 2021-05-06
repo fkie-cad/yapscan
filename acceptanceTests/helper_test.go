@@ -17,6 +17,7 @@ import (
 
 	"github.com/fkie-cad/yapscan/procio"
 	"github.com/fkie-cad/yapscan/testutil/memory"
+	. "github.com/smartystreets/goconvey/convey"
 )
 
 const testCompilerTimeout = 1 * time.Minute
@@ -40,7 +41,7 @@ func initializeMemoryTester() io.Closer {
 	return memoryTesterCompiler
 }
 
-func withMemoryTester(t *testing.T, data []byte) (pid int, addressOfData uintptr) {
+func withMemoryTester(t *testing.T, c C, data []byte) (pid int, addressOfData uintptr) {
 	ctx, cancel := context.WithTimeout(context.Background(), testerTimeout)
 
 	tester, err := memory.NewTester(
@@ -57,10 +58,17 @@ func withMemoryTester(t *testing.T, data []byte) (pid int, addressOfData uintptr
 		t.Fatal("could not write data to memory tester process", err)
 	}
 
-	t.Cleanup(func() {
-		tester.Close()
-		cancel()
-	})
+	if c != nil {
+		c.Reset(func() {
+			tester.Close()
+			cancel()
+		})
+	} else {
+		t.Cleanup(func() {
+			tester.Close()
+			cancel()
+		})
+	}
 
 	return tester.PID(), addressOfData
 }
@@ -76,11 +84,11 @@ func withYaraRulesFile(t *testing.T, rules []byte) string {
 	return yaraRulesFile
 }
 
-func withYaraRulesFileAndMatchingMemoryTester(t *testing.T, data []byte) (yaraRulesPath string, pid int, addressOfData uintptr) {
-	return withYaraRulesFileAndMemoryTester(t, data, data)
+func withYaraRulesFileAndMatchingMemoryTester(t *testing.T, c C, data []byte) (yaraRulesPath string, pid int, addressOfData uintptr) {
+	return withYaraRulesFileAndMemoryTester(t, c, data, data)
 }
 
-func withYaraRulesFileAndNotMatchingMemoryTester(t *testing.T, data []byte) (yaraRulesPath string, pid int, addressOfData uintptr) {
+func withYaraRulesFileAndNotMatchingMemoryTester(t *testing.T, c C, data []byte) (yaraRulesPath string, pid int, addressOfData uintptr) {
 	memoryData := make([]byte, len(data))
 	copy(memoryData, data)
 
@@ -89,10 +97,10 @@ func withYaraRulesFileAndNotMatchingMemoryTester(t *testing.T, data []byte) (yar
 		memoryData[rand.Intn(len(data))] ^= byte(rand.Intn(254) + 1)
 	}
 
-	return withYaraRulesFileAndMemoryTester(t, data, memoryData)
+	return withYaraRulesFileAndMemoryTester(t, c, data, memoryData)
 }
 
-func withYaraRulesFileAndMemoryTester(t *testing.T, ruleData []byte, memoryData []byte) (yaraRulesPath string, pid int, addressOfData uintptr) {
+func withYaraRulesFileAndMemoryTester(t *testing.T, c C, ruleData []byte, memoryData []byte) (yaraRulesPath string, pid int, addressOfData uintptr) {
 	ruleDataHexString := &strings.Builder{}
 	for _, b := range ruleData {
 		ruleDataHexString.WriteString(fmt.Sprintf("%02X ", b))
@@ -114,7 +122,7 @@ rule rule1 {
 `, ruleDataHexString.String())
 
 	yaraRulesPath = withYaraRulesFile(t, []byte(rule))
-	pid, addressOfData = withMemoryTester(t, memoryData)
+	pid, addressOfData = withMemoryTester(t, c, memoryData)
 	return
 }
 
@@ -154,12 +162,10 @@ func withCapturedOutput(t *testing.T) (stdout, stderr *bytes.Buffer, cleanup fun
 		os.Stdout = origOut
 		os.Stderr = origErr
 
-		if err := stderrR.Close(); err != nil {
-			t.Fatal("error during pipe close for output capture", err)
-		}
-		if err := stderrW.Close(); err != nil {
-			t.Fatal("error during pipe close for output capture", err)
-		}
+		stdoutW.Close()
+		stdoutR.Close()
+		stderrW.Close()
+		stderrR.Close()
 		endWG.Wait()
 	}
 }

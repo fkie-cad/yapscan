@@ -28,8 +28,8 @@ func TestMain(m *testing.M) {
 }
 
 func TestMatchIsFound_Simple(t *testing.T) {
-	yaraRulesPath, pid, addressOfData := withYaraRulesFileAndMatchingMemoryTester(t, []byte("hello world"))
 	Convey("Scanning a prepared process with full-report on", t, func(c C) {
+		yaraRulesPath, pid, addressOfData := withYaraRulesFileAndMatchingMemoryTester(t, c, []byte("hello world"))
 		stdout, stderr, cleanupCapture := withCapturedOutput(t)
 
 		args := []string{"yapscan",
@@ -65,7 +65,7 @@ func TestMatchIsFound_Fuzzy(t *testing.T) {
 		i++
 		os.Stdout.Sync()
 
-		yaraRulesPath, pid, addressOfData := withYaraRulesFileAndMatchingMemoryTester(t, data)
+		yaraRulesPath, pid, addressOfData := withYaraRulesFileAndMatchingMemoryTester(t, nil, data)
 		stdout, stderr, cleanupCapture := withCapturedOutput(t)
 
 		args := []string{"yapscan",
@@ -107,7 +107,7 @@ func TestDoesNotMatchFalsePositive_Fuzzy(t *testing.T) {
 		i++
 		os.Stdout.Sync()
 
-		yaraRulesPath, pid, addressOfData := withYaraRulesFileAndNotMatchingMemoryTester(t, data)
+		yaraRulesPath, pid, addressOfData := withYaraRulesFileAndNotMatchingMemoryTester(t, nil, data)
 		stdout, stderr, cleanupCapture := withCapturedOutput(t)
 
 		args := []string{"yapscan",
@@ -132,8 +132,8 @@ func TestDoesNotMatchFalsePositive_Fuzzy(t *testing.T) {
 }
 
 func TestFullReportIsWritten_Unencrypted(t *testing.T) {
-	yaraRulesPath, pid, addressOfData := withYaraRulesFileAndMatchingMemoryTester(t, []byte("hello world"))
 	Convey("Scanning a prepared process with full-report on", t, func(c C) {
+		yaraRulesPath, pid, addressOfData := withYaraRulesFileAndMatchingMemoryTester(t, c, []byte("hello world"))
 		stdout, stderr, cleanupCapture := withCapturedOutput(t)
 
 		reportDir := t.TempDir()
