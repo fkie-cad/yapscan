@@ -12,7 +12,6 @@ import (
 	"strings"
 	"testing"
 	"testing/quick"
-	"time"
 
 	"github.com/klauspost/compress/zstd"
 
@@ -20,8 +19,6 @@ import (
 
 	. "github.com/smartystreets/goconvey/convey"
 )
-
-const yapscanTimeout = 10 * time.Second
 
 func TestMain(m *testing.M) {
 	closer := initializeMemoryTester()
@@ -31,8 +28,8 @@ func TestMain(m *testing.M) {
 }
 
 func TestMatchIsFound_Simple(t *testing.T) {
+	yaraRulesPath, pid, addressOfData := withYaraRulesFileAndMatchingMemoryTester(t, []byte("hello world"))
 	Convey("Scanning a prepared process with full-report on", t, func(c C) {
-		yaraRulesPath, pid, addressOfData := withYaraRulesFileAndMatchingMemoryTester(t, []byte("hello world"))
 		stdout, stderr, cleanupCapture := withCapturedOutput(t)
 
 		args := []string{"yapscan",
@@ -135,8 +132,8 @@ func TestDoesNotMatchFalsePositive_Fuzzy(t *testing.T) {
 }
 
 func TestFullReportIsWritten_Unencrypted(t *testing.T) {
+	yaraRulesPath, pid, addressOfData := withYaraRulesFileAndMatchingMemoryTester(t, []byte("hello world"))
 	Convey("Scanning a prepared process with full-report on", t, func(c C) {
-		yaraRulesPath, pid, addressOfData := withYaraRulesFileAndMatchingMemoryTester(t, []byte("hello world"))
 		stdout, stderr, cleanupCapture := withCapturedOutput(t)
 
 		reportDir := t.TempDir()
@@ -242,13 +239,9 @@ func readReport(c C, rdr io.Reader) ([]*file, error) {
 }
 
 func conveyMatchWasSuccessful(c C, addressOfData uintptr, err error, stdout, stderr *bytes.Buffer) {
-	c.Convey("should not error.", func() {
+	c.Convey("should not error and find the correct match.", func() {
 		c.So(err, ShouldBeNil)
-	})
-	c.Convey("should not output anything on stderr.", func() {
 		c.So(stderr.String(), ShouldBeEmpty)
-	})
-	c.Convey("should output a match on the correct address.", func() {
 		c.So(stdout.String(), ShouldContainSubstring, fmt.Sprintf("Rule-strings matched at 0x%X.", addressOfData))
 	})
 }

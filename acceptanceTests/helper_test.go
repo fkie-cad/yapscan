@@ -20,7 +20,8 @@ import (
 )
 
 const testCompilerTimeout = 1 * time.Minute
-const testerTimeout = 10 * time.Second
+const testerTimeout = 15 * time.Second
+const yapscanTimeout = 10 * time.Second
 
 var memoryTesterCompiler *testutil.Compiler
 
