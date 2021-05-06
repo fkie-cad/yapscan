@@ -55,6 +55,9 @@ func TestMatchIsFound_Fuzzy(t *testing.T) {
 		t.Skip("skipping test in short mode.")
 	}
 
+	i := 0
+	fmt.Println()
+
 	f := func(data []byte) bool {
 		if len(data) == 0 {
 			// Skip empty data as that is not supported
@@ -62,7 +65,9 @@ func TestMatchIsFound_Fuzzy(t *testing.T) {
 		}
 
 		// If there is no output for an extended period of time, travic-ci will just kill the job
-		fmt.Println(data)
+		fmt.Printf("\rFuzzy test %4d", i)
+		i++
+		os.Stdout.Sync()
 
 		yaraRulesPath, pid, addressOfData := withYaraRulesFileAndMatchingMemoryTester(t, data)
 		stdout, stderr, cleanupCapture := withCapturedOutput(t)
@@ -92,6 +97,9 @@ func TestDoesNotMatchFalsePositive_Fuzzy(t *testing.T) {
 		t.Skip("skipping test in short mode.")
 	}
 
+	i := 0
+	fmt.Println()
+
 	f := func(data []byte) bool {
 		if len(data) == 0 {
 			// Skip empty data as that will always match
@@ -99,7 +107,9 @@ func TestDoesNotMatchFalsePositive_Fuzzy(t *testing.T) {
 		}
 
 		// If there is no output for an extended period of time, travic-ci will just kill the job
-		fmt.Println(data)
+		fmt.Printf("\rFuzzy test %4d", i)
+		i++
+		os.Stdout.Sync()
 
 		yaraRulesPath, pid, addressOfData := withYaraRulesFileAndNotMatchingMemoryTester(t, data)
 		stdout, stderr, cleanupCapture := withCapturedOutput(t)
@@ -122,6 +132,7 @@ func TestDoesNotMatchFalsePositive_Fuzzy(t *testing.T) {
 	if err := quick.Check(f, nil); err != nil {
 		t.Error(err)
 	}
+	fmt.Println()
 }
 
 func TestFullReportIsWritten_Unencrypted(t *testing.T) {
