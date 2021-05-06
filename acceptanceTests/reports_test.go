@@ -61,6 +61,9 @@ func TestMatchIsFound_Fuzzy(t *testing.T) {
 			return true
 		}
 
+		// If there is no output for an extended period of time, travic-ci will just kill the job
+		fmt.Println(data)
+
 		yaraRulesPath, pid, addressOfData := withYaraRulesFileAndMatchingMemoryTester(t, data)
 		stdout, stderr, cleanupCapture := withCapturedOutput(t)
 
@@ -94,6 +97,10 @@ func TestDoesNotMatchFalsePositive_Fuzzy(t *testing.T) {
 			// Skip empty data as that will always match
 			return true
 		}
+
+		// If there is no output for an extended period of time, travic-ci will just kill the job
+		fmt.Println(data)
+
 		yaraRulesPath, pid, addressOfData := withYaraRulesFileAndNotMatchingMemoryTester(t, data)
 		stdout, stderr, cleanupCapture := withCapturedOutput(t)
 
