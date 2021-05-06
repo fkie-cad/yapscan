@@ -4,6 +4,7 @@ import (
 	"archive/tar"
 	"bytes"
 	"context"
+	"encoding/json"
 	"fmt"
 	"io"
 	"os"
@@ -12,6 +13,8 @@ import (
 	"strings"
 	"testing"
 	"testing/quick"
+
+	"github.com/fkie-cad/yapscan/output"
 
 	"github.com/klauspost/compress/zstd"
 
@@ -30,9 +33,10 @@ func TestMain(m *testing.M) {
 	m.Run()
 }
 
-func TestMatchIsFound_Simple(t *testing.T) {
+func TestMatchIsFound(t *testing.T) {
 	Convey("Scanning a prepared process with full-report on", t, func(c C) {
-		yaraRulesPath, pid, addressOfData := withYaraRulesFileAndMatchingMemoryTester(t, c, []byte("hello world"))
+		data := []byte{0xbd, 0x62, 0xcd, 0xa4, 0x80, 0x8c, 0x3a, 0x1d, 0x7e, 0x1, 0x21, 0xca, 0xc1, 0x52, 0x87, 0xda, 0xdc, 0x57, 0x61}
+		yaraRulesPath, pid, addressOfData := withYaraRulesFileAndMatchingMemoryTester(t, c, data)
 		stdout, stderr, cleanupCapture := withCapturedOutput(t)
 
 		args := []string{"yapscan",
@@ -136,8 +140,9 @@ func TestDoesNotMatchFalsePositive_Fuzzy(t *testing.T) {
 }
 
 func TestFullReportIsWritten_Unencrypted(t *testing.T) {
-	Convey("Scanning a prepared process with full-report on", t, func(c C) {
-		yaraRulesPath, pid, addressOfData := withYaraRulesFileAndMatchingMemoryTester(t, c, []byte("hello world"))
+	Convey("Scanning a prepared process with full-report", t, func(c C) {
+		data := []byte{0xbd, 0x62, 0xcd, 0xa4, 0x80, 0x8c, 0x3a, 0x1d, 0x7e, 0x1, 0x21, 0xca, 0xc1, 0x52, 0x87, 0xda, 0xdc, 0x57, 0x61}
+		yaraRulesPath, pid, addressOfData := withYaraRulesFileAndMatchingMemoryTester(t, c, data)
 		stdout, stderr, cleanupCapture := withCapturedOutput(t)
 
 		reportDir := t.TempDir()
@@ -154,7 +159,61 @@ func TestFullReportIsWritten_Unencrypted(t *testing.T) {
 		cleanupCapture()
 
 		conveyMatchWasSuccessful(c, addressOfData, err, stdout, stderr)
-		conveyReportIsCleartextReadable(c, reportDir)
+		conveyReportIsCleartextReadable(c, pid, addressOfData, reportDir)
+	})
+}
+
+func TestPasswordProtectedFullReportIsNotCleartextReadable(t *testing.T) {
+	Convey("Scanning a prepared process with password protected full-report", t, func(c C) {
+		data := []byte{0xbd, 0x62, 0xcd, 0xa4, 0x80, 0x8c, 0x3a, 0x1d, 0x7e, 0x1, 0x21, 0xca, 0xc1, 0x52, 0x87, 0xda, 0xdc, 0x57, 0x61}
+		yaraRulesPath, pid, addressOfData := withYaraRulesFileAndMatchingMemoryTester(t, c, data)
+		stdout, stderr, cleanupCapture := withCapturedOutput(t)
+
+		password := "thisIsNotAStronkPassword"
+
+		reportDir := t.TempDir()
+		args := []string{"yapscan",
+			"scan",
+			"-r", yaraRulesPath,
+			"--filter-size-max", maxSizeFilter,
+			"--password", password,
+			"--full-report", "--report-dir", reportDir,
+			strconv.Itoa(pid)}
+		ctx, cancel := context.WithTimeout(context.Background(), yapscanTimeout)
+		err := app.MakeApp(args).RunContext(ctx, args)
+		cancel()
+
+		cleanupCapture()
+
+		conveyMatchWasSuccessful(c, addressOfData, err, stdout, stderr)
+		conveyReportIsNotCleartextReadable(c, reportDir)
+	})
+}
+
+func TestPGPProtectedFullReportIsNotCleartextReadable(t *testing.T) {
+	keyringPath, _ := withPGPKey(t)
+
+	Convey("Scanning a prepared process with password protected full-report", t, func(c C) {
+		data := []byte{0xbd, 0x62, 0xcd, 0xa4, 0x80, 0x8c, 0x3a, 0x1d, 0x7e, 0x1, 0x21, 0xca, 0xc1, 0x52, 0x87, 0xda, 0xdc, 0x57, 0x61}
+		yaraRulesPath, pid, addressOfData := withYaraRulesFileAndMatchingMemoryTester(t, c, data)
+		stdout, stderr, cleanupCapture := withCapturedOutput(t)
+
+		reportDir := t.TempDir()
+		args := []string{"yapscan",
+			"scan",
+			"-r", yaraRulesPath,
+			"--filter-size-max", maxSizeFilter,
+			"--pgpkey", keyringPath,
+			"--full-report", "--report-dir", reportDir,
+			strconv.Itoa(pid)}
+		ctx, cancel := context.WithTimeout(context.Background(), yapscanTimeout)
+		err := app.MakeApp(args).RunContext(ctx, args)
+		cancel()
+
+		cleanupCapture()
+
+		conveyMatchWasSuccessful(c, addressOfData, err, stdout, stderr)
+		conveyReportIsNotCleartextReadable(c, reportDir)
 	})
 }
 
@@ -170,8 +229,8 @@ func findReportPath(reportDir string) (string, bool) {
 	return filepath.Join(reportDir, reportName), reportName != ""
 }
 
-func conveyReportIsCleartextReadable(c C, reportDir string) {
-	c.Convey("should be a valid zstd compressed file", func(c C) {
+func conveyReportIsCleartextReadable(c C, pid int, addressOfData uintptr, reportDir string) {
+	c.Convey("should yield a valid zstd compressed file", func(c C) {
 		reportPath, exists := findReportPath(reportDir)
 
 		c.So(exists, ShouldBeTrue)
@@ -187,17 +246,62 @@ func conveyReportIsCleartextReadable(c C, reportDir string) {
 		c.So(reportFiles, ShouldNotBeEmpty)
 		c.So(err, ShouldBeNil)
 
+		var memoryScansJson *file
 		filenames := make([]string, len(reportFiles))
 		for i, file := range reportFiles {
 			filenames[i] = file.Name
+			if file.Name == "memory-scans.json" {
+				memoryScansJson = file
+			}
 		}
-		c.Convey("and contain the expected files.", func(c C) {
+		c.Convey("contain the expected files", func(c C) {
 			c.So(filenames, ShouldContain, "rules.yarc")
 			c.So(filenames, ShouldContain, "systeminfo.json")
 			c.So(filenames, ShouldContain, "processes.json")
 			c.So(filenames, ShouldContain, "memory-scans.json")
 			c.So(filenames, ShouldHaveLength, 4)
+			c.So(memoryScansJson, ShouldNotBeNil)
+
+			conveyReportHasMatch(c, pid, addressOfData, memoryScansJson)
 		})
+	})
+}
+
+func conveyReportIsNotCleartextReadable(c C, reportDir string) {
+	c.Convey("should not yield valid zstd compressed file.", func(c C) {
+		reportPath, exists := findReportPath(reportDir)
+
+		c.So(exists, ShouldBeTrue)
+		if !exists {
+			return
+		}
+
+		f, _ := os.Open(reportPath)
+		defer f.Close()
+
+		_, err := readReport(c, f)
+		c.So(err, ShouldNotBeNil)
+	})
+}
+
+func conveyReportHasMatch(c C, pid int, addressOfData uintptr, memoryScansJson *file) {
+	c.Convey("with the memory-scans.json containing the correct match.", func() {
+		dec := json.NewDecoder(bytes.NewReader(memoryScansJson.Data))
+		foundCorrectMatch := false
+		var err error
+		for {
+			report := new(output.MemoryScanProgressReport)
+			err = dec.Decode(report)
+			if err != nil {
+				break
+			}
+
+			if report.PID == pid && report.MemorySegment == addressOfData && len(report.Matches) > 0 {
+				foundCorrectMatch = true
+			}
+		}
+		c.So(err, ShouldResemble, io.EOF)
+		c.So(foundCorrectMatch, ShouldBeTrue)
 	})
 }
 
