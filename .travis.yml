@@ -29,7 +29,7 @@ script:
     - coverpkg="github.com/fkie-cad/yapscan/..."
     - go test -race -coverprofile=coverage.txt -covermode=atomic -coverpkg="$coverpkg" -v $(go list ./... | grep -v /acceptanceTests)
     - pushd acceptanceTests
-    - go test -race -coverprofile=coverage.txt -covermode=atomic -coverpkg="$coverpkg" -v .
+    - go test -race -coverprofile=coverage.txt -covermode=atomic -coverpkg="$coverpkg" -v -quickchecks=${QUICKCHECKS:-20} .
     - popd
     - cat acceptanceTests/coverage.txt | tail -n+2 >> coverage.txt
     - rm acceptanceTests/coverage.txt
