@@ -20,6 +20,9 @@ import (
 	. "github.com/smartystreets/goconvey/convey"
 )
 
+const maxRandomDataSize = 4095
+const maxSizeFilter = "4K"
+
 func TestMain(m *testing.M) {
 	closer := initializeMemoryTester()
 	defer closer.Close()
@@ -35,6 +38,7 @@ func TestMatchIsFound_Simple(t *testing.T) {
 		args := []string{"yapscan",
 			"scan",
 			"-r", yaraRulesPath,
+			"--filter-size-max", maxSizeFilter,
 			strconv.Itoa(pid)}
 		ctx, cancel := context.WithTimeout(context.Background(), yapscanTimeout)
 		err := app.MakeApp(args).RunContext(ctx, args)
@@ -55,8 +59,7 @@ func TestMatchIsFound_Fuzzy(t *testing.T) {
 	fmt.Println()
 
 	f := func(data []byte) bool {
-		if len(data) == 0 {
-			// Skip empty data as that is not supported
+		if len(data) == 0 || len(data) >= maxRandomDataSize {
 			return true
 		}
 
@@ -71,6 +74,7 @@ func TestMatchIsFound_Fuzzy(t *testing.T) {
 		args := []string{"yapscan",
 			"scan",
 			"-r", yaraRulesPath,
+			"--filter-size-max", maxSizeFilter,
 			strconv.Itoa(pid)}
 		ctx, cancel := context.WithTimeout(context.Background(), yapscanTimeout)
 		err := app.MakeApp(args).RunContext(ctx, args)
@@ -97,8 +101,7 @@ func TestDoesNotMatchFalsePositive_Fuzzy(t *testing.T) {
 	fmt.Println()
 
 	f := func(data []byte) bool {
-		if len(data) == 0 {
-			// Skip empty data as that will always match
+		if len(data) == 0 || len(data) >= maxRandomDataSize {
 			return true
 		}
 
@@ -113,6 +116,7 @@ func TestDoesNotMatchFalsePositive_Fuzzy(t *testing.T) {
 		args := []string{"yapscan",
 			"scan",
 			"-r", yaraRulesPath,
+			"--filter-size-max", maxSizeFilter,
 			strconv.Itoa(pid)}
 		ctx, cancel := context.WithTimeout(context.Background(), yapscanTimeout)
 		err := app.MakeApp(args).RunContext(ctx, args)
@@ -140,6 +144,7 @@ func TestFullReportIsWritten_Unencrypted(t *testing.T) {
 		args := []string{"yapscan",
 			"scan",
 			"-r", yaraRulesPath,
+			"--filter-size-max", maxSizeFilter,
 			"--full-report", "--report-dir", reportDir,
 			strconv.Itoa(pid)}
 		ctx, cancel := context.WithTimeout(context.Background(), yapscanTimeout)
