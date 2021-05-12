@@ -185,6 +185,32 @@ func scan(c *cli.Context) error {
 		}
 	}()
 
+	if c.Bool("anonymize") {
+		var salt []byte
+		hexSalt := c.String("salt")
+		if hexSalt != "" {
+			salt, err = hex.DecodeString(hexSalt)
+			if err != nil {
+				return fmt.Errorf("could not decode given salt, reason: %w", err)
+			}
+		}
+
+		var filter output.Filter
+		if salt != nil {
+			filter = output.NewAnonymizingFilter(salt)
+		} else {
+			filter, err = output.NewAnonymizingFilterWithRandomSalt(64)
+			if err != nil {
+				return fmt.Errorf("could not generate salt, reason: %w", err)
+			}
+		}
+
+		reporter = &output.FilteringReporter{
+			Reporter: reporter,
+			Filter:   filter,
+		}
+	}
+
 	info, err := system.GetInfo()
 	if err != nil {
 		logrus.WithError(err).Warn("Could not determine complete system info.")

@@ -365,6 +365,15 @@ func MakeApp(args []string) *cli.App {
 						Name:  "pgpkey",
 						Usage: "setting this will encrypt the report with the public key in the given file; ignored without --full-report",
 					},
+					&cli.BoolFlag{
+						Name:  "anonymize",
+						Usage: "anonymize any output, hashing any usernames, hostnames and IPs with a salt",
+					},
+					&cli.StringFlag{
+						Name:        "salt",
+						Usage:       "the salt to use for anonymization, ignored unless --anonmyize is provided",
+						DefaultText: "random salt",
+					},
 				}, segmentFilterFlags...), suspendFlags...),
 			},
 			&cli.Command{
