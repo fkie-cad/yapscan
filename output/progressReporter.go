@@ -2,15 +2,17 @@ package output
 
 import (
 	"fmt"
+	"io"
+	"path/filepath"
+	"strings"
+
 	"github.com/fatih/color"
 	"github.com/fkie-cad/yapscan"
 	"github.com/fkie-cad/yapscan/fileio"
 	"github.com/fkie-cad/yapscan/procio"
+	"github.com/fkie-cad/yapscan/system"
 	"github.com/hillu/go-yara/v4"
 	"github.com/sirupsen/logrus"
-	"io"
-	"path/filepath"
-	"strings"
 )
 
 type progressReporter struct {
@@ -33,7 +35,7 @@ func NewProgressReporter(out io.WriteCloser, formatter ProgressFormatter) Report
 	return &progressReporter{out: out, formatter: formatter, pid: -1, allClean: true}
 }
 
-func (r *progressReporter) ReportSystemInfo() error {
+func (r *progressReporter) ReportSystemInfo(info *system.Info) error {
 	// Don't report systeminfo to stdout
 	return nil
 }
