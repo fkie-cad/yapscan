@@ -2,11 +2,15 @@ package app
 
 import (
 	"context"
+	"crypto/md5"
+	"encoding/binary"
+	"encoding/hex"
 	"fmt"
+	"math/rand"
 	"os"
-	"path"
 	"path/filepath"
 	"strconv"
+	"time"
 
 	"github.com/fkie-cad/yapscan"
 	"github.com/fkie-cad/yapscan/fileio"
@@ -17,6 +21,8 @@ import (
 	"github.com/targodan/go-errors"
 	"github.com/urfave/cli/v2"
 )
+
+const filenameDateFormat = "2006-01-02_15-04-05"
 
 func scan(c *cli.Context) error {
 	err := initAppAction(c)
@@ -87,28 +93,85 @@ func scan(c *cli.Context) error {
 
 	reporter := output.NewProgressReporter(os.Stdout, output.NewPrettyFormatter())
 	if c.Bool("full-report") || c.Bool("store-dumps") {
-		tmpDir := path.Join(os.TempDir(), "yapscan")
-		fmt.Println("Full report temp dir: ", tmpDir)
-		logrus.Debug("Full report temp dir: ", tmpDir)
-		gatherRep, err := output.NewGatheredAnalysisReporter(tmpDir)
-		if err != nil {
-			return fmt.Errorf("could not initialize analysis reporter, reason: %w", err)
+		wcBuilder := output.NewWriteCloserBuilder()
+		if c.String("password") != "" && c.String("pgpkey") != "" {
+			return fmt.Errorf("cannot encrypt with both pgp key and a password")
 		}
-		gatherRep.ZIP = filepath.Join(c.String("report-dir"), gatherRep.SuggestZIPName())
-		gatherRep.DeleteAfterZipping = !c.Bool("keep")
-		fmt.Printf("Full report will be written to \"%s\".\n", gatherRep.ZIP)
-		if c.Bool("store-dumps") {
-			ds, err := output.NewFileDumpStorage(filepath.Join(gatherRep.Directory(), "dumps"))
+		if c.String("password") != "" {
+			wcBuilder.Append(output.PGPSymmetricEncryptionDecorator(c.String("password"), true))
+		}
+		if c.String("pgpkey") != "" {
+			ring, err := output.ReadKeyRing(c.String("pgpkey"))
 			if err != nil {
-				return fmt.Errorf("could not initialize dump storage reporter, reason: %w", err)
+				return fmt.Errorf("could not read specified public pgp key, reason: %w", err)
 			}
-			gatherRep.WithDumpStorage(ds)
-			gatherRep.ZIPPassword = c.String("password")
+			wcBuilder.Append(output.PGPEncryptionDecorator(ring, true))
+		}
+		wcBuilder.Append(output.ZSTDCompressionDecorator())
+
+		hostname, err := os.Hostname()
+		if err != nil {
+			logrus.WithError(err).Warn("Could not determine hostname.")
+			h := md5.New()
+			binary.Write(h, binary.LittleEndian, rand.Int())
+			binary.Write(h, binary.LittleEndian, rand.Int())
+			hostname = hex.EncodeToString(h.Sum(nil))
+		}
+
+		reportArchivePath := fmt.Sprintf("%s_%s.tar%s",
+			hostname,
+			time.Now().UTC().Format(filenameDateFormat),
+			wcBuilder.SuggestedFileExtension())
+		if c.String("report-dir") != "" {
+			reportArchivePath = filepath.Join(c.String("report-dir"), reportArchivePath)
+		}
+		reportTar, err := os.OpenFile(reportArchivePath, os.O_CREATE|os.O_RDWR, 0600)
+		if err != nil {
+			return fmt.Errorf("could not create output report archive, reason: %w", err)
+		}
+		// reportTar is closed by the wrapping WriteCloser
+
+		decoratedReportTar, err := wcBuilder.Build(reportTar)
+		if err != nil {
+			return fmt.Errorf("could not initialize archive, reason: %w", err)
+		}
+		reportArchiver := output.NewTarArchiver(decoratedReportTar)
+
+		repFac := output.NewAnalysisReporterFactory(reportArchiver).
+			AutoCloseArchiver().
+			WithFilenamePrefix(hostname + "/")
+
+		fmt.Printf("Full report will be written to \"%s\".\n", reportArchivePath)
+
+		if c.Bool("store-dumps") {
+			dumpArchivePath := fmt.Sprintf("%s_%s_dumps.tar%s",
+				hostname,
+				time.Now().UTC().Format(filenameDateFormat),
+				wcBuilder.SuggestedFileExtension())
+			if c.String("report-dir") != "" {
+				dumpArchivePath = filepath.Join(c.String("report-dir"), dumpArchivePath)
+			}
+			dumpTar, err := os.OpenFile(dumpArchivePath, os.O_CREATE|os.O_RDWR, 0600)
+			if err != nil {
+				return fmt.Errorf("could not create output dump archive, reason: %w", err)
+			}
+			// dumpTar is closed by the wrapping WriteCloser
+
+			decoratedDumpTar, err := wcBuilder.Build(dumpTar)
+			if err != nil {
+				return fmt.Errorf("could not initialize archive, reason: %w", err)
+			}
+			dumpArchiver := output.NewTarArchiver(decoratedDumpTar)
+
+			ds := output.NewArchiveDumpStorage(dumpArchiver)
+			repFac.WithDumpStorage(ds)
+
+			fmt.Printf("Dumps will be written to \"%s\".\n", dumpArchivePath)
 		}
 		reporter = &output.MultiReporter{
 			Reporters: []output.Reporter{
 				reporter,
-				gatherRep,
+				repFac.Build(),
 			},
 		}
 	}

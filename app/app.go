@@ -7,15 +7,11 @@ import (
 	"strings"
 
 	"github.com/fkie-cad/yapscan"
-	"github.com/fkie-cad/yapscan/output"
-
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
 )
 
 const yaraRulesNamespace = ""
-
-var onExit func()
 
 var DefaultNumberOfFilescanThreads int
 
@@ -148,7 +144,7 @@ func askYesNoAlwaysNever(msg string) (yes bool, always bool, never bool) {
 	return
 }
 
-func RunApp(args []string) {
+func MakeApp(args []string) *cli.App {
 	suspendFlags := []cli.Flag{
 		&cli.BoolFlag{
 			Name:    "suspend",
@@ -352,23 +348,22 @@ func RunApp(args []string) {
 						Value: false,
 					},
 					&cli.StringFlag{
-						Name:  "report-dir",
-						Usage: "the directory in which the report zip will be written",
+						Name:        "report-dir",
+						Usage:       "the directory to which the report archive will be written",
+						DefaultText: "current working directory",
 					},
 					&cli.BoolFlag{
 						Name:  "store-dumps",
 						Usage: "store dumps of memory regions that match rules, implies --full-report, the report will be encrypted with --password",
 						Value: false,
 					},
-					&cli.BoolFlag{
-						Name:  "keep",
-						Usage: "keep the temporary report directory, by default it will be deleted; ignored without --full-report",
-						Value: false,
-					},
 					&cli.StringFlag{
 						Name:  "password",
-						Usage: "the password of the encrypted report, ignored unless --store-dumps is set",
-						Value: output.DefaultZIPPassword,
+						Usage: "setting this will encrypt the report with the given password; ignored without --full-report",
+					},
+					&cli.StringFlag{
+						Name:  "pgpkey",
+						Usage: "setting this will encrypt the report with the public key in the given file; ignored without --full-report",
 					},
 				}, segmentFilterFlags...), suspendFlags...),
 			},
@@ -439,17 +434,9 @@ func RunApp(args []string) {
 
 		if len(args) >= 2 && args[1] == "as-service" {
 			asService(args)
-			return
+			return nil
 		}
 	}
 
-	err := app.Run(args)
-	if err != nil {
-		fmt.Println(err)
-		logrus.Error(err)
-		logrus.Fatal("Aborting.")
-	}
-	if onExit != nil {
-		onExit()
-	}
+	return app
 }

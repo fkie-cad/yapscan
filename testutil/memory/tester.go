@@ -9,9 +9,10 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"runtime"
 	"strconv"
 	"strings"
+
+	"github.com/fkie-cad/yapscan/testutil"
 
 	"github.com/targodan/go-errors"
 )
@@ -23,78 +24,16 @@ const (
 )
 
 func getMemtestPath() (string, error) {
-	_, filename, _, ok := runtime.Caller(0)
-	if !ok {
-		return "", errors.New("could not determine caller")
+	root, err := testutil.GetProjectRoot()
+	if err != nil {
+		return "", err
 	}
-
-	dir := filepath.Dir(filename)
-	path := filepath.Join(dir, "..", "..", "cmd", "memtest", "main.go")
+	path := filepath.Join(root, "cmd", "memtest", "main.go")
 
 	// See if it exists for early exit
-	_, err := os.Stat(path)
+	_, err = os.Stat(path)
 
 	return path, err
-}
-
-type TesterCompiler struct {
-	srcPath  string
-	binPath  string
-	compiled bool
-}
-
-func memtestUtilBinaryName() string {
-	name := "yapscan-memtest-util"
-	if runtime.GOOS == "windows" {
-		name += ".exe"
-	}
-	return name
-}
-
-func NewTesterCompiler() (*TesterCompiler, error) {
-	srcPath, err := getMemtestPath()
-	if err != nil {
-		return nil, fmt.Errorf("could not determine path to main.go, reason: %w", err)
-	}
-
-	binPath := filepath.Join(os.TempDir(), memtestUtilBinaryName())
-
-	return &TesterCompiler{
-		srcPath:  srcPath,
-		binPath:  binPath,
-		compiled: false,
-	}, nil
-}
-
-func (c *TesterCompiler) Compile(ctx context.Context) error {
-	cmd := exec.CommandContext(ctx,
-		"go", "build", "-o", c.binPath, c.srcPath)
-	output, err := cmd.Output()
-	if err != nil {
-		exitErr, ok := err.(*exec.ExitError)
-		if ok {
-			return fmt.Errorf("could not build test utility\n==== STDOUT ====\n%s\n==== STDERR ====\n%s", output, exitErr.Stderr)
-		} else {
-			return fmt.Errorf("could not build test utility, reason: %w", err)
-		}
-	}
-
-	c.compiled = true
-	return nil
-}
-
-func (c *TesterCompiler) BinaryPath() string {
-	if !c.compiled {
-		panic("binary path not available, compile first")
-	}
-	return c.binPath
-}
-
-func (c *TesterCompiler) Close() error {
-	if c.compiled {
-		return os.Remove(c.binPath)
-	}
-	return nil
 }
 
 type Tester struct {
@@ -112,7 +51,15 @@ type Tester struct {
 	data []byte
 }
 
-func NewTester(ctx context.Context, c *TesterCompiler, data []byte, nativePermis uintptr) (*Tester, error) {
+func NewTesterCompiler() (*testutil.Compiler, error) {
+	srcPath, err := getMemtestPath()
+	if err != nil {
+		return nil, fmt.Errorf("could not determine path to main.go, reason: %w", err)
+	}
+	return testutil.NewCompiler(srcPath)
+}
+
+func NewTester(ctx context.Context, c *testutil.Compiler, data []byte, nativePermis uintptr) (*Tester, error) {
 	cmdCtx, cmdCancel := context.WithCancel(ctx)
 
 	cmd := exec.CommandContext(ctx,
