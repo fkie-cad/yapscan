@@ -22,6 +22,7 @@ Other quality-of-life features include
 - Listing and dumping memory segments of a specific process
 - Compiling yara rules and compressing them into an encrypted zip.
 - Provides an "executable DLL" for locked down environments such as VDIs (see section [Executable DLL](#executable-dll))
+- Anonymization of reports with either a predefined, or a randomly generated salt
 
 Yapscan comes with support for both Windows and Linux, however Windows is the primary and most thoroughly tested target OS.
 
@@ -55,11 +56,14 @@ OPTIONS:
    --all-drives, --all-d                               scan all files in all local drives, implies --recurse (default: false)
    --all-shares, --all-s                               scan all files in all mounted net-shares, implies --recurse (default: false)
    --file-extensions value, -e value                   list of file extensions to scan, use special extension "-" as no extension, use --file-extensions "" to allow any (default: "-", "so", "exe", "dll", "sys")
-   --threads value, -t value                           number of threads (goroutines) used for scanning files (default: 12)
+   --threads value, -t value                           number of threads (goroutines) used for scanning files (default: 6)
    --full-report                                       create a full report (default: false)
+   --report-dir value                                  the directory to which the report archive will be written (default: current working directory)
    --store-dumps                                       store dumps of memory regions that match rules, implies --full-report, the report will be encrypted with --password (default: false)
-   --keep                                              keep the temporary report directory, by default it will be deleted; ignored without --full-report (default: false)
-   --password value                                    the password of the encrypted report, ignored unless --store-dumps is set (default: "infected")
+   --password value                                    setting this will encrypt the report with the given password; ignored without --full-report
+   --pgpkey value                                      setting this will encrypt the report with the public key in the given file; ignored without --full-report
+   --anonymize                                         anonymize any output, hashing any usernames, hostnames and IPs with a salt (default: false)
+   --salt value                                        the salt (hex string) to use for anonymization, ignored unless --anonmyize is provided (default: random salt)
    --filter-permissions value, --f-perm value          only consider segments with the given permissions or more, examples: "rw" includes segments with rw, rc and rwx
    --filter-permissions-exact value, --f-perm-e value  comma separated list of permissions to be considered, supported permissions: r, rw, rc, rwx, rcx
    --filter-type value, --f-type value                 comma separated list of considered types, supported types: image, mapped, private

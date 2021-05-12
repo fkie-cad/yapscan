@@ -371,7 +371,7 @@ func MakeApp(args []string) *cli.App {
 					},
 					&cli.StringFlag{
 						Name:        "salt",
-						Usage:       "the salt to use for anonymization, ignored unless --anonmyize is provided",
+						Usage:       "the salt (hex string) to use for anonymization, ignored unless --anonmyize is provided",
 						DefaultText: "random salt",
 					},
 				}, segmentFilterFlags...), suspendFlags...),
