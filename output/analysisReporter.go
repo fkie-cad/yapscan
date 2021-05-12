@@ -45,16 +45,12 @@ type AnalysisReporter struct {
 // ReportSystemInfo retrieves and reports info about the running system.
 // This function may only called once, otherwise the behaviour depends on the
 // used Archiver.
-func (r *AnalysisReporter) ReportSystemInfo() error {
+func (r *AnalysisReporter) ReportSystemInfo(info *system.Info) error {
 	w, err := r.archiver.Create(r.filenamePrefix + SystemInfoFileName)
 	if err != nil {
 		return err
 	}
 
-	info, err := system.GetInfo()
-	if err != nil {
-		logrus.WithError(err).Warn("Could not determine complete system info.")
-	}
 	err = json.NewEncoder(w).Encode(info)
 	if err != nil {
 		return errors.NewMultiError(err, w.Close())

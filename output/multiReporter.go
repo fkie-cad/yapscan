@@ -1,11 +1,13 @@
 package output
 
 import (
+	"sync"
+
 	"github.com/fkie-cad/yapscan"
 	"github.com/fkie-cad/yapscan/fileio"
+	"github.com/fkie-cad/yapscan/system"
 	"github.com/hillu/go-yara/v4"
 	"github.com/targodan/go-errors"
-	"sync"
 )
 
 // MultiReporter is a Reporter which reports all information it recieves
@@ -15,10 +17,10 @@ type MultiReporter struct {
 }
 
 // ReportSystemInfo retrieves and reports info about the running system.
-func (r *MultiReporter) ReportSystemInfo() error {
+func (r *MultiReporter) ReportSystemInfo(info *system.Info) error {
 	var err error
 	for _, rep := range r.Reporters {
-		err = errors.NewMultiError(err, rep.ReportSystemInfo())
+		err = errors.NewMultiError(err, rep.ReportSystemInfo(info))
 	}
 	return err
 }

@@ -12,6 +12,8 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/fkie-cad/yapscan/system"
+
 	"github.com/fkie-cad/yapscan"
 	"github.com/fkie-cad/yapscan/fileio"
 	"github.com/fkie-cad/yapscan/output"
@@ -183,7 +185,11 @@ func scan(c *cli.Context) error {
 		}
 	}()
 
-	err = reporter.ReportSystemInfo()
+	info, err := system.GetInfo()
+	if err != nil {
+		logrus.WithError(err).Warn("Could not determine complete system info.")
+	}
+	err = reporter.ReportSystemInfo(info)
 	if err != nil {
 		logrus.WithError(err).Error("Could not report on system infos.")
 	}

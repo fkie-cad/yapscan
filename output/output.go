@@ -5,12 +5,13 @@ import (
 
 	"github.com/fkie-cad/yapscan"
 	"github.com/fkie-cad/yapscan/fileio"
+	"github.com/fkie-cad/yapscan/system"
 	"github.com/hillu/go-yara/v4"
 )
 
 // Reporter provides capability to report on scanning progress.
 type Reporter interface {
-	ReportSystemInfo() error
+	ReportSystemInfo(info *system.Info) error
 	ReportRules(rules *yara.Rules) error
 	ConsumeMemoryScanProgress(progress <-chan *yapscan.MemoryScanProgress) error
 	ConsumeFSScanProgress(progress <-chan *fileio.FSScanProgress) error
