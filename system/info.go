@@ -50,5 +50,20 @@ func GetInfo() (*Info, error) {
 			}
 		}
 	}
-	return info, nil
+	return copyInfo(info), nil
+}
+
+func copyInfo(info *Info) *Info {
+	ips := make([]string, len(info.IPs))
+	for i, ip := range info.IPs {
+		ips[i] = ip
+	}
+	return &Info{
+		OSName:    info.OSName,
+		OSVersion: info.OSVersion,
+		OSFlavour: info.OSFlavour,
+		OSArch:    info.OSArch,
+		Hostname:  info.Hostname,
+		IPs:       ips,
+	}
 }
