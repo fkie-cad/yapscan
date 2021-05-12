@@ -23,6 +23,7 @@ require (
 	github.com/yeka/zip v0.0.0-20180914125537-d046722c6feb
 	golang.org/x/crypto v0.0.0-20210503195802-e9a32991a82e
 	golang.org/x/mod v0.4.2 // indirect
-	golang.org/x/sys v0.0.0-20210503173754-0981d6026fa6
+	golang.org/x/sys v0.0.0-20210511113859-b0526f3d8744
+	golang.org/x/tools v0.1.1 // indirect
 	gopkg.in/check.v1 v1.0.0-20180628173108-788fd7840127 // indirect
 )
