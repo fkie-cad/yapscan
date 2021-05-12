@@ -4,7 +4,7 @@ go:
     - "1.x"
 
 env:
-    - OPENSSL_VERSION=OpenSSL_1_1_1-stable YARA_VERSION=v4.0.2
+    - OPENSSL_VERSION=OpenSSL_1_1_1-stable YARA_VERSION=v4.1.0
 
 services:
     - docker
