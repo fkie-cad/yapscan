@@ -261,12 +261,26 @@ func (f *AnonymizingFilter) FilterRules(rules *yara.Rules) *yara.Rules {
 }
 
 func (f *AnonymizingFilter) FilterMemoryScanProgress(scan *yapscan.MemoryScanProgress) *yapscan.MemoryScanProgress {
-	scan.MemorySegment.FilePath = f.Anonymizer.AnonymizePath(scan.MemorySegment.FilePath)
-	scan.Process = &anonymizedProcess{
-		orig:       scan.Process,
-		anonymizer: f.Anonymizer,
+	return &yapscan.MemoryScanProgress{
+		Process: procio.Cache(&anonymizedProcess{
+			orig:       scan.Process,
+			anonymizer: f.Anonymizer,
+		}),
+		MemorySegment: &procio.MemorySegmentInfo{
+			ParentBaseAddress:    scan.MemorySegment.ParentBaseAddress,
+			BaseAddress:          scan.MemorySegment.BaseAddress,
+			AllocatedPermissions: scan.MemorySegment.AllocatedPermissions,
+			CurrentPermissions:   scan.MemorySegment.CurrentPermissions,
+			Size:                 scan.MemorySegment.Size,
+			State:                scan.MemorySegment.State,
+			Type:                 scan.MemorySegment.Type,
+			FilePath:             f.Anonymizer.AnonymizePath(scan.MemorySegment.FilePath),
+			SubSegments:          nil, // TODO: fixme
+		},
+		Dump:    nil,
+		Matches: nil,
+		Error:   nil,
 	}
-	return scan
 }
 
 func (f *AnonymizingFilter) FilterFSScanProgress(scan *fileio.FSScanProgress) *fileio.FSScanProgress {
@@ -319,21 +333,34 @@ func (p *anonymizedProcess) Info() (*procio.ProcessInfo, error) {
 	if info == nil {
 		return nil, err
 	}
-	info.Username = p.anonymizer.AnonymizeCaseInsensitive(info.Username)
-	info.ExecutablePath = p.anonymizer.AnonymizePath(info.ExecutablePath)
-	if info.MemorySegments != nil {
-		p.anonymizeMemorySegments(info.MemorySegments)
+	anonInfo := &procio.ProcessInfo{
+		PID:              info.PID,
+		Bitness:          info.Bitness,
+		ExecutablePath:   p.anonymizer.AnonymizePath(info.ExecutablePath),
+		ExecutableMD5:    info.ExecutableMD5,
+		ExecutableSHA256: info.ExecutableSHA256,
+		Username:         p.anonymizer.AnonymizeCaseInsensitive(info.Username),
+		MemorySegments:   p.anonymizeMemorySegments(info.MemorySegments),
 	}
-	return info, err
+	return anonInfo, err
 }
 
-func (p *anonymizedProcess) anonymizeMemorySegments(segments []*procio.MemorySegmentInfo) {
+func (p *anonymizedProcess) anonymizeMemorySegments(segments []*procio.MemorySegmentInfo) []*procio.MemorySegmentInfo {
+	anon := make([]*procio.MemorySegmentInfo, len(segments))
 	for i := range segments {
-		segments[i].FilePath = p.anonymizer.AnonymizePath(segments[i].FilePath)
-		if segments[i].SubSegments != nil {
-			p.anonymizeMemorySegments(segments[i].SubSegments)
+		anon[i] = &procio.MemorySegmentInfo{
+			ParentBaseAddress:    segments[i].ParentBaseAddress,
+			BaseAddress:          segments[i].BaseAddress,
+			AllocatedPermissions: segments[i].AllocatedPermissions,
+			CurrentPermissions:   segments[i].CurrentPermissions,
+			Size:                 segments[i].Size,
+			State:                segments[i].State,
+			Type:                 segments[i].Type,
+			FilePath:             p.anonymizer.AnonymizePath(segments[i].FilePath),
+			SubSegments:          p.anonymizeMemorySegments(segments[i].SubSegments),
 		}
 	}
+	return anon
 }
 
 func (p *anonymizedProcess) Handle() interface{} {

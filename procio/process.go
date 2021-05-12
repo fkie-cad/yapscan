@@ -58,11 +58,15 @@ type CachingProcess interface {
 // OpenProcess opens another process.
 func OpenProcess(pid int) (CachingProcess, error) {
 	proc, err := open(pid)
+	return Cache(proc), err
+}
+
+func Cache(proc Process) CachingProcess {
 	return &cachingProcess{
 		proc:         proc,
 		infoMutex:    &sync.RWMutex{},
 		segmentMutex: &sync.RWMutex{},
-	}, err
+	}
 }
 
 type cachingProcess struct {
@@ -141,8 +145,16 @@ func (c *cachingProcess) MemorySegments() ([]*MemorySegmentInfo, error) {
 }
 
 func (c *cachingProcess) InvalidateCache() {
-	c.segmentCache = nil
-	c.infoCache = nil
+	func() {
+		c.segmentMutex.Lock()
+		defer c.segmentMutex.Unlock()
+		c.segmentCache = nil
+	}()
+	func() {
+		c.infoMutex.Lock()
+		defer c.infoMutex.Unlock()
+		c.infoCache = nil
+	}()
 }
 
 // ComputeHashes computes the md5 and sha256 hashes of a given file.
