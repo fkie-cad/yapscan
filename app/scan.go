@@ -185,6 +185,8 @@ func scan(c *cli.Context) error {
 		}
 	}()
 
+	var filter output.Filter = &output.NoEmptyScansFilter{}
+
 	if c.Bool("anonymize") {
 		var salt []byte
 		hexSalt := c.String("salt")
@@ -195,20 +197,21 @@ func scan(c *cli.Context) error {
 			}
 		}
 
-		var filter output.Filter
+		var anonymizer output.Filter
 		if salt != nil {
-			filter = output.NewAnonymizingFilter(salt)
+			anonymizer = output.NewAnonymizingFilter(salt)
 		} else {
-			filter, err = output.NewAnonymizingFilterWithRandomSalt(64)
+			anonymizer, err = output.NewAnonymizingFilterWithRandomSalt(64)
 			if err != nil {
 				return fmt.Errorf("could not generate salt, reason: %w", err)
 			}
 		}
+		filter = filter.Chain(anonymizer)
+	}
 
-		reporter = &output.FilteringReporter{
-			Reporter: reporter,
-			Filter:   filter,
-		}
+	reporter = &output.FilteringReporter{
+		Reporter: reporter,
+		Filter:   filter,
 	}
 
 	info, err := system.GetInfo()
