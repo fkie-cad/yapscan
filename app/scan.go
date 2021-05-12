@@ -93,6 +93,29 @@ func scan(c *cli.Context) error {
 		paths = append(paths, drives...)
 	}
 
+	var filter output.Filter = &output.NoEmptyScansFilter{}
+	if c.Bool("anonymize") {
+		var salt []byte
+		hexSalt := c.String("salt")
+		if hexSalt != "" {
+			salt, err = hex.DecodeString(hexSalt)
+			if err != nil {
+				return fmt.Errorf("could not decode given salt, reason: %w", err)
+			}
+		}
+
+		var anonymizer output.Filter
+		if salt != nil {
+			anonymizer = output.NewAnonymizingFilter(salt)
+		} else {
+			anonymizer, err = output.NewAnonymizingFilterWithRandomSalt(64)
+			if err != nil {
+				return fmt.Errorf("could not generate salt, reason: %w", err)
+			}
+		}
+		filter = filter.Chain(anonymizer)
+	}
+
 	reporter := output.NewProgressReporter(os.Stdout, output.NewPrettyFormatter())
 	if c.Bool("full-report") || c.Bool("store-dumps") {
 		wcBuilder := output.NewWriteCloserBuilder()
@@ -177,6 +200,12 @@ func scan(c *cli.Context) error {
 			},
 		}
 	}
+
+	reporter = &output.FilteringReporter{
+		Reporter: reporter,
+		Filter:   filter,
+	}
+
 	defer func() {
 		err := reporter.Close()
 		if err != nil {
@@ -184,35 +213,6 @@ func scan(c *cli.Context) error {
 			logrus.WithError(err).Error("Error closing reporter.")
 		}
 	}()
-
-	var filter output.Filter = &output.NoEmptyScansFilter{}
-
-	if c.Bool("anonymize") {
-		var salt []byte
-		hexSalt := c.String("salt")
-		if hexSalt != "" {
-			salt, err = hex.DecodeString(hexSalt)
-			if err != nil {
-				return fmt.Errorf("could not decode given salt, reason: %w", err)
-			}
-		}
-
-		var anonymizer output.Filter
-		if salt != nil {
-			anonymizer = output.NewAnonymizingFilter(salt)
-		} else {
-			anonymizer, err = output.NewAnonymizingFilterWithRandomSalt(64)
-			if err != nil {
-				return fmt.Errorf("could not generate salt, reason: %w", err)
-			}
-		}
-		filter = filter.Chain(anonymizer)
-	}
-
-	reporter = &output.FilteringReporter{
-		Reporter: reporter,
-		Filter:   filter,
-	}
 
 	info, err := system.GetInfo()
 	if err != nil {
