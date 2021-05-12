@@ -14,6 +14,9 @@ import (
 	"testing"
 	"testing/quick"
 
+	"github.com/fkie-cad/yapscan/procio"
+	"github.com/fkie-cad/yapscan/system"
+
 	"golang.org/x/crypto/openpgp"
 
 	"github.com/fkie-cad/yapscan/output"
@@ -221,6 +224,31 @@ func TestPGPProtectedFullReport(t *testing.T) {
 	})
 }
 
+func TestAnonymizedFullReport(t *testing.T) {
+	Convey("Scanning a prepared process with an anonymized full-report", t, func(c C) {
+		data := []byte{0xbd, 0x62, 0xcd, 0xa4, 0x80, 0x8c, 0x3a, 0x1d, 0x7e, 0x1, 0x21, 0xca, 0xc1, 0x52, 0x87, 0xda, 0xdc, 0x57, 0x61}
+		yaraRulesPath, pid, addressOfData := withYaraRulesFileAndMatchingMemoryTester(t, c, data)
+		stdout, stderr, cleanupCapture := withCapturedOutput(t)
+
+		reportDir := t.TempDir()
+		args := []string{"yapscan",
+			"scan",
+			"-r", yaraRulesPath,
+			"--filter-size-max", maxSizeFilter,
+			"--anonymize",
+			"--full-report", "--report-dir", reportDir,
+			strconv.Itoa(pid)}
+		ctx, cancel := context.WithTimeout(context.Background(), yapscanTimeout)
+		err := app.MakeApp(args).RunContext(ctx, args)
+		cancel()
+
+		cleanupCapture()
+
+		conveyMatchWasSuccessful(c, addressOfData, err, stdout, stderr)
+		conveyReportIsAnonymized(c, openReportCleartext(), reportDir)
+	})
+}
+
 func findReportPath(reportDir string) (string, bool) {
 	var reportName string
 	dir, _ := os.ReadDir(reportDir)
@@ -330,6 +358,54 @@ func conveyReportIsReadable(c C, openReport reportOpenFunc, pid int, addressOfDa
 			c.So(memoryScansJson, ShouldNotBeNil)
 
 			conveyReportHasMatch(c, pid, addressOfData, memoryScansJson)
+		})
+	})
+}
+
+func conveyReportIsAnonymized(c C, openReport reportOpenFunc, reportDir string) {
+	c.Convey("should yield a valid report", func(c C) {
+		reportPath, exists := findReportPath(reportDir)
+
+		c.So(exists, ShouldBeTrue)
+		if !exists {
+			return
+		}
+
+		report, err := openReport(reportPath)
+		So(err, ShouldBeNil)
+		defer report.Close()
+
+		reportFiles, err := readReport(c, report)
+
+		c.So(reportFiles, ShouldNotBeEmpty)
+		c.So(err, ShouldBeNil)
+
+		c.Convey("which does not contain the hostname, username or any IPs.", func(c C) {
+			info, err := system.GetInfo()
+			So(err, ShouldBeNil)
+
+			self, err := procio.OpenProcess(os.Getpid())
+			So(err, ShouldBeNil)
+
+			selfInfo, err := self.Info()
+			So(err, ShouldBeNil)
+
+			allJSONBuilder := &strings.Builder{}
+			for _, file := range reportFiles {
+				if strings.Contains(file.Name, ".json") {
+					allJSONBuilder.Write(file.Data)
+				}
+			}
+			allJSON := allJSONBuilder.String()
+
+			fmt.Println(info.Hostname)
+
+			So(allJSON, ShouldNotBeEmpty)
+			So(allJSON, ShouldNotContainSubstring, info.Hostname)
+			for _, ip := range info.IPs {
+				So(allJSON, ShouldNotContainSubstring, ip)
+			}
+			So(allJSON, ShouldNotContainSubstring, selfInfo.Username)
 		})
 	})
 }
