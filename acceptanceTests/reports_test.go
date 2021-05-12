@@ -14,6 +14,8 @@ import (
 	"testing"
 	"testing/quick"
 
+	"golang.org/x/crypto/openpgp"
+
 	"github.com/fkie-cad/yapscan/output"
 
 	"github.com/klauspost/compress/zstd"
@@ -159,11 +161,11 @@ func TestFullReportIsWritten_Unencrypted(t *testing.T) {
 		cleanupCapture()
 
 		conveyMatchWasSuccessful(c, addressOfData, err, stdout, stderr)
-		conveyReportIsCleartextReadable(c, pid, addressOfData, reportDir)
+		conveyReportIsReadable(c, openReportCleartext(), pid, addressOfData, reportDir)
 	})
 }
 
-func TestPasswordProtectedFullReportIsNotCleartextReadable(t *testing.T) {
+func TestPasswordProtectedFullReport(t *testing.T) {
 	Convey("Scanning a prepared process with password protected full-report", t, func(c C) {
 		data := []byte{0xbd, 0x62, 0xcd, 0xa4, 0x80, 0x8c, 0x3a, 0x1d, 0x7e, 0x1, 0x21, 0xca, 0xc1, 0x52, 0x87, 0xda, 0xdc, 0x57, 0x61}
 		yaraRulesPath, pid, addressOfData := withYaraRulesFileAndMatchingMemoryTester(t, c, data)
@@ -186,12 +188,13 @@ func TestPasswordProtectedFullReportIsNotCleartextReadable(t *testing.T) {
 		cleanupCapture()
 
 		conveyMatchWasSuccessful(c, addressOfData, err, stdout, stderr)
-		conveyReportIsNotCleartextReadable(c, reportDir)
+		conveyReportIsNotReadable(c, openReportCleartext(), reportDir)
+		conveyReportIsReadable(c, openReportWithPassword(password), pid, addressOfData, reportDir)
 	})
 }
 
-func TestPGPProtectedFullReportIsNotCleartextReadable(t *testing.T) {
-	keyringPath, _ := withPGPKey(t)
+func TestPGPProtectedFullReport(t *testing.T) {
+	keyringPath, keyring := withPGPKey(t)
 
 	Convey("Scanning a prepared process with password protected full-report", t, func(c C) {
 		data := []byte{0xbd, 0x62, 0xcd, 0xa4, 0x80, 0x8c, 0x3a, 0x1d, 0x7e, 0x1, 0x21, 0xca, 0xc1, 0x52, 0x87, 0xda, 0xdc, 0x57, 0x61}
@@ -213,7 +216,8 @@ func TestPGPProtectedFullReportIsNotCleartextReadable(t *testing.T) {
 		cleanupCapture()
 
 		conveyMatchWasSuccessful(c, addressOfData, err, stdout, stderr)
-		conveyReportIsNotCleartextReadable(c, reportDir)
+		conveyReportIsNotReadable(c, openReportCleartext(), reportDir)
+		conveyReportIsReadable(c, openReportPGP(keyring), pid, addressOfData, reportDir)
 	})
 }
 
@@ -229,8 +233,70 @@ func findReportPath(reportDir string) (string, bool) {
 	return filepath.Join(reportDir, reportName), reportName != ""
 }
 
-func conveyReportIsCleartextReadable(c C, pid int, addressOfData uintptr, reportDir string) {
-	c.Convey("should yield a valid zstd compressed file", func(c C) {
+type readerWithCloser struct {
+	rdr    io.Reader
+	closer io.Closer
+}
+
+func (r *readerWithCloser) Read(p []byte) (n int, err error) {
+	return r.rdr.Read(p)
+}
+
+func (r *readerWithCloser) Close() error {
+	return r.closer.Close()
+}
+
+type reportOpenFunc func(reportPath string) (io.ReadCloser, error)
+
+func openReportCleartext() reportOpenFunc {
+	return func(reportPath string) (io.ReadCloser, error) {
+		return os.Open(reportPath)
+	}
+}
+
+func openReportWithPassword(password string) reportOpenFunc {
+	return func(reportPath string) (io.ReadCloser, error) {
+		f, err := os.Open(reportPath)
+		if err != nil {
+			return nil, err
+		}
+
+		prompt := func(keys []openpgp.Key, symmetric bool) ([]byte, error) {
+			return []byte(password), nil
+		}
+		msg, err := openpgp.ReadMessage(f, nil, prompt, nil)
+		if err != nil {
+			f.Close()
+			return nil, err
+		}
+		return &readerWithCloser{
+			rdr:    msg.UnverifiedBody,
+			closer: f,
+		}, nil
+	}
+}
+
+func openReportPGP(keyring openpgp.EntityList) reportOpenFunc {
+	return func(reportPath string) (io.ReadCloser, error) {
+		f, err := os.Open(reportPath)
+		if err != nil {
+			return nil, err
+		}
+
+		msg, err := openpgp.ReadMessage(f, keyring, nil, nil)
+		if err != nil {
+			f.Close()
+			return nil, err
+		}
+		return &readerWithCloser{
+			rdr:    msg.UnverifiedBody,
+			closer: f,
+		}, nil
+	}
+}
+
+func conveyReportIsReadable(c C, openReport reportOpenFunc, pid int, addressOfData uintptr, reportDir string) {
+	c.Convey("should yield a valid report", func(c C) {
 		reportPath, exists := findReportPath(reportDir)
 
 		c.So(exists, ShouldBeTrue)
@@ -238,10 +304,11 @@ func conveyReportIsCleartextReadable(c C, pid int, addressOfData uintptr, report
 			return
 		}
 
-		f, _ := os.Open(reportPath)
-		defer f.Close()
+		report, err := openReport(reportPath)
+		So(err, ShouldBeNil)
+		defer report.Close()
 
-		reportFiles, err := readReport(c, f)
+		reportFiles, err := readReport(c, report)
 
 		c.So(reportFiles, ShouldNotBeEmpty)
 		c.So(err, ShouldBeNil)
@@ -254,7 +321,7 @@ func conveyReportIsCleartextReadable(c C, pid int, addressOfData uintptr, report
 				memoryScansJson = file
 			}
 		}
-		c.Convey("contain the expected files", func(c C) {
+		c.Convey("which contains the expected files", func(c C) {
 			c.So(filenames, ShouldContain, "rules.yarc")
 			c.So(filenames, ShouldContain, "systeminfo.json")
 			c.So(filenames, ShouldContain, "processes.json")
@@ -267,8 +334,8 @@ func conveyReportIsCleartextReadable(c C, pid int, addressOfData uintptr, report
 	})
 }
 
-func conveyReportIsNotCleartextReadable(c C, reportDir string) {
-	c.Convey("should not yield valid zstd compressed file.", func(c C) {
+func conveyReportIsNotReadable(c C, openReport reportOpenFunc, reportDir string) {
+	c.Convey("should not yield a readable report.", func(c C) {
 		reportPath, exists := findReportPath(reportDir)
 
 		c.So(exists, ShouldBeTrue)
@@ -276,10 +343,14 @@ func conveyReportIsNotCleartextReadable(c C, reportDir string) {
 			return
 		}
 
-		f, _ := os.Open(reportPath)
-		defer f.Close()
+		report, err := openReport(reportPath)
+		if err != nil {
+			So(err, ShouldNotBeNil)
+			return
+		}
+		defer report.Close()
 
-		_, err := readReport(c, f)
+		_, err = readReport(c, report)
 		c.So(err, ShouldNotBeNil)
 	})
 }
