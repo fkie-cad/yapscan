@@ -2,7 +2,6 @@ language: go
 
 go:
     - "1.x"
-    - "1.16"
     - "1.15"
 
 env:
@@ -68,4 +67,4 @@ deploy:
     on:
         repo: fkie-cad/yapscan
         tags: true
-        condition: $TRAVIS_GO_VERSION =~ ^1\.16
+        condition: $TRAVIS_GO_VERSION =~ ^1\.x
