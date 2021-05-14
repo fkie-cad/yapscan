@@ -270,7 +270,7 @@ func withCompiledRules1And2(inner func(rulesPath string)) func(c C) {
 		}
 
 		c.Reset(func() {
-			os.ReadFile(rulesPath)
+			os.Remove(rulesPath)
 		})
 
 		inner(rulesPath)
@@ -341,8 +341,8 @@ func withCompiledAndZippedRules1And2And3(inner func(rulesPath string)) func(c C)
 		}()
 
 		c.Reset(func() {
-			os.ReadFile(compiledRulesPath)
-			os.ReadFile(rulesPath)
+			os.Remove(compiledRulesPath)
+			os.Remove(rulesPath)
 		})
 
 		inner(rulesPath)
