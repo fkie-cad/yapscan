@@ -14,12 +14,15 @@ import (
 	"github.com/stretchr/testify/mock"
 )
 
-func TestPorcessScan(t *testing.T) {
+func TestProcessScan(t *testing.T) {
 	mockedProc := new(mockProcess)
+	mockedProc.On("String").Return("MockProcess").Maybe()
 	defer mockedProc.AssertExpectations(t)
 	mockedMemoryScanner := new(MockMemoryScanner)
+	mockedMemoryScanner.On("String").Return("MockMemoryScanner").Maybe()
 	defer mockedMemoryScanner.AssertExpectations(t)
 	mockedSegmentScanner := new(mockSegmentScanner)
+	mockedSegmentScanner.On("String").Return("MockSegmentScanner").Maybe()
 	defer mockedSegmentScanner.AssertExpectations(t)
 
 	Convey("A ProcessScanner", t, func() {
@@ -278,10 +281,13 @@ func TestSegmentScanner(t *testing.T) {
 
 	Convey("Scanning a non-filtered segment", t, func() {
 		mockedProc := new(mockProcess)
+		mockedProc.On("String").Return("MockProcess").Maybe()
 		defer mockedProc.AssertExpectations(t)
 		mockedFilter := new(MockMemorySegmentFilter)
+		mockedFilter.On("String").Return("MockFilter").Maybe()
 		defer mockedFilter.AssertExpectations(t)
 		mockedMemoryScanner := new(MockMemoryScanner)
+		mockedMemoryScanner.On("String").Return("MockMemoryScanner").Maybe()
 		defer mockedMemoryScanner.AssertExpectations(t)
 
 		sc := &defaultSegmentScanner{
