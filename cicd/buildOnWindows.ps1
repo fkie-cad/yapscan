@@ -29,7 +29,7 @@ if ($BuildDeps) {
     echo "Done."
 }
 
-"$PSScriptRoot\loadMingw.ps1" -MsysPath "$MsysPath"
+& "$PSScriptRoot\enableMingw.ps1" -MsysPath "$MsysPath"
 
 New-Item -Path . -Name "build" -ItemType "directory" -Erroraction "silentlycontinue"
 

@@ -43,7 +43,12 @@ func start(argc C.int, argv **C.char) C.int {
 	for i := range args {
 		args[i] = C.GoString(C.arg_index(argv, C.int(i)))
 	}
-	app.RunApp(args)
+	err := app.MakeApp(args).Run(args)
+	if err != nil {
+		fmt.Println(err)
+		logrus.Error(err)
+		logrus.Fatal("Aborting.")
+	}
 	return 0
 }
 
@@ -94,7 +99,12 @@ func run(hWnd C.HWND, hInst C.HINSTANCE, lpCmdLine C.LPTSTR, nCmdShow C.int) {
 	args, _ := shlex.Split(str)
 	args = append([]string{"rundll32.exe"}, args...)
 
-	app.RunApp(args)
+	err = app.MakeApp(args).Run(args)
+	if err != nil {
+		fmt.Println(err)
+		logrus.Error(err)
+		logrus.Fatal("Aborting.")
+	}
 
 	// Just in case
 	exiter(0)
