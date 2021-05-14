@@ -38,7 +38,7 @@ func Main() {
 
 	addr, err := alloc(size)
 	if err != nil {
-		fmt.Printf(OutputErrorPrefix+"Could not alloc, reason: %v\n", err)
+		fmt.Printf(OutputErrorPrefix+"Could not alloc with size %d, reason: %v\n", size, err)
 		os.Exit(5)
 	}
 	defer func() {
@@ -84,7 +84,12 @@ func Main() {
 
 	memcpy(addr, data)
 
-	protect(addr, size, prot)
+	// Avoid multiple matches
+	for i := range data {
+		data[i] = 0xAA
+	}
+
+	err = protect(addr, size, prot)
 	if err != nil {
 		fmt.Printf(OutputErrorPrefix+"Failed to set protect, reason: %v\n", err)
 		os.Exit(2)

@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"sync"
 
 	"github.com/fkie-cad/yapscan/arch"
 )
@@ -57,15 +58,23 @@ type CachingProcess interface {
 // OpenProcess opens another process.
 func OpenProcess(pid int) (CachingProcess, error) {
 	proc, err := open(pid)
+	return Cache(proc), err
+}
+
+func Cache(proc Process) CachingProcess {
 	return &cachingProcess{
-		proc: proc,
-	}, err
+		proc:         proc,
+		infoMutex:    &sync.RWMutex{},
+		segmentMutex: &sync.RWMutex{},
+	}
 }
 
 type cachingProcess struct {
 	proc         Process
 	segmentCache []*MemorySegmentInfo
 	infoCache    *ProcessInfo
+	infoMutex    *sync.RWMutex
+	segmentMutex *sync.RWMutex
 }
 
 func (c *cachingProcess) Close() error {
@@ -81,11 +90,24 @@ func (c *cachingProcess) PID() int {
 }
 
 func (c *cachingProcess) Info() (*ProcessInfo, error) {
+	info := func() *ProcessInfo {
+		c.infoMutex.RLock()
+		defer c.infoMutex.RUnlock()
+
+		return c.infoCache
+	}()
+
 	var err error
-	if c.infoCache == nil {
-		c.infoCache, err = c.proc.Info()
+	if info == nil {
+		info, err = func() (*ProcessInfo, error) {
+			c.infoMutex.Lock()
+			defer c.infoMutex.Unlock()
+
+			c.infoCache, err = c.proc.Info()
+			return c.infoCache, err
+		}()
 	}
-	return c.infoCache, err
+	return info, err
 }
 
 func (c *cachingProcess) Handle() interface{} {
@@ -101,16 +123,38 @@ func (c *cachingProcess) Resume() error {
 }
 
 func (c *cachingProcess) MemorySegments() ([]*MemorySegmentInfo, error) {
+	segments := func() []*MemorySegmentInfo {
+		c.segmentMutex.RLock()
+		defer c.segmentMutex.RUnlock()
+
+		return c.segmentCache
+	}()
+
 	var err error
-	if c.segmentCache == nil {
-		c.segmentCache, err = c.proc.MemorySegments()
+	if segments == nil {
+		segments, err = func() ([]*MemorySegmentInfo, error) {
+			c.segmentMutex.Lock()
+			defer c.segmentMutex.Unlock()
+
+			c.segmentCache, err = c.proc.MemorySegments()
+			return c.segmentCache, err
+		}()
 	}
-	return c.segmentCache, err
+
+	return segments, err
 }
 
 func (c *cachingProcess) InvalidateCache() {
-	c.segmentCache = nil
-	c.infoCache = nil
+	func() {
+		c.segmentMutex.Lock()
+		defer c.segmentMutex.Unlock()
+		c.segmentCache = nil
+	}()
+	func() {
+		c.infoMutex.Lock()
+		defer c.infoMutex.Unlock()
+		c.infoCache = nil
+	}()
 }
 
 // ComputeHashes computes the md5 and sha256 hashes of a given file.

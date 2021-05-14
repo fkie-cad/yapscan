@@ -1,6 +1,7 @@
 package main
 
 import (
+	"fmt"
 	"os"
 
 	"github.com/fkie-cad/yapscan/service"
@@ -9,8 +10,23 @@ import (
 	"github.com/fkie-cad/yapscan/app"
 )
 
+var onExit func()
+
+func runApp(args []string) {
+	err := app.MakeApp(args).Run(args)
+
+	if err != nil {
+		fmt.Println(err)
+		logrus.Error(err)
+		logrus.Fatal("Aborting.")
+	}
+	if onExit != nil {
+		onExit()
+	}
+}
+
 func svcMain(args []string) error {
-	app.RunApp(args)
+	runApp(args)
 	return nil
 }
 
@@ -18,7 +34,7 @@ func main() {
 	err := service.Initialize(svcMain)
 	if service.IsNotInServiceModeError(err) {
 		// Not a service, run normally
-		app.RunApp(os.Args)
+		runApp(os.Args)
 	} else if err != nil {
 		logrus.Fatal(err)
 	}

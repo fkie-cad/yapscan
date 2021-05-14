@@ -1,6 +1,7 @@
 package service
 
 import (
+	"fmt"
 	"os"
 	"syscall"
 
@@ -113,7 +114,12 @@ func SvcMain(dwNumServicesArgs C.DWORD, lpServiceArgVectors **C.char) {
 		exiter(-1)
 	})
 
-	app.RunApp(args)
+	err := app.MakeApp(args).Run(args)
+	if err != nil {
+		fmt.Println(err)
+		logrus.Error(err)
+		logrus.Fatal("Aborting.")
+	}
 }
 
 func initializeNative() error {

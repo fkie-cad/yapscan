@@ -29,14 +29,14 @@ if ($BuildDeps) {
     echo "Done."
 }
 
-"$PSScriptRoot\loadMingw.ps1" -MsysPath "$MsysPath"
+& "$PSScriptRoot\enableMingw.ps1" -MsysPath "$MsysPath"
 
 New-Item -Path . -Name "build" -ItemType "directory" -Erroraction "silentlycontinue"
 
 echo "Building yapscan..."
 Push-Location "$PSScriptRoot\..\cmd\yapscan"
 
-go build -trimpath -tags yara_static -o .\build\yapscan.exe
+go build -trimpath -tags yara_static -o "$PSScriptRoot\build\yapscan.exe"
 
 Pop-Location
 echo "Done."
@@ -44,7 +44,7 @@ echo "Done."
 echo "Building yapscan-dll..."
 Push-Location "$PSScriptRoot\..\cmd\yapscan-dll"
 
-go build -trimpath -tags yara_static -o .\build\yapscan.dll -buildmode=c-shared
+go build -trimpath -tags yara_static -o "$PSScriptRoot\build\yapscan.dll" -buildmode=c-shared
 
 Pop-Location
 echo "Done."
