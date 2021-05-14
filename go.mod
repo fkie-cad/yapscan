@@ -1,6 +1,6 @@
 module github.com/fkie-cad/yapscan
 
-go 1.16
+go 1.15
 
 require (
 	github.com/0xrawsec/golang-win32 v1.0.9

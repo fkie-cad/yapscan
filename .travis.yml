@@ -2,6 +2,8 @@ language: go
 
 go:
     - "1.x"
+    - "1.16"
+    - "1.15"
 
 env:
     - OPENSSL_VERSION=OpenSSL_1_1_1-stable YARA_VERSION=v4.1.0
@@ -54,7 +56,7 @@ before_deploy:
 
 deploy:
     provider: releases
-    skip_cleanup: 'true'
+    skip_cleanup: true
     api_key:
         secure: SEqzkWiVZTZlK3FvJGku7a10rMVqSPTakdAP2M7p6z+S2SE3yRI4R4aiH3t73Yt2nDPGrW1ie43EsJ0WcPIIVaSHUArNBwdyoGRBtdAq461ZSwsskuMLVz28SreyiTwEb4cmRrx5eggGyAoO6kzuGyBVdnBY8Bzxtj0CVV/qeHxvvD6ARYxBQtq6izomd4hoMnCRKNApIUDFbLo2gnF4YOuAMgi45ALe5jchSHPESsa/e8x2e13WEOCIwmiHxRR4EXS/oOxr8kO792HEa324V7uPE1HaIH3z7fBWWcUMXJZSAYynbzsC2WAHzWgIcFHyqVUcs6IKMU8rweJcNNDIVrC/zY7Jm4/aEdyy/Kq3iReuSUkvv9HY0C+CGf8RK/7x/1LolYXDnXGIeEXF/dkqE4p/bOCKrlW8TePoEf8zUlSiZRd0+XdodyxrbjFdx0E5kePxLGeqkopfR/ubKN5DJY93ueFsVlKYGpWLOKxtZTJoxEcwhSm1EF2Lsd77+xySjeJbh00Ozu51C7lu8Obn4wzWCVLDnlt3X5pSqYEHKphIfVYr21LPD9uQc++XR7IfPQG/Gnz/CTBEGvwTYm29jaD0m5e1pshL5nr5lhCOQIH4iZWSmoCwa8GP3Kbix9tYtPAdOkd6crz3vj0EUEWmd9ioEutTOL3wduGzNTcBvXM=
     file:
@@ -65,3 +67,4 @@ deploy:
     on:
         repo: fkie-cad/yapscan
         tags: true
+        condition: $TRAVIS_GO_VERSION =~ ^1\.16
