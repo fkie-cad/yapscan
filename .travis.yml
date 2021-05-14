@@ -12,6 +12,7 @@ services:
     - docker
 
 before_install:
+    - echo $TRAVIS_GO_VERSION
     - sudo apt-get update
     - sudo apt-get install -y libssl-dev libprotobuf-dev flex bison p7zip-full # libyara-dev package is too old
     - mkdir deps
