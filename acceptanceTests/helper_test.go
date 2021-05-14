@@ -5,6 +5,7 @@ import (
 	"context"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -77,7 +78,7 @@ func withMemoryTester(t *testing.T, c C, data []byte) (pid int, addressOfData ui
 func withYaraRulesFile(t *testing.T, rules []byte) string {
 	tempDir := t.TempDir()
 	yaraRulesFile := filepath.Join(tempDir, "rules.yar")
-	err := os.WriteFile(yaraRulesFile, rules, 0600)
+	err := ioutil.WriteFile(yaraRulesFile, rules, 0600)
 	if err != nil {
 		t.Fatal("could not write temporary rules file", err)
 	}
@@ -227,7 +228,7 @@ KnQN70Q6Eur+z5Gk2qBb04swAkcuxiVZIts=
 -----END PGP PRIVATE KEY BLOCK-----
 `
 	keyringPath = filepath.Join(t.TempDir(), "pubkey.pgp")
-	err := os.WriteFile(keyringPath, []byte(publicKey), 0600)
+	err := ioutil.WriteFile(keyringPath, []byte(publicKey), 0600)
 	if err != nil {
 		t.Fatal("could not create test keypair", err)
 	}

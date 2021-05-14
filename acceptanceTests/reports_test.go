@@ -7,6 +7,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strconv"
@@ -251,7 +252,7 @@ func TestAnonymizedFullReport(t *testing.T) {
 
 func findReportPath(reportDir string) (string, bool) {
 	var reportName string
-	dir, _ := os.ReadDir(reportDir)
+	dir, _ := ioutil.ReadDir(reportDir)
 	for _, entry := range dir {
 		if !entry.IsDir() && strings.Contains(entry.Name(), ".tar.zstd") {
 			reportName = entry.Name()
