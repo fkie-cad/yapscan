@@ -307,11 +307,11 @@ func (f *AnonymizingFilter) FilterMemoryScanProgress(scan *yapscan.MemoryScanPro
 			State:                scan.MemorySegment.State,
 			Type:                 scan.MemorySegment.Type,
 			FilePath:             f.Anonymizer.AnonymizePath(scan.MemorySegment.FilePath),
-			SubSegments:          nil, // TODO: fixme
+			SubSegments:          f.Anonymizer.AnonymizeMemorySegments(scan.MemorySegment.SubSegments),
 		},
 		Dump:    nil,
-		Matches: nil,
-		Error:   nil,
+		Matches: scan.Matches,
+		Error:   scan.Error,
 	}
 }
 
