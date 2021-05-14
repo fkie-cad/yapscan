@@ -230,6 +230,38 @@ func (a *Anonymizer) AnonymizePath(path string) string {
 	return result
 }
 
+func (a *Anonymizer) AnonymizeMemorySegment(segment *procio.MemorySegmentInfo) *procio.MemorySegmentInfo {
+	return &procio.MemorySegmentInfo{
+		ParentBaseAddress:    segment.ParentBaseAddress,
+		BaseAddress:          segment.BaseAddress,
+		AllocatedPermissions: segment.AllocatedPermissions,
+		CurrentPermissions:   segment.CurrentPermissions,
+		Size:                 segment.Size,
+		State:                segment.State,
+		Type:                 segment.Type,
+		FilePath:             a.AnonymizePath(segment.FilePath),
+		SubSegments:          a.AnonymizeMemorySegments(segment.SubSegments),
+	}
+}
+
+func (a *Anonymizer) AnonymizeMemorySegments(segments []*procio.MemorySegmentInfo) []*procio.MemorySegmentInfo {
+	anon := make([]*procio.MemorySegmentInfo, len(segments))
+	for i := range segments {
+		anon[i] = &procio.MemorySegmentInfo{
+			ParentBaseAddress:    segments[i].ParentBaseAddress,
+			BaseAddress:          segments[i].BaseAddress,
+			AllocatedPermissions: segments[i].AllocatedPermissions,
+			CurrentPermissions:   segments[i].CurrentPermissions,
+			Size:                 segments[i].Size,
+			State:                segments[i].State,
+			Type:                 segments[i].Type,
+			FilePath:             a.AnonymizePath(segments[i].FilePath),
+			SubSegments:          a.AnonymizeMemorySegments(segments[i].SubSegments),
+		}
+	}
+	return anon
+}
+
 type AnonymizingFilter struct {
 	Anonymizer *Anonymizer
 }
@@ -340,27 +372,9 @@ func (p *anonymizedProcess) Info() (*procio.ProcessInfo, error) {
 		ExecutableMD5:    info.ExecutableMD5,
 		ExecutableSHA256: info.ExecutableSHA256,
 		Username:         p.anonymizer.AnonymizeCaseInsensitive(info.Username),
-		MemorySegments:   p.anonymizeMemorySegments(info.MemorySegments),
+		MemorySegments:   p.anonymizer.AnonymizeMemorySegments(info.MemorySegments),
 	}
 	return anonInfo, err
-}
-
-func (p *anonymizedProcess) anonymizeMemorySegments(segments []*procio.MemorySegmentInfo) []*procio.MemorySegmentInfo {
-	anon := make([]*procio.MemorySegmentInfo, len(segments))
-	for i := range segments {
-		anon[i] = &procio.MemorySegmentInfo{
-			ParentBaseAddress:    segments[i].ParentBaseAddress,
-			BaseAddress:          segments[i].BaseAddress,
-			AllocatedPermissions: segments[i].AllocatedPermissions,
-			CurrentPermissions:   segments[i].CurrentPermissions,
-			Size:                 segments[i].Size,
-			State:                segments[i].State,
-			Type:                 segments[i].Type,
-			FilePath:             p.anonymizer.AnonymizePath(segments[i].FilePath),
-			SubSegments:          p.anonymizeMemorySegments(segments[i].SubSegments),
-		}
-	}
-	return anon
 }
 
 func (p *anonymizedProcess) Handle() interface{} {
@@ -370,7 +384,7 @@ func (p *anonymizedProcess) Handle() interface{} {
 func (p *anonymizedProcess) MemorySegments() ([]*procio.MemorySegmentInfo, error) {
 	segments, err := p.orig.MemorySegments()
 	if segments != nil {
-		p.anonymizeMemorySegments(segments)
+		segments = p.anonymizer.AnonymizeMemorySegments(segments)
 	}
 	return segments, err
 }
