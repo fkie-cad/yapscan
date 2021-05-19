@@ -70,5 +70,6 @@ func copyInfo(info *Info) *Info {
 		OSArch:    info.OSArch,
 		Hostname:  info.Hostname,
 		IPs:       ips,
+		TotalRAM:  info.TotalRAM,
 	}
 }
