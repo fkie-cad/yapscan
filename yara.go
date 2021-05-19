@@ -2,13 +2,17 @@ package yapscan
 
 import (
 	"bytes"
+	"context"
 	"fmt"
 	"io"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
+
+	"github.com/fkie-cad/yapscan/system"
 
 	"github.com/yeka/zip"
 
@@ -29,9 +33,107 @@ var YaraRulesFileExtensions = []string{
 	".yara",
 }
 
+type MemoryProfile struct {
+	Time    time.Time `json:"time"`
+	FreeRAM uintptr   `json:"freeRAM"`
+}
+
+// ScanningStatistics holds statistic information about a scan.
+type ScanningStatistics struct {
+	Start                    time.Time        `json:"start"`
+	End                      time.Time        `json:"end"`
+	NumberOfProcessesScanned uint64           `json:"numberOfProcessesScanned"`
+	NumberOfSegmentsScanned  uint64           `json:"numberOfSegmentsScanned"`
+	NumberOfBytesScanned     uint64           `json:"numberOfBytesScanned"`
+	NumberOfFilesScanned     uint64           `json:"numberOfFilesScanned"`
+	MemoryProfile            []*MemoryProfile `json:"memoryProfile"`
+
+	mux          *sync.Mutex
+	ctx          context.Context
+	ctxCancel    context.CancelFunc
+	profilerDone chan interface{}
+}
+
+func NewScanningStatistics() *ScanningStatistics {
+	return &ScanningStatistics{
+		Start: time.Now(),
+		mux:   &sync.Mutex{},
+	}
+}
+
+// StartMemoryProfiler starts a goroutine, regularly saving information about free memory.
+func (s *ScanningStatistics) StartMemoryProfiler(ctx context.Context, scanInterval time.Duration) {
+	s.MemoryProfile = make([]*MemoryProfile, 0, 16)
+	s.ctx, s.ctxCancel = context.WithCancel(ctx)
+	s.profilerDone = make(chan interface{})
+	go func() {
+		defer func() {
+			s.profilerDone <- nil
+			close(s.profilerDone)
+		}()
+		for {
+			select {
+			case <-s.ctx.Done():
+				break
+			case <-time.After(scanInterval):
+				freeRAM, err := system.FreeRAM()
+				if err != nil {
+					continue
+				}
+				s.MemoryProfile = append(s.MemoryProfile, &MemoryProfile{
+					Time:    time.Now(),
+					FreeRAM: freeRAM,
+				})
+			}
+		}
+	}()
+}
+
+// IncrementFileCount increments the number of files scanned.
+// This function is thread safe.
+func (s *ScanningStatistics) IncrementFileCount() {
+	s.mux.Lock()
+	defer s.mux.Unlock()
+	s.NumberOfFilesScanned++
+}
+
+// IncrementMemorySegmentsScanned increments the number of segments scanned as
+// well as the number of bytes scanned.
+// This function is thread safe.
+func (s *ScanningStatistics) IncrementMemorySegmentsScanned(numOfBytes uint64) {
+	s.mux.Lock()
+	defer s.mux.Unlock()
+	s.NumberOfSegmentsScanned++
+	s.NumberOfBytesScanned += numOfBytes
+}
+
+// IncrementNumberOfProcessesScanned increments the number of scanned processes.
+// This function is thread safe.
+func (s *ScanningStatistics) IncrementNumberOfProcessesScanned() {
+	s.mux.Lock()
+	defer s.mux.Unlock()
+	s.NumberOfProcessesScanned++
+}
+
+// Finalize finalizes the statistics, stopping the memory profile routine if its running.
+// Use this function before processing the statistics further.
+// This function is thread safe.
+func (s *ScanningStatistics) Finalize() {
+	s.mux.Lock()
+	defer s.mux.Unlock()
+
+	if s.ctxCancel != nil {
+		s.ctxCancel()
+		<-s.profilerDone
+	}
+
+	s.End = time.Now()
+}
+
 // YaraScanner is a wrapper for yara.Rules, with a more go-like interface.
 type YaraScanner struct {
 	rules Rules
+	stats *ScanningStatistics
 }
 
 // Rules are a yara.Rules compatible interface, defining the functions required by yapscan.
@@ -47,12 +149,16 @@ func NewYaraScanner(rules Rules) (*YaraScanner, error) {
 	if rules == nil {
 		return nil, fmt.Errorf("cannot create a yara scanner with nil rules")
 	}
-	return &YaraScanner{rules}, nil
+	return &YaraScanner{
+		rules: rules,
+		stats: NewScanningStatistics(),
+	}, nil
 }
 
 // ScanFile scans the file with the given filename.
 // This function simply calls ScanFile on the underlying yara.Rules object.
 func (s *YaraScanner) ScanFile(filename string) ([]yara.MatchRule, error) {
+	s.stats.IncrementFileCount()
 	var matches yara.MatchRules
 	err := s.rules.ScanFile(filename, 0, 0, &matches)
 	return matches, err
@@ -61,9 +167,15 @@ func (s *YaraScanner) ScanFile(filename string) ([]yara.MatchRule, error) {
 // ScanMem scans the given buffer.
 // This function simply calls ScanMem on the underlying yara.Rules object.
 func (s *YaraScanner) ScanMem(buf []byte) ([]yara.MatchRule, error) {
+	s.stats.IncrementMemorySegmentsScanned(uint64(len(buf)))
 	var matches yara.MatchRules
 	err := s.rules.ScanMem(buf, 0, 0, &matches)
 	return matches, err
+}
+
+// Statistics returns the mutable statistics of the scanner.
+func (s *YaraScanner) Statistics() *ScanningStatistics {
+	return s.stats
 }
 
 // LoadYaraRules loads yara.Rules from a file (or files) and compiles if necessary.

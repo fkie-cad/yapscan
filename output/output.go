@@ -15,6 +15,7 @@ type Reporter interface {
 	ReportRules(rules *yara.Rules) error
 	ConsumeMemoryScanProgress(progress <-chan *yapscan.MemoryScanProgress) error
 	ConsumeFSScanProgress(progress <-chan *fileio.FSScanProgress) error
+	ReportScanningStatistics(stats *yapscan.ScanningStatistics) error
 	io.Closer
 }
 

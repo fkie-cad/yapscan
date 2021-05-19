@@ -45,6 +45,11 @@ func (r *progressReporter) ReportRules(rules *yara.Rules) error {
 	return nil
 }
 
+func (r *progressReporter) ReportScanningStatistics(stats *yapscan.ScanningStatistics) error {
+	// Don't report stats to stdout
+	return nil
+}
+
 func (r *progressReporter) Close() error {
 	fmt.Fprintln(r.out)
 	if r.allClean {

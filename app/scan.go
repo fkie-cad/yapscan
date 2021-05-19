@@ -25,6 +25,7 @@ import (
 )
 
 const filenameDateFormat = "2006-01-02_15-04-05"
+const memoryScanInterval = 500 * time.Millisecond
 
 func scan(c *cli.Context) error {
 	err := initAppAction(c)
@@ -50,6 +51,9 @@ func scan(c *cli.Context) error {
 	if err != nil {
 		return errors.Newf("could not initialize yara scanner, reason: %w", err)
 	}
+
+	scannerStats := yaraScanner.Statistics()
+	scannerStats.StartMemoryProfiler(context.Background(), memoryScanInterval)
 
 	var pids []int
 	var paths []string
@@ -223,11 +227,6 @@ func scan(c *cli.Context) error {
 		logrus.WithError(err).Error("Could not report on system infos.")
 	}
 
-	err = reporter.ReportRules(rules)
-	if err != nil {
-		logrus.WithError(err).Error("Could not report on yara rules.")
-	}
-
 	alwaysSuspend := c.Bool("force")
 	alwaysDumpWithoutSuspend := false
 	neverDumpWithoutSuspend := false
@@ -287,6 +286,7 @@ func scan(c *cli.Context) error {
 		}
 
 		scanner := yapscan.NewProcessScanner(proc, f, yaraScanner)
+		scannerStats.IncrementNumberOfProcessesScanned()
 
 		progress, err := scanner.Scan()
 		if err != nil {
@@ -341,6 +341,12 @@ func scan(c *cli.Context) error {
 		if err != nil {
 			logrus.WithError(err).Error("an error occurred during progress report, there may be no other output")
 		}
+	}
+
+	scannerStats.Finalize()
+	err = reporter.ReportScanningStatistics(scannerStats)
+	if err != nil {
+		logrus.WithError(err).Error("an error occurred during reporting statistics")
 	}
 
 	return nil

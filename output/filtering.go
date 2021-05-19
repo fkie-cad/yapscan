@@ -47,6 +47,10 @@ func (r *FilteringReporter) ReportRules(rules *yara.Rules) error {
 	return r.Reporter.ReportRules(rules)
 }
 
+func (r *FilteringReporter) ReportScanningStatistics(stats *yapscan.ScanningStatistics) error {
+	return r.Reporter.ReportScanningStatistics(stats)
+}
+
 func (r *FilteringReporter) ConsumeMemoryScanProgress(progress <-chan *yapscan.MemoryScanProgress) error {
 	c := make(chan *yapscan.MemoryScanProgress)
 

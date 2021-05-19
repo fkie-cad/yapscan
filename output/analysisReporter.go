@@ -29,6 +29,9 @@ const MemoryProgressFileName = "memory-scans.json"
 // FSProgressFileName is the name of the file used to report information about file scans.
 const FSProgressFileName = "file-scans.json"
 
+// ScanningStatisticsFileName is the name of the file used to report scanning.
+const ScanningStatisticsFileName = "stats.json"
+
 // AnalysisReporter implements a Reporter, which is
 // specifically intended for later analysis of the report
 // in order to determine rule quality.
@@ -42,7 +45,7 @@ type AnalysisReporter struct {
 	processInfos map[int]*procio.ProcessInfo
 }
 
-// ReportSystemInfo retrieves and reports info about the running system.
+// ReportSystemInfo reports info about the running system.
 // This function may only called once, otherwise the behaviour depends on the
 // used Archiver.
 func (r *AnalysisReporter) ReportSystemInfo(info *system.Info) error {
@@ -52,6 +55,23 @@ func (r *AnalysisReporter) ReportSystemInfo(info *system.Info) error {
 	}
 
 	err = json.NewEncoder(w).Encode(info)
+	if err != nil {
+		return errors.NewMultiError(err, w.Close())
+	}
+
+	return w.Close()
+}
+
+// ReportScanningStatistics reports about scanning statistics.
+// This function may only called once, otherwise the behaviour depends on the
+// used Archiver.
+func (r *AnalysisReporter) ReportScanningStatistics(stats *yapscan.ScanningStatistics) error {
+	w, err := r.archiver.Create(r.filenamePrefix + ScanningStatisticsFileName)
+	if err != nil {
+		return err
+	}
+
+	err = json.NewEncoder(w).Encode(stats)
 	if err != nil {
 		return errors.NewMultiError(err, w.Close())
 	}
