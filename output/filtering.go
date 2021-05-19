@@ -1,9 +1,9 @@
 package output
 
 import (
+	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
-	"math/rand"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -281,7 +281,10 @@ func NewAnonymizingFilter(salt []byte) *AnonymizingFilter {
 func NewAnonymizingFilterWithRandomSalt(saltLength int) (*AnonymizingFilter, error) {
 	salt := make([]byte, saltLength)
 	_, err := rand.Read(salt)
-	return NewAnonymizingFilter(salt), err
+	if err != nil {
+		return nil, err
+	}
+	return NewAnonymizingFilter(salt), nil
 }
 
 func (f *AnonymizingFilter) Chain(other Filter) Filter {
