@@ -236,75 +236,77 @@ func scan(c *cli.Context) error {
 	neverDumpWithoutSuspend := false
 
 	for _, pid := range pids {
-		if pid == os.Getpid() {
-			// Don't scan yourself as that will cause unwanted matches.
-			continue
-		}
-
-		proc, err := procio.OpenProcess(pid)
-		if err != nil {
-			logrus.WithError(err).Errorf("could not open process %d for scanning", pid)
-			continue
-		}
-		defer func() {
-			if err := proc.Close(); err != nil {
-				logrus.Error(err)
+		func() {
+			if pid == os.Getpid() {
+				// Don't scan yourself as that will cause unwanted matches.
+				return
 			}
-		}()
 
-		resume := func() {}
-		if c.Bool("suspend") {
-			var suspend bool
-			if alwaysSuspend {
-				suspend = true
-			} else {
-				suspend, alwaysSuspend = askYesNoAlways(fmt.Sprintf("Suspend process %d?", pid))
-				if !suspend && !alwaysDumpWithoutSuspend && !neverDumpWithoutSuspend {
-					var dump bool
-					dump, alwaysDumpWithoutSuspend, neverDumpWithoutSuspend = askYesNoAlwaysNever("Scan anyway?")
-					if !dump {
-						continue
+			proc, err := procio.OpenProcess(pid)
+			if err != nil {
+				logrus.WithError(err).Errorf("could not open process %d for scanning", pid)
+				return
+			}
+			defer func() {
+				if err := proc.Close(); err != nil {
+					logrus.Error(err)
+				}
+			}()
+
+			resume := func() {}
+			if c.Bool("suspend") {
+				var suspend bool
+				if alwaysSuspend {
+					suspend = true
+				} else {
+					suspend, alwaysSuspend = askYesNoAlways(fmt.Sprintf("Suspend process %d?", pid))
+					if !suspend && !alwaysDumpWithoutSuspend && !neverDumpWithoutSuspend {
+						var dump bool
+						dump, alwaysDumpWithoutSuspend, neverDumpWithoutSuspend = askYesNoAlwaysNever("Scan anyway?")
+						if !dump {
+							return
+						}
 					}
 				}
-			}
 
-			if suspend {
-				err = proc.Suspend()
-				if err != nil {
-					fmt.Println("Could not suspend process: ", err)
-					logrus.WithError(err).Errorf("could not suspend process %d", pid)
-					continue
-				}
-				resume = func() {
-					err := proc.Resume()
+				if suspend {
+					err = proc.Suspend()
 					if err != nil {
-						fmt.Println("Could not resume process: ", err)
-						logrus.WithError(err).Errorf("could not resume process %d", pid)
+						fmt.Println("Could not suspend process: ", err)
+						logrus.WithError(err).Errorf("could not suspend process %d", pid)
+						return
+					}
+					resume = func() {
+						err := proc.Resume()
+						if err != nil {
+							fmt.Println("Could not resume process: ", err)
+							logrus.WithError(err).Errorf("could not resume process %d", pid)
+						}
+					}
+				} else {
+					if neverDumpWithoutSuspend {
+						return
 					}
 				}
-			} else {
-				if neverDumpWithoutSuspend {
-					continue
-				}
 			}
-		}
 
-		scanner := yapscan.NewProcessScanner(proc, f, yaraScanner)
-		scannerStats.IncrementNumberOfProcessesScanned()
+			scanner := yapscan.NewProcessScanner(proc, f, yaraScanner)
+			scannerStats.IncrementNumberOfProcessesScanned()
 
-		progress, err := scanner.Scan()
-		if err != nil {
-			logrus.WithError(err).Errorf("an error occurred during scanning of process %d", pid)
+			progress, err := scanner.Scan()
+			if err != nil {
+				logrus.WithError(err).Errorf("an error occurred during scanning of process %d", pid)
+				resume()
+				return
+			}
+			err = reporter.ConsumeMemoryScanProgress(progress)
+			if err != nil {
+				logrus.WithError(err).Error("an error occurred during progress report, there may be no other output")
+				resume()
+				return
+			}
 			resume()
-			continue
-		}
-		err = reporter.ConsumeMemoryScanProgress(progress)
-		if err != nil {
-			logrus.WithError(err).Error("an error occurred during progress report, there may be no other output")
-			resume()
-			continue
-		}
-		resume()
+		}()
 	}
 
 	fileExtensions := c.StringSlice("file-extensions")
