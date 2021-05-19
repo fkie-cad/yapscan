@@ -98,6 +98,7 @@ func scan(c *cli.Context) error {
 	}
 
 	var filter output.Filter = &output.NoEmptyScansFilter{}
+	var anonymizer *output.AnonymizingFilter
 	if c.Bool("anonymize") {
 		var salt []byte
 		hexSalt := c.String("salt")
@@ -108,7 +109,6 @@ func scan(c *cli.Context) error {
 			}
 		}
 
-		var anonymizer output.Filter
 		if salt != nil {
 			anonymizer = output.NewAnonymizingFilter(salt)
 		} else {
@@ -145,6 +145,9 @@ func scan(c *cli.Context) error {
 			binary.Write(h, binary.LittleEndian, rand.Int())
 			binary.Write(h, binary.LittleEndian, rand.Int())
 			hostname = hex.EncodeToString(h.Sum(nil))
+		}
+		if anonymizer != nil {
+			hostname = anonymizer.Anonymizer.Anonymize(hostname)
 		}
 
 		reportArchivePath := fmt.Sprintf("%s_%s.tar%s",
