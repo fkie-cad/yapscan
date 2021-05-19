@@ -18,6 +18,7 @@ type Info struct {
 	OSArch    arch.T   `json:"osArch"`
 	Hostname  string   `json:"hostname"`
 	IPs       []string `json:"ips"`
+	TotalRAM  uintptr  `json:"totalRAM"`
 }
 
 var info *Info
@@ -49,6 +50,10 @@ func GetInfo() (*Info, error) {
 				info.IPs[i] = addrs[i].String()
 			}
 		}
+		info.TotalRAM, tmpErr = TotalRAM()
+		if tmpErr != nil {
+			err = errors.NewMultiError(err, fmt.Errorf("could not determine total RAM, reason: %w", tmpErr))
+		}
 	}
 	return copyInfo(info), nil
 }
@@ -65,5 +70,6 @@ func copyInfo(info *Info) *Info {
 		OSArch:    info.OSArch,
 		Hostname:  info.Hostname,
 		IPs:       ips,
+		TotalRAM:  info.TotalRAM,
 	}
 }

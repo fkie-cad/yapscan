@@ -63,7 +63,7 @@ OPTIONS:
    --password value                                    setting this will encrypt the report with the given password; ignored without --full-report
    --pgpkey value                                      setting this will encrypt the report with the public key in the given file; ignored without --full-report
    --anonymize                                         anonymize any output, hashing any usernames, hostnames and IPs with a salt (default: false)
-   --salt value                                        the salt (hex string) to use for anonymization, ignored unless --anonmyize is provided (default: random salt)
+   --salt value                                        the salt (base64 string) to use for anonymization, ignored unless --anonmyize is provided (default: random salt)
    --filter-permissions value, --f-perm value          only consider segments with the given permissions or more, examples: "rw" includes segments with rw, rc and rwx
    --filter-permissions-exact value, --f-perm-e value  comma separated list of permissions to be considered, supported permissions: r, rw, rc, rwx, rcx
    --filter-type value, --f-type value                 comma separated list of considered types, supported types: image, mapped, private

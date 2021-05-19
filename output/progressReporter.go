@@ -45,6 +45,11 @@ func (r *progressReporter) ReportRules(rules *yara.Rules) error {
 	return nil
 }
 
+func (r *progressReporter) ReportScanningStatistics(stats *yapscan.ScanningStatistics) error {
+	// Don't report stats to stdout
+	return nil
+}
+
 func (r *progressReporter) Close() error {
 	fmt.Fprintln(r.out)
 	if r.allClean {
@@ -183,14 +188,18 @@ type ProgressFormatter interface {
 	FormatPath(path string, maxlen int) string
 }
 
-type prettyFormatter struct{}
-
-// NewPrettyFormatter creates a new pretty formatter for human readable console output.
-func NewPrettyFormatter() ProgressFormatter {
-	return &prettyFormatter{}
+type prettyFormatter struct {
+	showStringMatches bool
 }
 
-func (p prettyFormatter) FormatMemoryScanProgress(progress *yapscan.MemoryScanProgress) string {
+// NewPrettyFormatter creates a new pretty formatter for human readable console output.
+func NewPrettyFormatter(showStringMatches bool) ProgressFormatter {
+	return &prettyFormatter{
+		showStringMatches: showStringMatches,
+	}
+}
+
+func (p *prettyFormatter) FormatMemoryScanProgress(progress *yapscan.MemoryScanProgress) string {
 	if progress.Error != nil {
 		msg := ""
 		// TODO: Maybe enable via a verbose flag
@@ -212,7 +221,7 @@ func (p prettyFormatter) FormatMemoryScanProgress(progress *yapscan.MemoryScanPr
 			color.RedString("MATCH:")+" Rule \"%s\" matches segment %s.",
 			match.Rule, procio.FormatMemorySegmentAddress(progress.MemorySegment),
 		)
-		if len(match.Strings) > 0 {
+		if p.showStringMatches && len(match.Strings) > 0 {
 			addrs := yapscan.FormatSlice("0x%X", yapscan.AddressesFromMatches(match.Strings, uint64(progress.MemorySegment.BaseAddress)))
 			txt[i] += fmt.Sprintf("\n\tRule-strings matched at %s.", yapscan.Join(addrs, ", ", " and "))
 		}
@@ -220,7 +229,7 @@ func (p prettyFormatter) FormatMemoryScanProgress(progress *yapscan.MemoryScanPr
 	return strings.Join(txt, "\n")
 }
 
-func (p prettyFormatter) FormatPath(path string, maxlen int) string {
+func (p *prettyFormatter) FormatPath(path string, maxlen int) string {
 	// TODO: This needs improvement.
 	if len(path) <= maxlen {
 		return path
@@ -256,7 +265,7 @@ func (p prettyFormatter) FormatPath(path string, maxlen int) string {
 	return "..." + res[len(res)-maxlen-3:]
 }
 
-func (p prettyFormatter) FormatFSScanProgress(progress *fileio.FSScanProgress) string {
+func (p *prettyFormatter) FormatFSScanProgress(progress *fileio.FSScanProgress) string {
 	if progress.Error != nil {
 		// TODO: Maybe enable via a verbose flag
 		return ""

@@ -1,13 +1,15 @@
 package output
 
 import (
+	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
-	"math/rand"
 	"os"
 	"path/filepath"
 	"runtime"
 	"strings"
+
+	"github.com/sirupsen/logrus"
 
 	"github.com/fkie-cad/yapscan/procio"
 
@@ -45,6 +47,10 @@ func (r *FilteringReporter) ReportRules(rules *yara.Rules) error {
 		return nil
 	}
 	return r.Reporter.ReportRules(rules)
+}
+
+func (r *FilteringReporter) ReportScanningStatistics(stats *yapscan.ScanningStatistics) error {
+	return r.Reporter.ReportScanningStatistics(stats)
 }
 
 func (r *FilteringReporter) ConsumeMemoryScanProgress(progress <-chan *yapscan.MemoryScanProgress) error {
@@ -143,6 +149,30 @@ func (c *chainedFilter) FilterFSScanProgress(scan *fileio.FSScanProgress) *filei
 	return scan
 }
 
+// NOPFilter is a filter that does nothing.
+// Any FilteringReporter which uses this behave as an unfiltered Reporter.
+type NOPFilter struct{}
+
+func (c *NOPFilter) Chain(f Filter) Filter {
+	return f
+}
+
+func (c *NOPFilter) FilterSystemInfo(info *system.Info) *system.Info {
+	return info
+}
+
+func (c *NOPFilter) FilterRules(rules *yara.Rules) *yara.Rules {
+	return rules
+}
+
+func (c *NOPFilter) FilterMemoryScanProgress(scan *yapscan.MemoryScanProgress) *yapscan.MemoryScanProgress {
+	return scan
+}
+
+func (c *NOPFilter) FilterFSScanProgress(scan *fileio.FSScanProgress) *fileio.FSScanProgress {
+	return scan
+}
+
 type NoEmptyScansFilter struct{}
 
 func (f *NoEmptyScansFilter) Chain(other Filter) Filter {
@@ -159,6 +189,7 @@ func (f *NoEmptyScansFilter) FilterRules(rules *yara.Rules) *yara.Rules {
 
 func (f *NoEmptyScansFilter) FilterMemoryScanProgress(scan *yapscan.MemoryScanProgress) *yapscan.MemoryScanProgress {
 	if scan.Error == nil && (scan.Matches == nil || len(scan.Matches) == 0) {
+		logrus.WithField("segment", scan.MemorySegment).Info("Filtering empty scan result.")
 		return nil
 	}
 	return scan
@@ -166,6 +197,7 @@ func (f *NoEmptyScansFilter) FilterMemoryScanProgress(scan *yapscan.MemoryScanPr
 
 func (f *NoEmptyScansFilter) FilterFSScanProgress(scan *fileio.FSScanProgress) *fileio.FSScanProgress {
 	if scan.Error == nil && (scan.Matches == nil || len(scan.Matches) == 0) {
+		logrus.WithField("file", scan.File.Path()).Info("Filtering empty scan result.")
 		return nil
 	}
 	return scan
@@ -273,7 +305,10 @@ func NewAnonymizingFilter(salt []byte) *AnonymizingFilter {
 func NewAnonymizingFilterWithRandomSalt(saltLength int) (*AnonymizingFilter, error) {
 	salt := make([]byte, saltLength)
 	_, err := rand.Read(salt)
-	return NewAnonymizingFilter(salt), err
+	if err != nil {
+		return nil, err
+	}
+	return NewAnonymizingFilter(salt), nil
 }
 
 func (f *AnonymizingFilter) Chain(other Filter) Filter {

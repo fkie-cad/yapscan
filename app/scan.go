@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"crypto/md5"
+	"encoding/base64"
 	"encoding/binary"
 	"encoding/hex"
 	"fmt"
@@ -25,6 +26,7 @@ import (
 )
 
 const filenameDateFormat = "2006-01-02_15-04-05"
+const memoryScanInterval = 500 * time.Millisecond
 
 func scan(c *cli.Context) error {
 	err := initAppAction(c)
@@ -50,6 +52,9 @@ func scan(c *cli.Context) error {
 	if err != nil {
 		return errors.Newf("could not initialize yara scanner, reason: %w", err)
 	}
+
+	scannerStats := yaraScanner.Statistics()
+	scannerStats.StartMemoryProfiler(context.Background(), memoryScanInterval)
 
 	var pids []int
 	var paths []string
@@ -93,30 +98,41 @@ func scan(c *cli.Context) error {
 		paths = append(paths, drives...)
 	}
 
-	var filter output.Filter = &output.NoEmptyScansFilter{}
+	var anonymizer *output.Anonymizer
+
+	var nonEmptyFilter output.Filter = &output.NoEmptyScansFilter{}
+	var progressFilter output.Filter = &output.NOPFilter{}
+	var analysisFilter output.Filter = nonEmptyFilter
+
 	if c.Bool("anonymize") {
 		var salt []byte
-		hexSalt := c.String("salt")
-		if hexSalt != "" {
-			salt, err = hex.DecodeString(hexSalt)
+		base64Salt := c.String("salt")
+		if base64Salt != "" {
+			salt, err = base64.StdEncoding.DecodeString(base64Salt)
 			if err != nil {
 				return fmt.Errorf("could not decode given salt, reason: %w", err)
 			}
 		}
 
-		var anonymizer output.Filter
+		var anonFilter *output.AnonymizingFilter
 		if salt != nil {
-			anonymizer = output.NewAnonymizingFilter(salt)
+			anonFilter = output.NewAnonymizingFilter(salt)
 		} else {
-			anonymizer, err = output.NewAnonymizingFilterWithRandomSalt(64)
+			anonFilter, err = output.NewAnonymizingFilterWithRandomSalt(64)
 			if err != nil {
 				return fmt.Errorf("could not generate salt, reason: %w", err)
 			}
 		}
-		filter = filter.Chain(anonymizer)
+		anonymizer = anonFilter.Anonymizer
+
+		progressFilter = anonFilter
+		analysisFilter = nonEmptyFilter.Chain(anonFilter)
 	}
 
-	reporter := output.NewProgressReporter(os.Stdout, output.NewPrettyFormatter())
+	var reporter output.Reporter = &output.FilteringReporter{
+		Reporter: output.NewProgressReporter(os.Stdout, output.NewPrettyFormatter(c.Bool("verbose"))),
+		Filter:   progressFilter,
+	}
 	if c.Bool("full-report") || c.Bool("store-dumps") {
 		wcBuilder := output.NewWriteCloserBuilder()
 		if c.String("password") != "" && c.String("pgpkey") != "" {
@@ -141,6 +157,9 @@ func scan(c *cli.Context) error {
 			binary.Write(h, binary.LittleEndian, rand.Int())
 			binary.Write(h, binary.LittleEndian, rand.Int())
 			hostname = hex.EncodeToString(h.Sum(nil))
+		}
+		if anonymizer != nil {
+			hostname = anonymizer.Anonymize(hostname)
 		}
 
 		reportArchivePath := fmt.Sprintf("%s_%s.tar%s",
@@ -196,14 +215,12 @@ func scan(c *cli.Context) error {
 		reporter = &output.MultiReporter{
 			Reporters: []output.Reporter{
 				reporter,
-				repFac.Build(),
+				&output.FilteringReporter{
+					Reporter: repFac.Build(),
+					Filter:   analysisFilter,
+				},
 			},
 		}
-	}
-
-	reporter = &output.FilteringReporter{
-		Reporter: reporter,
-		Filter:   filter,
 	}
 
 	defer func() {
@@ -223,85 +240,97 @@ func scan(c *cli.Context) error {
 		logrus.WithError(err).Error("Could not report on system infos.")
 	}
 
-	err = reporter.ReportRules(rules)
-	if err != nil {
-		logrus.WithError(err).Error("Could not report on yara rules.")
-	}
-
 	alwaysSuspend := c.Bool("force")
 	alwaysDumpWithoutSuspend := false
 	neverDumpWithoutSuspend := false
 
-	for _, pid := range pids {
-		if pid == os.Getpid() {
-			// Don't scan yourself as that will cause unwanted matches.
-			continue
-		}
-
-		proc, err := procio.OpenProcess(pid)
-		if err != nil {
-			logrus.WithError(err).Errorf("could not open process %d for scanning", pid)
-			continue
-		}
+	memScanChan := make(chan *yapscan.MemoryScanProgress)
+	memScanConsumerDone := make(chan interface{})
+	go func() {
 		defer func() {
-			if err := proc.Close(); err != nil {
-				logrus.Error(err)
-			}
+			memScanConsumerDone <- nil
+			close(memScanConsumerDone)
 		}()
 
-		resume := func() {}
-		if c.Bool("suspend") {
-			var suspend bool
-			if alwaysSuspend {
-				suspend = true
-			} else {
-				suspend, alwaysSuspend = askYesNoAlways(fmt.Sprintf("Suspend process %d?", pid))
-				if !suspend && !alwaysDumpWithoutSuspend && !neverDumpWithoutSuspend {
-					var dump bool
-					dump, alwaysDumpWithoutSuspend, neverDumpWithoutSuspend = askYesNoAlwaysNever("Scan anyway?")
-					if !dump {
-						continue
-					}
-				}
-			}
-
-			if suspend {
-				err = proc.Suspend()
-				if err != nil {
-					fmt.Println("Could not suspend process: ", err)
-					logrus.WithError(err).Errorf("could not suspend process %d", pid)
-					continue
-				}
-				resume = func() {
-					err := proc.Resume()
-					if err != nil {
-						fmt.Println("Could not resume process: ", err)
-						logrus.WithError(err).Errorf("could not resume process %d", pid)
-					}
-				}
-			} else {
-				if neverDumpWithoutSuspend {
-					continue
-				}
-			}
-		}
-
-		scanner := yapscan.NewProcessScanner(proc, f, yaraScanner)
-
-		progress, err := scanner.Scan()
-		if err != nil {
-			logrus.WithError(err).Errorf("an error occurred during scanning of process %d", pid)
-			resume()
-			continue
-		}
-		err = reporter.ConsumeMemoryScanProgress(progress)
+		err = reporter.ConsumeMemoryScanProgress(memScanChan)
 		if err != nil {
 			logrus.WithError(err).Error("an error occurred during progress report, there may be no other output")
-			resume()
-			continue
+			return
 		}
-		resume()
+	}()
+
+	for _, pid := range pids {
+		func() {
+			if pid == os.Getpid() {
+				// Don't scan yourself as that will cause unwanted matches.
+				return
+			}
+
+			proc, err := procio.OpenProcess(pid)
+			if err != nil {
+				logrus.WithError(err).Errorf("could not open process %d for scanning", pid)
+				return
+			}
+			defer func() {
+				if err := proc.Close(); err != nil {
+					logrus.Error(err)
+				}
+			}()
+
+			resume := func() {}
+			if c.Bool("suspend") {
+				var suspend bool
+				if alwaysSuspend {
+					suspend = true
+				} else {
+					suspend, alwaysSuspend = askYesNoAlways(fmt.Sprintf("Suspend process %d?", pid))
+					if !suspend && !alwaysDumpWithoutSuspend && !neverDumpWithoutSuspend {
+						var dump bool
+						dump, alwaysDumpWithoutSuspend, neverDumpWithoutSuspend = askYesNoAlwaysNever("Scan anyway?")
+						if !dump {
+							return
+						}
+					}
+				}
+
+				if suspend {
+					err = proc.Suspend()
+					if err != nil {
+						fmt.Println("Could not suspend process: ", err)
+						logrus.WithError(err).Errorf("could not suspend process %d", pid)
+						return
+					}
+					resume = func() {
+						err := proc.Resume()
+						if err != nil {
+							fmt.Println("Could not resume process: ", err)
+							logrus.WithError(err).Errorf("could not resume process %d", pid)
+						}
+					}
+				} else {
+					if neverDumpWithoutSuspend {
+						return
+					}
+				}
+			}
+
+			scanner := yapscan.NewProcessScanner(proc, f, yaraScanner)
+			scannerStats.IncrementNumberOfProcessesScanned()
+
+			progress, err := scanner.Scan()
+			if err != nil {
+				logrus.WithError(err).Errorf("an error occurred during scanning of process %d", pid)
+				resume()
+				return
+			}
+			for prog := range progress {
+				memScanChan <- prog
+			}
+			resume()
+		}()
 	}
+	close(memScanChan)
+	<-memScanConsumerDone
 
 	fileExtensions := c.StringSlice("file-extensions")
 	if len(fileExtensions) == 1 && fileExtensions[0] == "" {
@@ -341,6 +370,12 @@ func scan(c *cli.Context) error {
 		if err != nil {
 			logrus.WithError(err).Error("an error occurred during progress report, there may be no other output")
 		}
+	}
+
+	scannerStats.Finalize()
+	err = reporter.ReportScanningStatistics(scannerStats)
+	if err != nil {
+		logrus.WithError(err).Error("an error occurred during reporting statistics")
 	}
 
 	return nil

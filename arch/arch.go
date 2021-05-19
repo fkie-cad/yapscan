@@ -3,15 +3,15 @@
 package arch
 
 // T describes a CPU architecture.
-type T int
+type T string
 
 const (
 	// Invalid describes an unknown architecture or an invalid enum value.
-	Invalid T = iota
+	Invalid T = "invalid"
 	// AMD64 describes the amd64 architecture.
-	AMD64
+	AMD64 = "amd64"
 	// I386 describes the i386 architecture.
-	I386
+	I386 = "i386"
 )
 
 var bitness = map[T]Bitness{

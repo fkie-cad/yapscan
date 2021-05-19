@@ -199,7 +199,7 @@ func MakeApp(args []string) *cli.App {
 		Name:        "yapscan",
 		HelpName:    "yapscan",
 		Description: "A yara based scanner for files and process memory with some extras.",
-		Version:     "0.6.0",
+		Version:     "0.7.0",
 		Writer:      os.Stdout,
 		ErrWriter:   os.Stderr,
 		Authors: []*cli.Author{
@@ -371,8 +371,14 @@ func MakeApp(args []string) *cli.App {
 					},
 					&cli.StringFlag{
 						Name:        "salt",
-						Usage:       "the salt (hex string) to use for anonymization, ignored unless --anonmyize is provided",
+						Usage:       "the salt (base64 string) to use for anonymization, ignored unless --anonmyize is provided",
 						DefaultText: "random salt",
+					},
+					&cli.BoolFlag{
+						Name:    "verbose",
+						Aliases: []string{"v"},
+						Usage:   "show more information about rule matches",
+						Value:   false,
 					},
 				}, segmentFilterFlags...), suspendFlags...),
 			},

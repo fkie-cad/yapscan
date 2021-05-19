@@ -34,6 +34,15 @@ func (r *MultiReporter) ReportRules(rules *yara.Rules) error {
 	return err
 }
 
+// ReportScanningStatistics reports scanning statistics.
+func (r *MultiReporter) ReportScanningStatistics(stats *yapscan.ScanningStatistics) error {
+	var err error
+	for _, rep := range r.Reporters {
+		err = errors.NewMultiError(err, rep.ReportScanningStatistics(stats))
+	}
+	return err
+}
+
 // ConsumeMemoryScanProgress consumes and reports all *yapscan.MemoryScanProgress
 // instances sent in the given channel.
 func (r *MultiReporter) ConsumeMemoryScanProgress(progress <-chan *yapscan.MemoryScanProgress) error {
