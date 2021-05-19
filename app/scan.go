@@ -235,6 +235,21 @@ func scan(c *cli.Context) error {
 	alwaysDumpWithoutSuspend := false
 	neverDumpWithoutSuspend := false
 
+	memScanChan := make(chan *yapscan.MemoryScanProgress)
+	memScanConsumerDone := make(chan interface{})
+	go func() {
+		defer func() {
+			memScanConsumerDone <- nil
+			close(memScanConsumerDone)
+		}()
+
+		err = reporter.ConsumeMemoryScanProgress(memScanChan)
+		if err != nil {
+			logrus.WithError(err).Error("an error occurred during progress report, there may be no other output")
+			return
+		}
+	}()
+
 	for _, pid := range pids {
 		func() {
 			if pid == os.Getpid() {
@@ -299,15 +314,14 @@ func scan(c *cli.Context) error {
 				resume()
 				return
 			}
-			err = reporter.ConsumeMemoryScanProgress(progress)
-			if err != nil {
-				logrus.WithError(err).Error("an error occurred during progress report, there may be no other output")
-				resume()
-				return
+			for prog := range progress {
+				memScanChan <- prog
 			}
 			resume()
 		}()
 	}
+	close(memScanChan)
+	<-memScanConsumerDone
 
 	fileExtensions := c.StringSlice("file-extensions")
 	if len(fileExtensions) == 1 && fileExtensions[0] == "" {
