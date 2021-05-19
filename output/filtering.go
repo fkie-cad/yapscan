@@ -149,6 +149,30 @@ func (c *chainedFilter) FilterFSScanProgress(scan *fileio.FSScanProgress) *filei
 	return scan
 }
 
+// NOPFilter is a filter that does nothing.
+// Any FilteringReporter which uses this behave as an unfiltered Reporter.
+type NOPFilter struct{}
+
+func (c *NOPFilter) Chain(f Filter) Filter {
+	return f
+}
+
+func (c *NOPFilter) FilterSystemInfo(info *system.Info) *system.Info {
+	return info
+}
+
+func (c *NOPFilter) FilterRules(rules *yara.Rules) *yara.Rules {
+	return rules
+}
+
+func (c *NOPFilter) FilterMemoryScanProgress(scan *yapscan.MemoryScanProgress) *yapscan.MemoryScanProgress {
+	return scan
+}
+
+func (c *NOPFilter) FilterFSScanProgress(scan *fileio.FSScanProgress) *fileio.FSScanProgress {
+	return scan
+}
+
 type NoEmptyScansFilter struct{}
 
 func (f *NoEmptyScansFilter) Chain(other Filter) Filter {

@@ -98,8 +98,12 @@ func scan(c *cli.Context) error {
 		paths = append(paths, drives...)
 	}
 
-	var filter output.Filter = &output.NoEmptyScansFilter{}
-	var anonymizer *output.AnonymizingFilter
+	var anonymizer *output.Anonymizer
+
+	var nonEmptyFilter output.Filter = &output.NoEmptyScansFilter{}
+	var progressFilter output.Filter = &output.NOPFilter{}
+	var analysisFilter output.Filter = nonEmptyFilter
+
 	if c.Bool("anonymize") {
 		var salt []byte
 		base64Salt := c.String("salt")
@@ -110,18 +114,25 @@ func scan(c *cli.Context) error {
 			}
 		}
 
+		var anonFilter *output.AnonymizingFilter
 		if salt != nil {
-			anonymizer = output.NewAnonymizingFilter(salt)
+			anonFilter = output.NewAnonymizingFilter(salt)
 		} else {
-			anonymizer, err = output.NewAnonymizingFilterWithRandomSalt(64)
+			anonFilter, err = output.NewAnonymizingFilterWithRandomSalt(64)
 			if err != nil {
 				return fmt.Errorf("could not generate salt, reason: %w", err)
 			}
 		}
-		filter = filter.Chain(anonymizer)
+		anonymizer = anonFilter.Anonymizer
+
+		progressFilter = anonFilter
+		analysisFilter = nonEmptyFilter.Chain(anonFilter)
 	}
 
-	reporter := output.NewProgressReporter(os.Stdout, output.NewPrettyFormatter(c.Bool("verbose")))
+	var reporter output.Reporter = &output.FilteringReporter{
+		Reporter: output.NewProgressReporter(os.Stdout, output.NewPrettyFormatter(c.Bool("verbose"))),
+		Filter:   progressFilter,
+	}
 	if c.Bool("full-report") || c.Bool("store-dumps") {
 		wcBuilder := output.NewWriteCloserBuilder()
 		if c.String("password") != "" && c.String("pgpkey") != "" {
@@ -148,7 +159,7 @@ func scan(c *cli.Context) error {
 			hostname = hex.EncodeToString(h.Sum(nil))
 		}
 		if anonymizer != nil {
-			hostname = anonymizer.Anonymizer.Anonymize(hostname)
+			hostname = anonymizer.Anonymize(hostname)
 		}
 
 		reportArchivePath := fmt.Sprintf("%s_%s.tar%s",
@@ -204,14 +215,12 @@ func scan(c *cli.Context) error {
 		reporter = &output.MultiReporter{
 			Reporters: []output.Reporter{
 				reporter,
-				repFac.Build(),
+				&output.FilteringReporter{
+					Reporter: repFac.Build(),
+					Filter:   analysisFilter,
+				},
 			},
 		}
-	}
-
-	reporter = &output.FilteringReporter{
-		Reporter: reporter,
-		Filter:   filter,
 	}
 
 	defer func() {
