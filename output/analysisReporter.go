@@ -110,7 +110,9 @@ func (r *AnalysisReporter) reportProcessInfos() error {
 
 	for _, info := range r.processInfos {
 		err = encoder.Encode(info)
-		logrus.WithError(err).Error("Could not report process info.")
+		if err != nil {
+			logrus.WithError(err).Error("Could not report process info.")
+		}
 	}
 
 	return w.Close()
