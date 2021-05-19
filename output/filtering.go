@@ -9,6 +9,8 @@ import (
 	"runtime"
 	"strings"
 
+	"github.com/sirupsen/logrus"
+
 	"github.com/fkie-cad/yapscan/procio"
 
 	"github.com/fkie-cad/yapscan"
@@ -163,6 +165,7 @@ func (f *NoEmptyScansFilter) FilterRules(rules *yara.Rules) *yara.Rules {
 
 func (f *NoEmptyScansFilter) FilterMemoryScanProgress(scan *yapscan.MemoryScanProgress) *yapscan.MemoryScanProgress {
 	if scan.Error == nil && (scan.Matches == nil || len(scan.Matches) == 0) {
+		logrus.WithField("segment", scan.MemorySegment).Info("Filtering empty scan result.")
 		return nil
 	}
 	return scan
@@ -170,6 +173,7 @@ func (f *NoEmptyScansFilter) FilterMemoryScanProgress(scan *yapscan.MemoryScanPr
 
 func (f *NoEmptyScansFilter) FilterFSScanProgress(scan *fileio.FSScanProgress) *fileio.FSScanProgress {
 	if scan.Error == nil && (scan.Matches == nil || len(scan.Matches) == 0) {
+		logrus.WithField("file", scan.File.Path()).Info("Filtering empty scan result.")
 		return nil
 	}
 	return scan

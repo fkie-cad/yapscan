@@ -40,7 +40,7 @@ func TestMain(m *testing.M) {
 }
 
 func TestMatchIsFound(t *testing.T) {
-	Convey("Scanning a prepared process with full-report on", t, func(c C) {
+	Convey("Scanning a prepared process", t, func(c C) {
 		data := []byte{0xbd, 0x62, 0xcd, 0xa4, 0x80, 0x8c, 0x3a, 0x1d, 0x7e, 0x1, 0x21, 0xca, 0xc1, 0x52, 0x87, 0xda, 0xdc, 0x57, 0x61}
 		yaraRulesPath, pid, addressOfData := withYaraRulesFileAndMatchingMemoryTester(t, c, data)
 		stdout, stderr, cleanupCapture := withCapturedOutput(t)
@@ -170,6 +170,58 @@ func TestFullReportIsWritten_Unencrypted(t *testing.T) {
 
 		conveyMatchWasSuccessful(c, addressOfData, err, stdout, stderr)
 		conveyReportIsReadable(c, openReportCleartext(), pid, addressOfData, reportDir)
+	})
+}
+
+func TestFullReportIsWritten_Unencrypted_WhenScanningTwoProcesses(t *testing.T) {
+	Convey("Scanning two prepared processes (first matching, then benign) with full-report", t, func(c C) {
+		data := []byte{0xbd, 0x62, 0xcd, 0xa4, 0x80, 0x8c, 0x3a, 0x1d, 0x7e, 0x1, 0x21, 0xca, 0xc1, 0x52, 0x87, 0xda, 0xdc, 0x57, 0x61}
+		yaraRulesPath, matchingPID, addressOfMatchingData := withYaraRulesFileAndMatchingMemoryTester(t, c, data)
+		_, nonMatchingPID, addressOfNonMatchingData := withYaraRulesFileAndNotMatchingMemoryTester(t, nil, data)
+		stdout, stderr, cleanupCapture := withCapturedOutput(t)
+
+		reportDir := t.TempDir()
+		args := []string{"yapscan",
+			"scan",
+			"--verbose",
+			"-r", yaraRulesPath,
+			"--filter-size-max", maxSizeFilter,
+			"--full-report", "--report-dir", reportDir,
+			strconv.Itoa(matchingPID), strconv.Itoa(nonMatchingPID)}
+		ctx, cancel := context.WithTimeout(context.Background(), yapscanTimeout)
+		err := app.MakeApp(args).RunContext(ctx, args)
+		cancel()
+
+		cleanupCapture()
+
+		conveyMatchWasSuccessful(c, addressOfMatchingData, err, stdout, stderr)
+		conveyReportIsReadable(c, openReportCleartext(), matchingPID, addressOfMatchingData, reportDir)
+		conveyReportIsReadableButDoesNotHaveMatch(c, openReportCleartext(), nonMatchingPID, addressOfNonMatchingData, reportDir)
+	})
+
+	Convey("Scanning two prepared processes (first benign, then matching) with full-report", t, func(c C) {
+		data := []byte{0xbd, 0x62, 0xcd, 0xa4, 0x80, 0x8c, 0x3a, 0x1d, 0x7e, 0x1, 0x21, 0xca, 0xc1, 0x52, 0x87, 0xda, 0xdc, 0x57, 0x61}
+		yaraRulesPath, matchingPID, addressOfMatchingData := withYaraRulesFileAndMatchingMemoryTester(t, c, data)
+		_, nonMatchingPID, addressOfNonMatchingData := withYaraRulesFileAndNotMatchingMemoryTester(t, nil, data)
+		stdout, stderr, cleanupCapture := withCapturedOutput(t)
+
+		reportDir := t.TempDir()
+		args := []string{"yapscan",
+			"scan",
+			"--verbose",
+			"-r", yaraRulesPath,
+			"--filter-size-max", maxSizeFilter,
+			"--full-report", "--report-dir", reportDir,
+			strconv.Itoa(nonMatchingPID), strconv.Itoa(matchingPID)}
+		ctx, cancel := context.WithTimeout(context.Background(), yapscanTimeout)
+		err := app.MakeApp(args).RunContext(ctx, args)
+		cancel()
+
+		cleanupCapture()
+
+		conveyMatchWasSuccessful(c, addressOfMatchingData, err, stdout, stderr)
+		conveyReportIsReadable(c, openReportCleartext(), matchingPID, addressOfMatchingData, reportDir)
+		conveyReportIsReadableButDoesNotHaveMatch(c, openReportCleartext(), nonMatchingPID, addressOfNonMatchingData, reportDir)
 	})
 }
 
@@ -369,6 +421,44 @@ func conveyReportIsReadable(c C, openReport reportOpenFunc, pid int, addressOfDa
 	})
 }
 
+func conveyReportIsReadableButDoesNotHaveMatch(c C, openReport reportOpenFunc, pid int, addressOfData uintptr, reportDir string) {
+	c.Convey("should yield a readable report", func(c C) {
+		reportPath, exists := findReportPath(reportDir)
+
+		c.So(exists, ShouldBeTrue)
+		if !exists {
+			return
+		}
+
+		report, err := openReport(reportPath)
+		So(err, ShouldBeNil)
+		defer report.Close()
+
+		reportFiles, err := readReport(c, report)
+
+		c.So(reportFiles, ShouldNotBeEmpty)
+		c.So(err, ShouldBeNil)
+
+		var memoryScansJson *file
+		filenames := make([]string, len(reportFiles))
+		for i, file := range reportFiles {
+			filenames[i] = file.Name
+			if file.Name == "memory-scans.json" {
+				memoryScansJson = file
+			}
+		}
+		c.Convey("which contains the expected files", func(c C) {
+			c.So(filenames, ShouldContain, "systeminfo.json")
+			c.So(filenames, ShouldContain, "processes.json")
+			c.So(filenames, ShouldContain, "memory-scans.json")
+			c.So(filenames, ShouldContain, "stats.json")
+			c.So(memoryScansJson, ShouldNotBeNil)
+
+			conveyReportDoesNotHaveMatch(c, pid, addressOfData, memoryScansJson)
+		})
+	})
+}
+
 func conveyReportIsAnonymized(c C, openReport reportOpenFunc, reportDir string) {
 	c.Convey("should yield a valid report", func(c C) {
 		reportPath, exists := findReportPath(reportDir)
@@ -456,6 +546,32 @@ func conveyReportHasMatch(c C, pid int, addressOfData uintptr, memoryScansJson *
 		}
 		c.So(err, ShouldResemble, io.EOF)
 		c.So(foundCorrectMatch, ShouldBeTrue)
+	})
+}
+
+func conveyReportDoesNotHaveMatch(c C, pid int, addressOfData uintptr, memoryScansJson *file) {
+	c.Convey("with the memory-scans.json not containing a false positive.", func() {
+		dec := json.NewDecoder(bytes.NewReader(memoryScansJson.Data))
+		foundMatchForPID := false
+		foundMatchForAddressInPID := false
+		var err error
+		for {
+			report := new(output.MemoryScanProgressReport)
+			err = dec.Decode(report)
+			if err != nil {
+				break
+			}
+
+			if report.PID == pid && len(report.Matches) > 0 {
+				foundMatchForPID = true
+				if report.MemorySegment == addressOfData {
+					foundMatchForAddressInPID = true
+				}
+			}
+		}
+		c.So(err, ShouldResemble, io.EOF)
+		c.So(foundMatchForPID, ShouldBeFalse)
+		c.So(foundMatchForAddressInPID, ShouldBeFalse)
 	})
 }
 
