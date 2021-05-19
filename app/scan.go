@@ -3,6 +3,7 @@ package app
 import (
 	"context"
 	"crypto/md5"
+	"encoding/base64"
 	"encoding/binary"
 	"encoding/hex"
 	"fmt"
@@ -101,9 +102,9 @@ func scan(c *cli.Context) error {
 	var anonymizer *output.AnonymizingFilter
 	if c.Bool("anonymize") {
 		var salt []byte
-		hexSalt := c.String("salt")
-		if hexSalt != "" {
-			salt, err = hex.DecodeString(hexSalt)
+		base64Salt := c.String("salt")
+		if base64Salt != "" {
+			salt, err = base64.StdEncoding.DecodeString(base64Salt)
 			if err != nil {
 				return fmt.Errorf("could not decode given salt, reason: %w", err)
 			}
