@@ -351,11 +351,10 @@ func conveyReportIsReadable(c C, openReport reportOpenFunc, pid int, addressOfDa
 			}
 		}
 		c.Convey("which contains the expected files", func(c C) {
-			c.So(filenames, ShouldContain, "rules.yarc")
 			c.So(filenames, ShouldContain, "systeminfo.json")
 			c.So(filenames, ShouldContain, "processes.json")
 			c.So(filenames, ShouldContain, "memory-scans.json")
-			c.So(filenames, ShouldHaveLength, 4)
+			c.So(filenames, ShouldContain, "stats.json")
 			c.So(memoryScansJson, ShouldNotBeNil)
 
 			conveyReportHasMatch(c, pid, addressOfData, memoryScansJson)
