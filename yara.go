@@ -66,15 +66,17 @@ func (s *ScanningStatistics) StartMemoryProfiler(ctx context.Context, scanInterv
 	s.MemoryProfile = make([]*MemoryProfile, 0, 16)
 	s.ctx, s.ctxCancel = context.WithCancel(ctx)
 	s.profilerDone = make(chan interface{})
+
 	go func() {
 		defer func() {
 			s.profilerDone <- nil
 			close(s.profilerDone)
 		}()
-		for {
+		run := true
+		for run {
 			select {
 			case <-s.ctx.Done():
-				break
+				run = false
 			case <-time.After(scanInterval):
 				freeRAM, err := system.FreeRAM()
 				if err != nil {
