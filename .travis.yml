@@ -48,7 +48,9 @@ after_success:
 
 before_deploy:
     - pushd cicd/build
+    - ldd yapscan
     - cp $(ldd yapscan | grep libyara | cut -d'>' -f2 | cut -d' ' -f2) .
+    - ldd libyara.so*
     - cp $(ldd libyara.so* | grep libcrypto | cut -d'>' -f2 | cut -d' ' -f2) .
     - 7z a yapscan_windows_amd64.zip yapscan.exe yapscan.dll
     - 7z a yapscan_linux_amd64.zip yapscan libyara.so* libcrypto.so*
