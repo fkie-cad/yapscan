@@ -121,7 +121,7 @@ func scan(c *cli.Context) error {
 		filter = filter.Chain(anonymizer)
 	}
 
-	reporter := output.NewProgressReporter(os.Stdout, output.NewPrettyFormatter())
+	reporter := output.NewProgressReporter(os.Stdout, output.NewPrettyFormatter(c.Bool("verbose")))
 	if c.Bool("full-report") || c.Bool("store-dumps") {
 		wcBuilder := output.NewWriteCloserBuilder()
 		if c.String("password") != "" && c.String("pgpkey") != "" {

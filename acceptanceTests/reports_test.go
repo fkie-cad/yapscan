@@ -47,6 +47,7 @@ func TestMatchIsFound(t *testing.T) {
 
 		args := []string{"yapscan",
 			"scan",
+			"--verbose",
 			"-r", yaraRulesPath,
 			"--filter-size-max", maxSizeFilter,
 			strconv.Itoa(pid)}
@@ -83,6 +84,7 @@ func TestMatchIsFound_Fuzzy(t *testing.T) {
 
 		args := []string{"yapscan",
 			"scan",
+			"--verbose",
 			"-r", yaraRulesPath,
 			"--filter-size-max", maxSizeFilter,
 			strconv.Itoa(pid)}
@@ -125,6 +127,7 @@ func TestDoesNotMatchFalsePositive_Fuzzy(t *testing.T) {
 
 		args := []string{"yapscan",
 			"scan",
+			"--verbose",
 			"-r", yaraRulesPath,
 			"--filter-size-max", maxSizeFilter,
 			strconv.Itoa(pid)}
@@ -154,6 +157,7 @@ func TestFullReportIsWritten_Unencrypted(t *testing.T) {
 		reportDir := t.TempDir()
 		args := []string{"yapscan",
 			"scan",
+			"--verbose",
 			"-r", yaraRulesPath,
 			"--filter-size-max", maxSizeFilter,
 			"--full-report", "--report-dir", reportDir,
@@ -180,6 +184,7 @@ func TestPasswordProtectedFullReport(t *testing.T) {
 		reportDir := t.TempDir()
 		args := []string{"yapscan",
 			"scan",
+			"--verbose",
 			"-r", yaraRulesPath,
 			"--filter-size-max", maxSizeFilter,
 			"--password", password,
@@ -208,6 +213,7 @@ func TestPGPProtectedFullReport(t *testing.T) {
 		reportDir := t.TempDir()
 		args := []string{"yapscan",
 			"scan",
+			"--verbose",
 			"-r", yaraRulesPath,
 			"--filter-size-max", maxSizeFilter,
 			"--pgpkey", keyringPath,
@@ -234,6 +240,7 @@ func TestAnonymizedFullReport(t *testing.T) {
 		reportDir := t.TempDir()
 		args := []string{"yapscan",
 			"scan",
+			"--verbose",
 			"-r", yaraRulesPath,
 			"--filter-size-max", maxSizeFilter,
 			"--anonymize",
@@ -495,7 +502,7 @@ func readReport(c C, rdr io.Reader) ([]*file, error) {
 }
 
 func conveyMatchWasSuccessful(c C, addressOfData uintptr, err error, stdout, stderr *bytes.Buffer) {
-	c.Convey("should not error and find the correct match.", func() {
+	c.Convey("should not error and find the correct match in stdout.", func() {
 		c.So(err, ShouldBeNil)
 		c.So(stderr.String(), ShouldBeEmpty)
 		c.So(stdout.String(), ShouldContainSubstring, fmt.Sprintf("Rule-strings matched at 0x%X.", addressOfData))

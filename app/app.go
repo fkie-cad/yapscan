@@ -374,6 +374,12 @@ func MakeApp(args []string) *cli.App {
 						Usage:       "the salt (base64 string) to use for anonymization, ignored unless --anonmyize is provided",
 						DefaultText: "random salt",
 					},
+					&cli.BoolFlag{
+						Name:    "verbose",
+						Aliases: []string{"v"},
+						Usage:   "show more information about rule matches",
+						Value:   false,
+					},
 				}, segmentFilterFlags...), suspendFlags...),
 			},
 			&cli.Command{
