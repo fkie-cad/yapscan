@@ -80,6 +80,7 @@ func (s *ScanningStatistics) StartMemoryProfiler(ctx context.Context, scanInterv
 			case <-time.After(scanInterval):
 				freeRAM, err := system.FreeRAM()
 				if err != nil {
+					logrus.WithError(err).Error("Could not retrieve free RAM.")
 					continue
 				}
 				s.MemoryProfile = append(s.MemoryProfile, &MemoryProfile{
