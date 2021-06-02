@@ -1,5 +1,8 @@
 language: go
 
+os: linux
+dist: xenial
+
 go:
     - "1.x"
     - "1.15"
@@ -60,9 +63,8 @@ before_deploy:
 
 deploy:
     provider: releases
-    skip_cleanup: true
-    api_key:
-        secure: SEqzkWiVZTZlK3FvJGku7a10rMVqSPTakdAP2M7p6z+S2SE3yRI4R4aiH3t73Yt2nDPGrW1ie43EsJ0WcPIIVaSHUArNBwdyoGRBtdAq461ZSwsskuMLVz28SreyiTwEb4cmRrx5eggGyAoO6kzuGyBVdnBY8Bzxtj0CVV/qeHxvvD6ARYxBQtq6izomd4hoMnCRKNApIUDFbLo2gnF4YOuAMgi45ALe5jchSHPESsa/e8x2e13WEOCIwmiHxRR4EXS/oOxr8kO792HEa324V7uPE1HaIH3z7fBWWcUMXJZSAYynbzsC2WAHzWgIcFHyqVUcs6IKMU8rweJcNNDIVrC/zY7Jm4/aEdyy/Kq3iReuSUkvv9HY0C+CGf8RK/7x/1LolYXDnXGIeEXF/dkqE4p/bOCKrlW8TePoEf8zUlSiZRd0+XdodyxrbjFdx0E5kePxLGeqkopfR/ubKN5DJY93ueFsVlKYGpWLOKxtZTJoxEcwhSm1EF2Lsd77+xySjeJbh00Ozu51C7lu8Obn4wzWCVLDnlt3X5pSqYEHKphIfVYr21LPD9uQc++XR7IfPQG/Gnz/CTBEGvwTYm29jaD0m5e1pshL5nr5lhCOQIH4iZWSmoCwa8GP3Kbix9tYtPAdOkd6crz3vj0EUEWmd9ioEutTOL3wduGzNTcBvXM=
+    token:
+        secure: g36k1ZMwK/LWSxsM22sz9h//vOAnil/5mHc28te6HsoXold37Gk/OUC8OdVg0Ff3mbTgF0cL+aWWDVL1w+9z5zQJ6w2eHO8ONX7yzv3x70nWuznoN8x00sYGZ9vnVeGSMFPLIK8XJVvwW7F3cKNkrX2GaJU5E9uWfiyrPi0SxgeWvSveMwyCfwFp7kgYv1NzSpoXQxzozfFltFyBfKYzRxGm4rjf7gcxw6/DF+YsD7odQ6s6lxwLAvILYPM3DKnJaZ2ZFpknLFgl0a43seUgSWZtOqkssvZIrPyGLmorGjbHgmNBknhlRQZDAk0oiZGaLD3pgWCLtRzR+N8QkQ9uRSTuxMnIfWAgTvM8LSA+OJH+13IykwdVZxbEqqtie4Q9EZjjBJ3ikWuEuxnO4jfkQYrB1cgMyuJo3T/Ovh2fbuvERq70asFj+ooIYcVNBEY9bP8de+sobbE93xIQS5GatlAwYn2BDmYQGAkEe3DuOY3LrSt88UaxW5ObWOROHGSv5BWTwuIyhzPjorDQhI2gje+XGtdxdX3K4cMYnWP0+f9H0TscdWNK6Hbde/NUJIYrMpdZJMBi7Rp6yH0klDrLPYKRuWDsa26mSnW4cfXUkxW7WIMCFAaBAeoM0yyipJ4da/2JxLA/7+sgLfntD7CXw+62DS6gP8+dD1XT8hw1eM8=
     file:
         - cicd/build/yapscan_windows_amd64.zip
         - cicd/build/yapscan_windows_amd64.tar.gz
