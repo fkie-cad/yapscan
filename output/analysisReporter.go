@@ -140,19 +140,13 @@ func (r *AnalysisReporter) ConsumeMemoryScanProgress(progress <-chan *yapscan.Me
 			logrus.WithError(err).Warn("Could not retrieve complete process info.")
 		}
 
-		if prog.Matches != nil && len(prog.Matches) > 0 && prog.MemorySegment.MappedFile != nil {
-			err = prog.MemorySegment.MappedFile.EnableHashMarshalling()
-			if err != nil {
-				logrus.WithError(err).Error("Could not determine hash of memory mapped file.")
-			}
-			if prog.MemorySegment.BaseAddress != prog.MemorySegment.ParentBaseAddress {
-				// Is not a root segment => on windows we only memory map root segments
-				for _, seg := range info.MemorySegments {
-					if seg.BaseAddress == prog.MemorySegment.ParentBaseAddress {
-						err = seg.MappedFile.EnableHashMarshalling()
-						if err != nil {
-							logrus.WithError(err).Error("Could not determine hash of memory mapped file.")
-						}
+		if prog.Matches != nil && len(prog.Matches) > 0 {
+			for _, seg := range info.MemorySegments {
+				if (seg.BaseAddress == prog.MemorySegment.ParentBaseAddress || seg.BaseAddress == prog.MemorySegment.BaseAddress) &&
+					seg.MappedFile != nil {
+					err = seg.MappedFile.EnableHashMarshalling()
+					if err != nil {
+						logrus.WithError(err).Error("Could not determine hash of memory mapped file.")
 					}
 				}
 			}

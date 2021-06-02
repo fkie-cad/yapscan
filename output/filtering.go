@@ -347,8 +347,8 @@ func (f *AnonymizingFilter) FilterFSScanProgress(scan *fileio.FSScanProgress) *f
 
 type AnonymizedFile struct {
 	FilePath  string `json:"path"`
-	MD5Sum    string `json:"md5sum,omitempty"`
-	SHA256Sum string `json:"sh256sum,omitempty"`
+	MD5Sum    string `json:"MD5,omitempty"`
+	SHA256Sum string `json:"SHA256,omitempty"`
 	origFile  fileio.File
 }
 
