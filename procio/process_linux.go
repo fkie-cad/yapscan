@@ -13,6 +13,7 @@ import (
 	"syscall"
 
 	"github.com/fkie-cad/yapscan/arch"
+	"github.com/fkie-cad/yapscan/fileio"
 
 	"github.com/targodan/go-errors"
 )
@@ -73,7 +74,7 @@ func (p *processLinux) Info() (*ProcessInfo, error) {
 	// Using procExeLink here is more robust, as the OS sometimes does more magic.
 	// One example is a flatpak application. The resolved path cannot be found, while the link
 	// can still be resolved correctly.
-	info.ExecutableMD5, info.ExecutableSHA256, tmpErr = ComputeHashes(procExeLink)
+	info.ExecutableMD5, info.ExecutableSHA256, tmpErr = fileio.ComputeHashes(procExeLink)
 	if tmpErr != nil {
 		err = errors.NewMultiError(err, fmt.Errorf("could not determine executable hashes, reason: %w", tmpErr))
 	}

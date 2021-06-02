@@ -55,7 +55,7 @@ func TestProcessScan(t *testing.T) {
 					Size:                 0,
 					State:                0,
 					Type:                 0,
-					FilePath:             "",
+					MappedFile:           nil,
 					SubSegments: []*procio.MemorySegmentInfo{
 						&procio.MemorySegmentInfo{
 							ParentBaseAddress:    1,
@@ -65,7 +65,7 @@ func TestProcessScan(t *testing.T) {
 							Size:                 0,
 							State:                0,
 							Type:                 0,
-							FilePath:             "",
+							MappedFile:           nil,
 							SubSegments:          nil,
 						},
 						&procio.MemorySegmentInfo{
@@ -76,7 +76,7 @@ func TestProcessScan(t *testing.T) {
 							Size:                 0,
 							State:                0,
 							Type:                 0,
-							FilePath:             "",
+							MappedFile:           nil,
 							SubSegments:          nil,
 						},
 					},
@@ -89,7 +89,7 @@ func TestProcessScan(t *testing.T) {
 					Size:                 0,
 					State:                0,
 					Type:                 0,
-					FilePath:             "",
+					MappedFile:           nil,
 					SubSegments:          nil,
 				},
 				&procio.MemorySegmentInfo{
@@ -100,7 +100,7 @@ func TestProcessScan(t *testing.T) {
 					Size:                 0,
 					State:                0,
 					Type:                 0,
-					FilePath:             "",
+					MappedFile:           nil,
 					SubSegments:          nil,
 				},
 			}

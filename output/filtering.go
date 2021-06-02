@@ -262,6 +262,13 @@ func (a *Anonymizer) AnonymizePath(path string) string {
 	return result
 }
 
+func (a *Anonymizer) AnonymizeFile(file fileio.File) fileio.File {
+	if file == nil {
+		return nil
+	}
+	return newAnonymizedFile(file, a.AnonymizePath(file.Path()))
+}
+
 func (a *Anonymizer) AnonymizeMemorySegment(segment *procio.MemorySegmentInfo) *procio.MemorySegmentInfo {
 	return &procio.MemorySegmentInfo{
 		ParentBaseAddress:    segment.ParentBaseAddress,
@@ -271,7 +278,7 @@ func (a *Anonymizer) AnonymizeMemorySegment(segment *procio.MemorySegmentInfo) *
 		Size:                 segment.Size,
 		State:                segment.State,
 		Type:                 segment.Type,
-		FilePath:             a.AnonymizePath(segment.FilePath),
+		MappedFile:           a.AnonymizeFile(segment.MappedFile),
 		SubSegments:          a.AnonymizeMemorySegments(segment.SubSegments),
 	}
 }
@@ -279,17 +286,7 @@ func (a *Anonymizer) AnonymizeMemorySegment(segment *procio.MemorySegmentInfo) *
 func (a *Anonymizer) AnonymizeMemorySegments(segments []*procio.MemorySegmentInfo) []*procio.MemorySegmentInfo {
 	anon := make([]*procio.MemorySegmentInfo, len(segments))
 	for i := range segments {
-		anon[i] = &procio.MemorySegmentInfo{
-			ParentBaseAddress:    segments[i].ParentBaseAddress,
-			BaseAddress:          segments[i].BaseAddress,
-			AllocatedPermissions: segments[i].AllocatedPermissions,
-			CurrentPermissions:   segments[i].CurrentPermissions,
-			Size:                 segments[i].Size,
-			State:                segments[i].State,
-			Type:                 segments[i].Type,
-			FilePath:             a.AnonymizePath(segments[i].FilePath),
-			SubSegments:          a.AnonymizeMemorySegments(segments[i].SubSegments),
-		}
+		anon[i] = a.AnonymizeMemorySegment(segments[i])
 	}
 	return anon
 }
@@ -333,49 +330,56 @@ func (f *AnonymizingFilter) FilterMemoryScanProgress(scan *yapscan.MemoryScanPro
 			orig:       scan.Process,
 			anonymizer: f.Anonymizer,
 		}),
-		MemorySegment: &procio.MemorySegmentInfo{
-			ParentBaseAddress:    scan.MemorySegment.ParentBaseAddress,
-			BaseAddress:          scan.MemorySegment.BaseAddress,
-			AllocatedPermissions: scan.MemorySegment.AllocatedPermissions,
-			CurrentPermissions:   scan.MemorySegment.CurrentPermissions,
-			Size:                 scan.MemorySegment.Size,
-			State:                scan.MemorySegment.State,
-			Type:                 scan.MemorySegment.Type,
-			FilePath:             f.Anonymizer.AnonymizePath(scan.MemorySegment.FilePath),
-			SubSegments:          f.Anonymizer.AnonymizeMemorySegments(scan.MemorySegment.SubSegments),
-		},
-		Dump:    nil,
+		MemorySegment: f.Anonymizer.AnonymizeMemorySegment(scan.MemorySegment),
+		Dump:          nil,
+		Matches:       scan.Matches,
+		Error:         scan.Error,
+	}
+}
+
+func (f *AnonymizingFilter) FilterFSScanProgress(scan *fileio.FSScanProgress) *fileio.FSScanProgress {
+	return &fileio.FSScanProgress{
+		File:    f.Anonymizer.AnonymizeFile(scan.File),
 		Matches: scan.Matches,
 		Error:   scan.Error,
 	}
 }
 
-func (f *AnonymizingFilter) FilterFSScanProgress(scan *fileio.FSScanProgress) *fileio.FSScanProgress {
-	scan.File = newAnonymizedFile(f.Anonymizer.AnonymizePath(scan.File.Path()), scan.File)
-	return scan
+type AnonymizedFile struct {
+	FilePath  string `json:"path"`
+	MD5Sum    string `json:"MD5,omitempty"`
+	SHA256Sum string `json:"SHA256,omitempty"`
+	origFile  fileio.File
 }
 
-type anonymizedFile struct {
-	path    string
-	stat    os.FileInfo
-	statErr error
-}
-
-func newAnonymizedFile(anonPath string, f fileio.File) fileio.File {
-	stat, err := f.Stat()
-	return &anonymizedFile{
-		path:    anonPath,
-		stat:    stat,
-		statErr: err,
+func newAnonymizedFile(f fileio.File, anonPath string) fileio.File {
+	anon := &AnonymizedFile{
+		FilePath: anonPath,
+		origFile: f,
 	}
+	osFile, ok := f.(*fileio.OSFile)
+	if ok {
+		anon.MD5Sum = osFile.MD5Sum
+		anon.SHA256Sum = osFile.SHA256Sum
+	}
+	return anon
 }
 
-func (f *anonymizedFile) Path() string {
-	return f.path
+func (f *AnonymizedFile) Path() string {
+	return f.FilePath
 }
 
-func (f *anonymizedFile) Stat() (os.FileInfo, error) {
-	return f.stat, f.statErr
+func (f *AnonymizedFile) Stat() (os.FileInfo, error) {
+	return f.origFile.Stat()
+}
+
+func (f *AnonymizedFile) Hashes() (md5sum, sha256sum string, err error) {
+	return f.origFile.Hashes()
+}
+
+func (f *AnonymizedFile) EnableHashMarshalling() (err error) {
+	f.MD5Sum, f.SHA256Sum, err = f.Hashes()
+	return
 }
 
 type anonymizedProcess struct {

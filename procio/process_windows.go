@@ -6,6 +6,7 @@ import (
 	"syscall"
 
 	"github.com/fkie-cad/yapscan/arch"
+	"github.com/fkie-cad/yapscan/fileio"
 	"github.com/fkie-cad/yapscan/procio/customWin32"
 
 	"golang.org/x/sys/windows"
@@ -129,7 +130,7 @@ func (p *processWindows) Info() (*ProcessInfo, error) {
 	if tmpErr != nil {
 		err = errors.NewMultiError(err, fmt.Errorf("could not retrieve executable path, reason: %w", tmpErr))
 	} else {
-		info.ExecutableMD5, info.ExecutableSHA256, tmpErr = ComputeHashes(info.ExecutablePath)
+		info.ExecutableMD5, info.ExecutableSHA256, tmpErr = fileio.ComputeHashes(info.ExecutablePath)
 		if tmpErr != nil {
 			err = errors.NewMultiError(err, fmt.Errorf("could not compute hashes of executable, reason: %w", tmpErr))
 		}
@@ -221,7 +222,10 @@ func (p *processWindows) MemorySegments() ([]*MemorySegmentInfo, error) {
 			}
 			lpAddress += win32.LPCVOID(mbi.RegionSize)
 			seg := SegmentFromMemoryBasicInformation(mbi)
-			seg.FilePath, _ = LookupFilePathOfSegment(p.procHandle, seg)
+			mappedFilePath, _ := LookupFilePathOfSegment(p.procHandle, seg)
+			if mappedFilePath != "" {
+				seg.MappedFile = fileio.NewFile(mappedFilePath)
+			}
 
 			if seg.State == StateFree {
 				continue

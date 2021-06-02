@@ -40,13 +40,14 @@ type MemoryProfile struct {
 
 // ScanningStatistics holds statistic information about a scan.
 type ScanningStatistics struct {
-	Start                    time.Time        `json:"start"`
-	End                      time.Time        `json:"end"`
-	NumberOfProcessesScanned uint64           `json:"numberOfProcessesScanned"`
-	NumberOfSegmentsScanned  uint64           `json:"numberOfSegmentsScanned"`
-	NumberOfBytesScanned     uint64           `json:"numberOfBytesScanned"`
-	NumberOfFilesScanned     uint64           `json:"numberOfFilesScanned"`
-	MemoryProfile            []*MemoryProfile `json:"memoryProfile"`
+	Start                      time.Time        `json:"start"`
+	End                        time.Time        `json:"end"`
+	NumberOfProcessesScanned   uint64           `json:"numberOfProcessesScanned"`
+	NumberOfSegmentsScanned    uint64           `json:"numberOfSegmentsScanned"`
+	NumberOfMemoryBytesScanned uint64           `json:"numberOfMemoryBytesScanned"`
+	NumberOfFileBytesScanned   uint64           `json:"numberOfFileBytesScanned"`
+	NumberOfFilesScanned       uint64           `json:"numberOfFilesScanned"`
+	MemoryProfile              []*MemoryProfile `json:"memoryProfile"`
 
 	mux          *sync.Mutex
 	ctx          context.Context
@@ -92,12 +93,14 @@ func (s *ScanningStatistics) StartMemoryProfiler(ctx context.Context, scanInterv
 	}()
 }
 
-// IncrementFileCount increments the number of files scanned.
+// IncrementFilesScanned increments the number of files scanned as
+// well as the number of bytes scanned.
 // This function is thread safe.
-func (s *ScanningStatistics) IncrementFileCount() {
+func (s *ScanningStatistics) IncrementFilesScanned(numOfBytes uint64) {
 	s.mux.Lock()
 	defer s.mux.Unlock()
 	s.NumberOfFilesScanned++
+	s.NumberOfFileBytesScanned += numOfBytes
 }
 
 // IncrementMemorySegmentsScanned increments the number of segments scanned as
@@ -107,7 +110,7 @@ func (s *ScanningStatistics) IncrementMemorySegmentsScanned(numOfBytes uint64) {
 	s.mux.Lock()
 	defer s.mux.Unlock()
 	s.NumberOfSegmentsScanned++
-	s.NumberOfBytesScanned += numOfBytes
+	s.NumberOfMemoryBytesScanned += numOfBytes
 }
 
 // IncrementNumberOfProcessesScanned increments the number of scanned processes.
@@ -161,9 +164,15 @@ func NewYaraScanner(rules Rules) (*YaraScanner, error) {
 // ScanFile scans the file with the given filename.
 // This function simply calls ScanFile on the underlying yara.Rules object.
 func (s *YaraScanner) ScanFile(filename string) ([]yara.MatchRule, error) {
-	s.stats.IncrementFileCount()
+	info, err := os.Stat(filename)
+	if err != nil {
+		logrus.WithError(err).Error("Could not stat file for filesize computation.")
+	} else {
+		s.stats.IncrementFilesScanned(uint64(info.Size()))
+	}
+
 	var matches yara.MatchRules
-	err := s.rules.ScanFile(filename, 0, 0, &matches)
+	err = s.rules.ScanFile(filename, 0, 0, &matches)
 	return matches, err
 }
 

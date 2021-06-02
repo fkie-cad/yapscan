@@ -9,7 +9,6 @@ import (
 	"time"
 
 	"github.com/fkie-cad/yapscan/testutil"
-
 	"github.com/fkie-cad/yapscan/testutil/memory"
 
 	. "github.com/smartystreets/goconvey/convey"

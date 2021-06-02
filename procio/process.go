@@ -1,13 +1,9 @@
 package procio
 
 import (
-	"crypto/md5"
-	"crypto/sha256"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"io"
-	"os"
 	"sync"
 
 	"github.com/fkie-cad/yapscan/arch"
@@ -155,30 +151,6 @@ func (c *cachingProcess) InvalidateCache() {
 		defer c.infoMutex.Unlock()
 		c.infoCache = nil
 	}()
-}
-
-// ComputeHashes computes the md5 and sha256 hashes of a given file.
-func ComputeHashes(file string) (md5sum, sha256sum string, err error) {
-	var f *os.File
-	f, err = os.OpenFile(file, os.O_RDONLY, 0666)
-	if err != nil {
-		return
-	}
-	defer f.Close()
-
-	h5 := md5.New()
-	h256 := sha256.New()
-
-	teeH5 := io.TeeReader(f, h5)
-	_, err = io.Copy(h256, teeH5)
-	if err != nil {
-		return
-	}
-
-	md5sum = hex.EncodeToString(h5.Sum(nil))
-	sha256sum = hex.EncodeToString(h256.Sum(nil))
-
-	return
 }
 
 func (c *cachingProcess) Crash(m CrashMethod) error {

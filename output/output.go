@@ -65,7 +65,7 @@ type MemoryScanProgressReport struct {
 
 // FSScanProgressReport represents all matches on a file.
 type FSScanProgressReport struct {
-	Path    string      `json:"path"`
+	File    fileio.File `json:"file"`
 	Matches []*Match    `json:"match"`
 	Error   interface{} `json:"error"`
 }
