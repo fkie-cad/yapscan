@@ -8,6 +8,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/fkie-cad/yapscan/fileio"
+
 	"github.com/targodan/go-errors"
 )
 
@@ -66,8 +68,8 @@ func memorySegmentFromLine(line string) (*MemorySegmentInfo, error) {
 	}
 	ret.Type = t
 
-	if fieldPath < len(parts) {
-		ret.FilePath = parts[fieldPath]
+	if fieldPath < len(parts) && parts[fieldPath] != "" {
+		ret.MappedFile = fileio.NewFile(parts[fieldPath])
 	}
 
 	return ret, nil

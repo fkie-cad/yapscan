@@ -7,8 +7,6 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
-
-	"github.com/fkie-cad/yapscan"
 )
 
 var (
@@ -16,6 +14,8 @@ var (
 	// during iteration.
 	FilesBuffer = 8
 )
+
+var ErrSkipped error = errors.New("skipped")
 
 type nextEntry struct {
 	File File
@@ -113,7 +113,7 @@ func (it *fsIterator) dirScanner() {
 			f, err := os.Open(dir)
 			if err != nil {
 				it.next <- &nextEntry{
-					File: &file{dir},
+					File: NewFile(dir),
 					Err:  err,
 				}
 				return
@@ -127,7 +127,7 @@ func (it *fsIterator) dirScanner() {
 					break
 				} else if err != nil {
 					it.next <- &nextEntry{
-						File: &file{dir},
+						File: NewFile(dir),
 						Err:  err,
 					}
 					return
@@ -141,12 +141,12 @@ func (it *fsIterator) dirScanner() {
 				} else {
 					if it.doesExtensionMatch(path) {
 						it.next <- &nextEntry{
-							File: &file{path},
+							File: NewFile(path),
 						}
 					} else {
 						it.next <- &nextEntry{
-							File: &file{path},
-							Err:  yapscan.ErrSkipped,
+							File: NewFile(path),
+							Err:  ErrSkipped,
 						}
 					}
 				}

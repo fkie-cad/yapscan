@@ -4,6 +4,8 @@ package procio
 import (
 	"fmt"
 	"strings"
+
+	"github.com/fkie-cad/yapscan/fileio"
 )
 
 // MemorySegmentInfo contains information about a memory segment.
@@ -40,9 +42,9 @@ type MemorySegmentInfo struct {
 	// Equivalence on windows: _MEMORY_BASIC_INFORMATION->Type
 	Type Type `json:"type"`
 
-	// FilePath contains the path to the mapped file, or empty string if
+	// File contains the path to the mapped file, or empty string if
 	// no file mapping is associated with this memory segment.
-	FilePath string `json:"filePath"`
+	MappedFile fileio.File `json:"mappedFile"`
 
 	// SubSegments contains sub-segments, i.e. segment where their ParentBaseAddress
 	// is equal to this segments BaseAddress.
@@ -66,6 +68,7 @@ func (s *MemorySegmentInfo) CopyWithoutSubSegments() *MemorySegmentInfo {
 		Size:                 s.Size,
 		State:                s.State,
 		Type:                 s.Type,
+		MappedFile:           fileio.CloneFile(s.MappedFile),
 		SubSegments:          make([]*MemorySegmentInfo, 0),
 	}
 }
@@ -73,13 +76,13 @@ func (s *MemorySegmentInfo) CopyWithoutSubSegments() *MemorySegmentInfo {
 // Permissions describes the permissions of a memory segment.
 type Permissions struct {
 	// Is read-only access allowed
-	Read bool
+	Read bool `yaml:"read"`
 	// Is write access allowed (also true if COW is enabled)
-	Write bool
+	Write bool `yaml:"write"`
 	// Is copy-on-write access allowed (if this is true, then so is Write)
-	COW bool
+	COW bool `yaml:"cow"`
 	// Is execute access allowed
-	Execute bool
+	Execute bool `yaml:"execute"`
 }
 
 // PermR is readonly Permissions.

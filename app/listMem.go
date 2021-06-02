@@ -47,7 +47,12 @@ func listMemory(c *cli.Context) error {
 
 		format := "%19s %8s %3s %7s %7s %s\n"
 
-		fmt.Printf(format, procio.FormatMemorySegmentAddress(seg), humanize.Bytes(uint64(seg.Size)), seg.CurrentPermissions, seg.Type, seg.State, seg.FilePath)
+		filepath := ""
+		if seg.MappedFile != nil {
+			filepath = seg.MappedFile.Path()
+		}
+
+		fmt.Printf(format, procio.FormatMemorySegmentAddress(seg), humanize.Bytes(uint64(seg.Size)), seg.CurrentPermissions, seg.Type, seg.State, filepath)
 
 		if c.Bool("list-subdivided") {
 			for i, sseg := range seg.SubSegments {
@@ -58,7 +63,12 @@ func listMemory(c *cli.Context) error {
 					addr = "└" + addr
 				}
 
-				fmt.Printf(format, addr, humanize.Bytes(uint64(sseg.Size)), sseg.CurrentPermissions, sseg.Type, sseg.State, sseg.FilePath)
+				filepath = ""
+				if sseg.MappedFile != nil {
+					filepath = sseg.MappedFile.Path()
+				}
+
+				fmt.Printf(format, addr, humanize.Bytes(uint64(sseg.Size)), sseg.CurrentPermissions, sseg.Type, sseg.State, filepath)
 			}
 		}
 	}

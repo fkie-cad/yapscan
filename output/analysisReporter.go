@@ -139,6 +139,25 @@ func (r *AnalysisReporter) ConsumeMemoryScanProgress(progress <-chan *yapscan.Me
 		if err != nil {
 			logrus.WithError(err).Warn("Could not retrieve complete process info.")
 		}
+
+		if prog.Matches != nil && len(prog.Matches) > 0 && prog.MemorySegment.MappedFile != nil {
+			err = prog.MemorySegment.MappedFile.EnableHashMarshalling()
+			if err != nil {
+				logrus.WithError(err).Error("Could not determine hash of memory mapped file.")
+			}
+			if prog.MemorySegment.BaseAddress != prog.MemorySegment.ParentBaseAddress {
+				// Is not a root segment => on windows we only memory map root segments
+				for _, seg := range info.MemorySegments {
+					if seg.BaseAddress == prog.MemorySegment.ParentBaseAddress {
+						err = seg.MappedFile.EnableHashMarshalling()
+						if err != nil {
+							logrus.WithError(err).Error("Could not determine hash of memory mapped file.")
+						}
+					}
+				}
+			}
+		}
+
 		// Store info for later output
 		r.processInfos[info.PID] = info
 
@@ -186,8 +205,18 @@ func (r *AnalysisReporter) ConsumeFSScanProgress(progress <-chan *fileio.FSScanP
 		if prog.Error != nil {
 			jsonErr = prog.Error.Error()
 		}
-		err := encoder.Encode(&FSScanProgressReport{
-			Path:    prog.File.Path(),
+
+		var err error
+
+		if prog.Matches != nil && len(prog.Matches) > 0 {
+			err = prog.File.EnableHashMarshalling()
+			if err != nil {
+				logrus.WithError(err).Error("Could not determine hash of memory mapped file.")
+			}
+		}
+
+		err = encoder.Encode(&FSScanProgressReport{
+			File:    prog.File,
 			Matches: ConvertYaraMatchRules(prog.Matches),
 			Error:   jsonErr,
 		})
