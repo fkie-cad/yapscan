@@ -43,6 +43,7 @@ script:
     - go build -trimpath -o ../../cicd/build/yapscan
     - popd
     - pushd cicd/
+    - echo "$DOCKER_PASSWORD" | docker login -u "$DOCKER_USERNAME" --password-stdin
     - ./crossBuildForWindows.sh
     - popd
 
