@@ -1,8 +1,9 @@
 package yapscan
 
 import (
-	"io/ioutil"
+	"io"
 	"os"
+	"runtime"
 
 	"github.com/fkie-cad/yapscan/procio"
 	"github.com/hillu/go-yara/v4"
@@ -126,6 +127,7 @@ func (s *ProcessScanner) Scan() (<-chan *MemoryScanProgress, error) {
 		defer close(progress)
 		for _, segment := range segments {
 			abort := s.handleSegment(progress, segment)
+			runtime.GC()
 			if abort {
 				return
 			}
@@ -155,7 +157,8 @@ func (s *defaultSegmentScanner) ScanSegment(seg *procio.MemorySegmentInfo) ([]ya
 	}
 	defer rdr.Close()
 
-	data, err := ioutil.ReadAll(rdr)
+	data := make([]byte, seg.Size)
+	_, err = io.ReadFull(rdr, data)
 	if err != nil {
 		logrus.WithFields(logrus.Fields{
 			"process":       s.proc,

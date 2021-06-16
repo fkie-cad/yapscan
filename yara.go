@@ -181,6 +181,7 @@ func (s *YaraScanner) ScanFile(filename string) ([]yara.MatchRule, error) {
 func (s *YaraScanner) ScanMem(buf []byte) ([]yara.MatchRule, error) {
 	s.stats.IncrementMemorySegmentsScanned(uint64(len(buf)))
 	var matches yara.MatchRules
+	// TODO: See if we need yara.ScanFlagsProcessMemory here.
 	err := s.rules.ScanMem(buf, 0, 0, &matches)
 	return matches, err
 }
