@@ -6,6 +6,8 @@ import (
 	"os"
 	"syscall"
 
+	"github.com/sirupsen/logrus"
+
 	"github.com/targodan/go-errors"
 )
 
@@ -51,7 +53,21 @@ func (rdr *memfileReader) Read(data []byte) (int, error) {
 		data = data[:l]
 	}
 
-	n, err := syscall.Pread(int(rdr.memfile.Fd()), data, int64(rdr.computeFileOffset()))
+	if len(data) == 0 {
+		return 0, nil
+	}
+
+	fd := int(rdr.memfile.Fd())
+	offset := int64(rdr.computeFileOffset())
+	n, err := syscall.Pread(fd, data, offset)
+
+	logrus.WithFields(logrus.Fields{
+		"pid":         rdr.proc.PID(),
+		"baseAddress": rdr.seg.BaseAddress,
+		"state":       rdr.seg.State,
+		"size":        rdr.seg.Size,
+	}).Tracef("pread(%d, len == %d, %d) -> %d, %v", fd, len(data), offset, n, err)
+
 	if n == 0 {
 		return n, io.EOF
 	}
