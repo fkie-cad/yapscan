@@ -35,6 +35,10 @@ func listMemory(c *cli.Context) error {
 		return errors.Newf("could not open process with pid %d, reason: %w", pid, err)
 	}
 
+	format := "%19s %8s %8s %3s %13s %7s %s\n"
+	fmt.Printf(format, "Address", "Size", "RSS", "", "Type", "State", "Path")
+	fmt.Printf("-------------------+--------+--------+---+-------------+-------+------\n")
+
 	segments, err := proc.MemorySegments()
 	if err != nil {
 		return errors.Newf("could not enumerate memory segments of process %d, reason: %w", pid, err)
@@ -45,14 +49,12 @@ func listMemory(c *cli.Context) error {
 			continue
 		}
 
-		format := "%19s %8s %3s %7s %7s %s\n"
-
 		filepath := ""
 		if seg.MappedFile != nil {
 			filepath = seg.MappedFile.Path()
 		}
 
-		fmt.Printf(format, procio.FormatMemorySegmentAddress(seg), humanize.Bytes(uint64(seg.Size)), seg.CurrentPermissions, seg.Type, seg.State, filepath)
+		fmt.Printf(format, procio.FormatMemorySegmentAddress(seg), humanize.Bytes(uint64(seg.Size)), humanize.Bytes(uint64(seg.RSS)), seg.CurrentPermissions, seg.Type, seg.State, filepath)
 
 		if c.Bool("list-subdivided") {
 			for i, sseg := range seg.SubSegments {
