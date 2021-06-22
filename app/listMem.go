@@ -2,7 +2,6 @@ package app
 
 import (
 	"fmt"
-	"os"
 	"strconv"
 
 	"github.com/dustin/go-humanize"
@@ -31,7 +30,7 @@ func listMemory(c *cli.Context) error {
 		return err
 	}
 
-	fmt.Fprintf(os.Stderr, "Filters: %s\n", f.Description())
+	fmt.Printf("Filters: %s\n\n", f.Description())
 
 	proc, err := procio.OpenProcess(pid)
 	if err != nil {

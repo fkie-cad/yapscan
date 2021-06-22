@@ -39,7 +39,7 @@ func scan(c *cli.Context) error {
 		return err
 	}
 
-	fmt.Fprintf(os.Stderr, "Filters: %s\n", f.Description())
+	fmt.Printf("Filters: %s\n\n", f.Description())
 	logrus.Infof("Filters: %s", f.Description())
 
 	if c.NArg() == 0 && !c.Bool("all-processes") && !c.Bool("all-drives") && !c.Bool("all-shares") {
