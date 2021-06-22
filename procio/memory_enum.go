@@ -86,14 +86,17 @@ const (
 	TypeMapped
 	// TypePrivate is a Type of type Private
 	TypePrivate
+	// TypePrivateMapped is a Type of type PrivateMapped
+	TypePrivateMapped
 )
 
-const _TypeName = "ImageMappedPrivate"
+const _TypeName = "ImageMappedPrivatePrivateMapped"
 
 var _TypeNames = []string{
 	_TypeName[0:5],
 	_TypeName[5:11],
 	_TypeName[11:18],
+	_TypeName[18:31],
 }
 
 // TypeNames returns a list of possible string values of Type.
@@ -107,6 +110,7 @@ var _TypeMap = map[Type]string{
 	0: _TypeName[0:5],
 	1: _TypeName[5:11],
 	2: _TypeName[11:18],
+	3: _TypeName[18:31],
 }
 
 // String implements the Stringer interface.
@@ -124,6 +128,8 @@ var _TypeValue = map[string]Type{
 	strings.ToLower(_TypeName[5:11]):  1,
 	_TypeName[11:18]:                  2,
 	strings.ToLower(_TypeName[11:18]): 2,
+	_TypeName[18:31]:                  3,
+	strings.ToLower(_TypeName[18:31]): 3,
 }
 
 // ParseType attempts to convert a string to a Type
