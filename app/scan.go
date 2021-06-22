@@ -39,6 +39,9 @@ func scan(c *cli.Context) error {
 		return err
 	}
 
+	fmt.Fprintf(os.Stderr, "Filters: %s\n", f.Description())
+	logrus.Infof("Filters: %s", f.Description())
+
 	if c.NArg() == 0 && !c.Bool("all-processes") && !c.Bool("all-drives") && !c.Bool("all-shares") {
 		return errors.Newf("expected at least one argument, or one of the flags \"--all-processes\", \"--all-drives\", \"--all-shares\", got zero")
 	}
