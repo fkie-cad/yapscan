@@ -1,4 +1,4 @@
-# yapscan [![Build Status](https://travis-ci.org/fkie-cad/yapscan.svg?branch=master)](https://travis-ci.org/fkie-cad/yapscan) [![codecov](https://codecov.io/gh/fkie-cad/yapscan/branch/master/graph/badge.svg?token=Y2ANV37QH6)](https://codecov.io/gh/fkie-cad/yapscan) [![Go Report Card](https://goreportcard.com/badge/github.com/fkie-cad/yapscan)](https://goreportcard.com/report/github.com/fkie-cad/yapscan)
+# yapscan [![Build Status](https://www.travis-ci.com/fkie-cad/yapscan.svg?branch=master)](https://www.travis-ci.com/fkie-cad/yapscan) [![codecov](https://codecov.io/gh/fkie-cad/yapscan/branch/master/graph/badge.svg?token=Y2ANV37QH6)](https://codecov.io/gh/fkie-cad/yapscan) [![Go Report Card](https://goreportcard.com/badge/github.com/fkie-cad/yapscan)](https://goreportcard.com/report/github.com/fkie-cad/yapscan)
 
 Yapscan is a **YA**ra based **P**rocess **SCAN**ner, aimed at giving more control about what to scan and giving detailed reports on matches.
 
