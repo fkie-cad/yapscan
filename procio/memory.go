@@ -34,6 +34,11 @@ type MemorySegmentInfo struct {
 	// Equivalence on windows: _MEMORY_BASIC_INFORMATION->RegionSize
 	Size uintptr `json:"size"`
 
+	// RSS contains the ResidentSetSize as reported on linux, i.e.
+	// the amount of RAM this segment actually uses right now.
+	// Equivalence on windows: No equivalence, this is currently always equal to Size.
+	RSS uintptr `json:"rss"`
+
 	// State contains the current State of the segment.
 	// Equivalence on windows: _MEMORY_BASIC_INFORMATION->State
 	State State `json:"state"`
@@ -52,6 +57,14 @@ type MemorySegmentInfo struct {
 	SubSegments []*MemorySegmentInfo `json:"subSegments"`
 }
 
+// EstimateRAMIncreaseByScanning estimates the increase in RAM usage when
+// scanning this segment. The problem arises on linux, when the kernel has
+// not yet loaded certain pages in this segment. By scanning the segment,
+// the kernel will load the entire segment into RAM.
+func (s *MemorySegmentInfo) EstimateRAMIncreaseByScanning() uintptr {
+	return s.Size - s.RSS
+}
+
 // String returns a human readable representation of the BaseAddress.
 func (s *MemorySegmentInfo) String() string {
 	return FormatMemorySegmentAddress(s)
@@ -66,6 +79,7 @@ func (s *MemorySegmentInfo) CopyWithoutSubSegments() *MemorySegmentInfo {
 		AllocatedPermissions: s.AllocatedPermissions,
 		CurrentPermissions:   s.CurrentPermissions,
 		Size:                 s.Size,
+		RSS:                  s.RSS,
 		State:                s.State,
 		Type:                 s.Type,
 		MappedFile:           fileio.CloneFile(s.MappedFile),
@@ -238,6 +252,7 @@ ENUM(
 Image
 Mapped
 Private
+PrivateMapped
 )
 */
 type Type int
