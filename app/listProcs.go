@@ -42,7 +42,8 @@ func listProcesses(c *cli.Context) error {
 		if err != nil {
 			err = errors.Newf("could not open process %d, reason: %w", pid, err)
 		} else {
-			tmp, err := proc.Info()
+			var tmp *procio.ProcessInfo
+			tmp, err = proc.Info()
 			if err != nil {
 				err = errors.Newf("could not query info of process %d, reason: %w", pid, err)
 			} else {
