@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"sort"
 	"strings"
 	"testing"
 	"time"
@@ -153,6 +154,7 @@ func TestLoadYaraRules(t *testing.T) {
 		for _, rule := range rules.GetRules() {
 			names = append(names, rule.Identifier())
 		}
+		sort.Strings(names)
 
 		Convey("should yield exactly the rules in this file.", func() {
 			So(names, ShouldResemble, []string{
@@ -172,6 +174,7 @@ func TestLoadYaraRules(t *testing.T) {
 			for _, rule := range rules.GetRules() {
 				names = append(names, rule.Identifier())
 			}
+			sort.Strings(names)
 
 			Convey("should yield exactly the rules in this file.", func() {
 				So(names, ShouldResemble, []string{
@@ -190,6 +193,7 @@ func TestLoadYaraRules(t *testing.T) {
 			for _, rule := range rules.GetRules() {
 				names = append(names, rule.Identifier())
 			}
+			sort.Strings(names)
 
 			Convey("should yield exactly the rules in this file.", func() {
 				So(names, ShouldResemble, []string{
@@ -210,6 +214,7 @@ func TestLoadYaraRules(t *testing.T) {
 			for _, rule := range rules.GetRules() {
 				names = append(names, rule.Identifier())
 			}
+			sort.Strings(names)
 
 			Convey("should yield exactly the rules in this file.", func() {
 				So(names, ShouldResemble, []string{
@@ -228,6 +233,7 @@ func TestLoadYaraRules(t *testing.T) {
 			for _, rule := range rules.GetRules() {
 				names = append(names, rule.Identifier())
 			}
+			sort.Strings(names)
 
 			Convey("should yield exactly the rules in this file.", func() {
 				So(names, ShouldResemble, []string{

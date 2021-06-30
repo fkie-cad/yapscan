@@ -1,0 +1,13 @@
+name: 'Gather Linux Dependencies'
+description: 'Gathers linux dependencies'
+runs:
+    using: "composite"
+    steps:
+        - name: Gathering windows dependencies
+          run: |
+              ldd yapscan
+              cp $(ldd yapscan | grep libyara | cut -d'>' -f2 | cut -d' ' -f2) .
+              ldd libyara.so*
+              cp $(ldd libyara.so* | grep libcrypto | cut -d'>' -f2 | cut -d' ' -f2) .
+          working-directory: cicd/build
+          shell: bash

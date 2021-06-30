@@ -1,0 +1,19 @@
+name: 'Build for Windows on Linux'
+description: 'Builds yapscan for windows'
+inputs:
+    openssl-version:
+        description: "Openssl version"
+        required: true
+    yara-version:
+        description: "Yara version"
+        required: true
+runs:
+    using: "composite"
+    steps:
+        - name: Crossbuilding for windows
+          env:
+              OPENSSL_VERSION: ${{ inputs.openssl-version }}
+              YARA_VERSION: ${{ inputs.yara-version }}
+          run: ./crossBuildForWindows.sh
+          working-directory: cicd
+          shell: bash
