@@ -6,6 +6,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/dustin/go-humanize"
+
 	"github.com/fkie-cad/yapscan/procio"
 	"github.com/targodan/go-errors"
 	"github.com/urfave/cli/v2"
@@ -80,13 +82,23 @@ func listProcesses(c *cli.Context) error {
 		fmt.Println()
 	}
 
+	var estimatedRAMIncrease uintptr
+
 	headerFmt := fmt.Sprintf("%%%ds %%3v %%-%ds %%-%ds\n", maxPidlen, maxNamelen, maxUserlen)
 	rowFmt := fmt.Sprintf("%%%dd %%3v %%-%ds %%-%ds\n", maxPidlen, maxNamelen, maxUserlen)
 	fmt.Printf(headerFmt, "PID", "Bit", "Name", "User")
 	fmt.Println(strings.Repeat("-", maxPidlen) + "+" + strings.Repeat("-", 3) + "+" + strings.Repeat("-", maxNamelen) + "+" + strings.Repeat("-", maxUserlen))
 	for _, info := range procInfos {
 		fmt.Printf(rowFmt, info.PID, info.Bitness.Short(), filepath.Base(info.ExecutablePath), info.Username)
+
+		for _, seg := range info.MemorySegments {
+			if seg.RSS != 0 {
+				estimatedRAMIncrease += seg.EstimateRAMIncreaseByScanning()
+			}
+		}
 	}
+
+	fmt.Printf("Estimated RAM increase by scanning all process without filters: %s\n", humanize.Bytes(uint64(estimatedRAMIncrease)))
 
 	return nil
 }

@@ -41,6 +41,8 @@ func listMemory(c *cli.Context) error {
 	fmt.Printf(format, "Address", "Size", "RSS", "", "Type", "State", "Path")
 	fmt.Printf("-------------------+--------+--------+---+-------------+-------+------\n")
 
+	var estimatedRAMIncrease uintptr
+
 	segments, err := proc.MemorySegments()
 	if err != nil {
 		return errors.Newf("could not enumerate memory segments of process %d, reason: %w", pid, err)
@@ -49,6 +51,10 @@ func listMemory(c *cli.Context) error {
 		fRes := f.Filter(seg)
 		if !fRes.Result {
 			continue
+		}
+
+		if seg.RSS != 0 {
+			estimatedRAMIncrease += seg.EstimateRAMIncreaseByScanning()
 		}
 
 		filepath := ""
@@ -76,6 +82,7 @@ func listMemory(c *cli.Context) error {
 			}
 		}
 	}
+	fmt.Printf("Estimated RAM increase by scanning this process: %s\n", humanize.Bytes(uint64(estimatedRAMIncrease)))
 
 	return nil
 }
