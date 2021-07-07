@@ -145,12 +145,17 @@ func parseSegmentHead(line string) (*MemorySegmentInfo, error) {
 	seg.CurrentPermissions = perms
 	seg.Type = t
 
-	if matches[fieldPathname] != "" {
-		seg.MappedFile = fileio.NewFile(matches[fieldPathname])
-		if matches[fieldPathname][0] != '[' {
-			if seg.Type == TypePrivate {
-				seg.Type = TypePrivateMapped
-			}
+	fpath := matches[fieldPathname]
+	if fpath != "" && fpath[0] != '[' {
+		deleted := "(deleted)"
+		idxDeleted := strings.Index(fpath, deleted)
+		if idxDeleted == len(fpath)-len(deleted) /* ends with deleted */ {
+			fpath = strings.TrimSpace(fpath[:idxDeleted])
+		}
+
+		seg.MappedFile = fileio.NewFile(fpath)
+		if seg.Type == TypePrivate {
+			seg.Type = TypePrivateMapped
 		}
 	}
 

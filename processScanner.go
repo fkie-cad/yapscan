@@ -4,6 +4,7 @@ import (
 	"io"
 	"os"
 	"runtime"
+	"strings"
 
 	"github.com/fkie-cad/yapscan/procio"
 	"github.com/hillu/go-yara/v4"
@@ -90,7 +91,10 @@ func (s *ProcessScanner) handleSegment(progress chan<- *MemoryScanProgress, segm
 		// Only scan leaf segments
 		matches, data, err := s.scanner.ScanSegment(segment)
 
-		if segment.MappedFile != nil {
+		if segment.MappedFile != nil &&
+			strings.Index(segment.MappedFile.Path(), "/dev/") != 0 &&
+			strings.Index(segment.MappedFile.Path(), "/proc/") != 0 &&
+			strings.Index(segment.MappedFile.Path(), "/sys/") != 0 {
 			s.memoryMappedFiles[segment.MappedFile.Path()] = nil
 		}
 
