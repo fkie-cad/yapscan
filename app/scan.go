@@ -27,6 +27,7 @@ import (
 
 const filenameDateFormat = "2006-01-02_15-04-05"
 const memoryScanInterval = 500 * time.Millisecond
+const archivePermissions = 0644
 
 func scan(c *cli.Context) error {
 	err := initAppAction(c)
@@ -172,7 +173,7 @@ func scan(c *cli.Context) error {
 		if c.String("report-dir") != "" {
 			reportArchivePath = filepath.Join(c.String("report-dir"), reportArchivePath)
 		}
-		reportTar, err := os.OpenFile(reportArchivePath, os.O_CREATE|os.O_RDWR, 0600)
+		reportTar, err := os.OpenFile(reportArchivePath, os.O_CREATE|os.O_RDWR, archivePermissions)
 		if err != nil {
 			return fmt.Errorf("could not create output report archive, reason: %w", err)
 		}
