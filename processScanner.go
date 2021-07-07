@@ -21,8 +21,9 @@ type segmentScanner interface {
 // This scanning is done using an underlying MemoryScanner on segments, matching
 // a MemorySegmentFilter.
 type ProcessScanner struct {
-	proc    procio.Process
-	scanner segmentScanner
+	proc              procio.Process
+	scanner           segmentScanner
+	memoryMappedFiles map[string]interface{}
 }
 
 // MemoryScanner is a yara.Rules compatible interface, defining the subset of
@@ -62,6 +63,7 @@ func NewProcessScanner(proc procio.Process, filter MemorySegmentFilter, scanner 
 			scanner:    scanner,
 			rdrFactory: &procio.DefaultMemoryReaderFactory{},
 		},
+		memoryMappedFiles: make(map[string]interface{}),
 	}
 }
 
@@ -87,6 +89,11 @@ func (s *ProcessScanner) handleSegment(progress chan<- *MemoryScanProgress, segm
 	if len(segment.SubSegments) == 0 {
 		// Only scan leaf segments
 		matches, data, err := s.scanner.ScanSegment(segment)
+
+		if segment.MappedFile != nil {
+			s.memoryMappedFiles[segment.MappedFile.Path()] = nil
+		}
+
 		progress <- &MemoryScanProgress{
 			Process:       s.proc,
 			MemorySegment: segment,
@@ -135,6 +142,14 @@ func (s *ProcessScanner) Scan() (<-chan *MemoryScanProgress, error) {
 	}()
 
 	return progress, nil
+}
+
+func (s *ProcessScanner) EncounteredMemoryMappedFiles() []string {
+	files := make([]string, 0, len(s.memoryMappedFiles))
+	for f, _ := range s.memoryMappedFiles {
+		files = append(files, f)
+	}
+	return files
 }
 
 func (s *defaultSegmentScanner) ScanSegment(seg *procio.MemorySegmentInfo) ([]yara.MatchRule, []byte, error) {

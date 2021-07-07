@@ -357,6 +357,11 @@ func MakeApp(args []string) *cli.App {
 						Usage: "create a full report",
 						Value: false,
 					},
+					&cli.BoolFlag{
+						Name:  "scan-mapped-files",
+						Usage: "when encountering memory-mapped files also scan the backing file on disk",
+						Value: false,
+					},
 					&cli.StringFlag{
 						Name:        "report-dir",
 						Usage:       "the directory to which the report archive will be written",
