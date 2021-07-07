@@ -53,9 +53,7 @@ func listMemory(c *cli.Context) error {
 			continue
 		}
 
-		if seg.RSS != 0 {
-			estimatedRAMIncrease += seg.EstimateRAMIncreaseByScanning()
-		}
+		estimatedRAMIncrease += seg.EstimateRAMIncreaseByScanning()
 
 		filepath := ""
 		if seg.MappedFile != nil {

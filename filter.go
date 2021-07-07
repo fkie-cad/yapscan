@@ -205,6 +205,19 @@ func NewPermissionsFilter(perm procio.Permissions) MemorySegmentFilter {
 	)
 }
 
+// NewRSSRatioFilter creates a new filter, matching *procio.MemorySegmentInfo
+// with RSS/Size ratio equal or greater than the given value.
+func NewRSSRatioFilter(ratio float64) MemorySegmentFilter {
+	return NewFilterFromFunc(
+		func(info *procio.MemorySegmentInfo) bool {
+			return float64(info.RSS)/float64(info.Size) >= ratio
+		},
+		ratio,
+		"segment has too low RSS/Size ratio, actual ratio: {{.MSI.RSS}}/{{.MSI.Size}}, min ratio: {{.Filter.Parameter}}",
+		fmt.Sprintf("RSS/Size ratio must be at least %v", ratio),
+	)
+}
+
 type andFilter struct {
 	filters []MemorySegmentFilter
 }

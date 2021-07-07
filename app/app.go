@@ -51,7 +51,7 @@ func filterFromArgs(c *cli.Context) (yapscan.MemorySegmentFilter, error) {
 	var err error
 	i := 0
 
-	filters := make([]yapscan.MemorySegmentFilter, 8)
+	filters := make([]yapscan.MemorySegmentFilter, 9)
 
 	filters[i], err = BuildFilterPermissions(c.String("filter-permissions"))
 	if err != nil {
@@ -81,6 +81,11 @@ func filterFromArgs(c *cli.Context) (yapscan.MemorySegmentFilter, error) {
 	filters[i], err = BuildFilterSizeMin(c.String("filter-size-min"))
 	if err != nil {
 		return nil, fmt.Errorf("invalid flag \"--filter-size-min\", reason: %w", err)
+	}
+	i += 1
+	filters[i], err = BuildRSSRatioMin(c.String("filter-rss-ratio-min"))
+	if err != nil {
+		return nil, fmt.Errorf("invalid flag \"--filter-rss-ratio-min\", reason: %w", err)
 	}
 	i += 1
 
@@ -193,6 +198,11 @@ func MakeApp(args []string) *cli.App {
 			Aliases: []string{"f-size-min"},
 			Usage:   "minimum size of memory segments to be considered",
 		},
+		&cli.StringFlag{
+			Name:    "filter-rss-ratio-min",
+			Aliases: []string{"f-rss-min"},
+			Usage:   "minimum RSS/Size ratio of memory segments to eb considered",
+		},
 	}
 
 	app := &cli.App{
@@ -231,13 +241,13 @@ func MakeApp(args []string) *cli.App {
 				Aliases: []string{"ps", "lsproc"},
 				Usage:   "lists all running processes",
 				Action:  listProcesses,
-				Flags: []cli.Flag{
+				Flags: append([]cli.Flag{
 					&cli.BoolFlag{
 						Name:    "verbose",
 						Aliases: []string{"v"},
 						Usage:   "output errors if any are encountered",
 					},
-				},
+				}, segmentFilterFlags...),
 			},
 			&cli.Command{
 				Name:      "list-process-memory",

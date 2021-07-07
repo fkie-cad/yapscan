@@ -3,7 +3,6 @@ package app
 import (
 	"fmt"
 	"path/filepath"
-	"strconv"
 	"strings"
 
 	"github.com/dustin/go-humanize"
@@ -19,17 +18,26 @@ func listProcesses(c *cli.Context) error {
 		return err
 	}
 
+	f, err := filterFromArgs(c)
+	if err != nil {
+		return err
+	}
+
+	fmt.Printf("Filters: %s\n\n", f.Description())
+
 	pids, err := procio.GetRunningPIDs()
 	if err != nil {
 		return errors.Newf("could not enumerate PIDs, reason: %w", err)
 	}
 
-	procInfos := make([]*procio.ProcessInfo, len(pids))
-	maxPidlen := 0
-	maxNamelen := 0
-	maxUserlen := 0
+	rowFmt := "%7v %3v %-32s %-32s %7v %7v\n"
+
+	fmt.Printf(rowFmt, "PID", "Bit", "Name", "User", "RSS", "RAM to be Scanned")
+	fmt.Println(strings.Repeat("-", 7) + "+" + strings.Repeat("-", 3) + "+" + strings.Repeat("-", 32) + "+" + strings.Repeat("-", 32) + "+" + strings.Repeat("-", 7) + "+" + strings.Repeat("-", 7))
+
+	var estimatedRAMIncrease uintptr
 	errorsOutput := false
-	for i, pid := range pids {
+	for _, pid := range pids {
 		// Default info in case of errors
 		info := &procio.ProcessInfo{
 			PID:              pid,
@@ -58,23 +66,20 @@ func listProcesses(c *cli.Context) error {
 			fmt.Println(err)
 		}
 
-		procInfos[i] = info
-		pidLen := len(strconv.Itoa(pid))
-		if maxPidlen < pidLen {
-			maxPidlen = pidLen
-		}
-		namelen := len(filepath.Base(info.ExecutablePath))
-		if maxNamelen < namelen {
-			maxNamelen = namelen
-		}
-		userlen := len(info.Username)
-		if maxUserlen < userlen {
-			maxUserlen = userlen
-		}
-	}
+		var rss, toBeScanned uintptr
+		for _, seg := range info.MemorySegments {
+			rss += seg.RSS
 
-	if maxPidlen < 5 {
-		maxPidlen = 5
+			fRes := f.Filter(seg)
+			if !fRes.Result {
+				continue
+			}
+
+			estimatedRAMIncrease += seg.EstimateRAMIncreaseByScanning()
+			toBeScanned += seg.Size
+		}
+
+		fmt.Printf(rowFmt, info.PID, info.Bitness.Short(), filepath.Base(info.ExecutablePath), info.Username, humanize.Bytes(uint64(rss)), humanize.Bytes(uint64(toBeScanned)))
 	}
 
 	if errorsOutput {
@@ -82,23 +87,7 @@ func listProcesses(c *cli.Context) error {
 		fmt.Println()
 	}
 
-	var estimatedRAMIncrease uintptr
-
-	headerFmt := fmt.Sprintf("%%%ds %%3v %%-%ds %%-%ds\n", maxPidlen, maxNamelen, maxUserlen)
-	rowFmt := fmt.Sprintf("%%%dd %%3v %%-%ds %%-%ds\n", maxPidlen, maxNamelen, maxUserlen)
-	fmt.Printf(headerFmt, "PID", "Bit", "Name", "User")
-	fmt.Println(strings.Repeat("-", maxPidlen) + "+" + strings.Repeat("-", 3) + "+" + strings.Repeat("-", maxNamelen) + "+" + strings.Repeat("-", maxUserlen))
-	for _, info := range procInfos {
-		fmt.Printf(rowFmt, info.PID, info.Bitness.Short(), filepath.Base(info.ExecutablePath), info.Username)
-
-		for _, seg := range info.MemorySegments {
-			if seg.RSS != 0 {
-				estimatedRAMIncrease += seg.EstimateRAMIncreaseByScanning()
-			}
-		}
-	}
-
-	fmt.Printf("Estimated RAM increase by scanning all process without filters: %s\n", humanize.Bytes(uint64(estimatedRAMIncrease)))
+	fmt.Printf("\nEstimated RAM increase by scanning all process: %s\n", humanize.Bytes(uint64(estimatedRAMIncrease)))
 
 	return nil
 }
