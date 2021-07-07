@@ -262,7 +262,7 @@ func scan(c *cli.Context) error {
 		}
 	}()
 
-	encounteredMappedFiles := make([]string, 0)
+	encounteredMappedFiles := make(map[string]interface{}, 0)
 
 	for _, pid := range pids {
 		func() {
@@ -333,7 +333,9 @@ func scan(c *cli.Context) error {
 			}
 			resume()
 
-			encounteredMappedFiles = append(encounteredMappedFiles, scanner.EncounteredMemoryMappedFiles()...)
+			for _, f := range scanner.EncounteredMemoryMappedFiles() {
+				encounteredMappedFiles[f] = nil
+			}
 		}()
 	}
 	close(memScanChan)
@@ -357,7 +359,11 @@ func scan(c *cli.Context) error {
 	var pathIterator fileio.Iterator
 
 	if c.Bool("scan-mapped-files") && len(encounteredMappedFiles) > 0 {
-		pathIterator = fileio.IterateFileList(encounteredMappedFiles)
+		encounteredMappedFilesList := make([]string, 0, len(encounteredMappedFiles))
+		for f, _ := range encounteredMappedFiles {
+			encounteredMappedFilesList = append(encounteredMappedFilesList, f)
+		}
+		pathIterator = fileio.IterateFileList(encounteredMappedFilesList)
 	}
 
 	for _, path := range paths {
