@@ -313,7 +313,7 @@ func findReportPath(reportDir string) (string, bool) {
 	var reportName string
 	dir, _ := ioutil.ReadDir(reportDir)
 	for _, entry := range dir {
-		if !entry.IsDir() && strings.Contains(entry.Name(), ".tar.zstd") {
+		if !entry.IsDir() && strings.Contains(entry.Name(), ".tar.zst") {
 			reportName = entry.Name()
 			break
 		}

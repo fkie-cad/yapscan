@@ -1,8 +1,10 @@
 package yapscan
 
 import (
-	"io/ioutil"
+	"io"
 	"os"
+	"runtime"
+	"strings"
 
 	"github.com/fkie-cad/yapscan/procio"
 	"github.com/hillu/go-yara/v4"
@@ -20,8 +22,9 @@ type segmentScanner interface {
 // This scanning is done using an underlying MemoryScanner on segments, matching
 // a MemorySegmentFilter.
 type ProcessScanner struct {
-	proc    procio.Process
-	scanner segmentScanner
+	proc              procio.Process
+	scanner           segmentScanner
+	memoryMappedFiles map[string]interface{}
 }
 
 // MemoryScanner is a yara.Rules compatible interface, defining the subset of
@@ -61,6 +64,7 @@ func NewProcessScanner(proc procio.Process, filter MemorySegmentFilter, scanner 
 			scanner:    scanner,
 			rdrFactory: &procio.DefaultMemoryReaderFactory{},
 		},
+		memoryMappedFiles: make(map[string]interface{}),
 	}
 }
 
@@ -86,6 +90,14 @@ func (s *ProcessScanner) handleSegment(progress chan<- *MemoryScanProgress, segm
 	if len(segment.SubSegments) == 0 {
 		// Only scan leaf segments
 		matches, data, err := s.scanner.ScanSegment(segment)
+
+		if segment.MappedFile != nil &&
+			strings.Index(segment.MappedFile.Path(), "/dev/") != 0 &&
+			strings.Index(segment.MappedFile.Path(), "/proc/") != 0 &&
+			strings.Index(segment.MappedFile.Path(), "/sys/") != 0 {
+			s.memoryMappedFiles[segment.MappedFile.Path()] = nil
+		}
+
 		progress <- &MemoryScanProgress{
 			Process:       s.proc,
 			MemorySegment: segment,
@@ -126,6 +138,7 @@ func (s *ProcessScanner) Scan() (<-chan *MemoryScanProgress, error) {
 		defer close(progress)
 		for _, segment := range segments {
 			abort := s.handleSegment(progress, segment)
+			runtime.GC()
 			if abort {
 				return
 			}
@@ -133,6 +146,14 @@ func (s *ProcessScanner) Scan() (<-chan *MemoryScanProgress, error) {
 	}()
 
 	return progress, nil
+}
+
+func (s *ProcessScanner) EncounteredMemoryMappedFiles() []string {
+	files := make([]string, 0, len(s.memoryMappedFiles))
+	for f, _ := range s.memoryMappedFiles {
+		files = append(files, f)
+	}
+	return files
 }
 
 func (s *defaultSegmentScanner) ScanSegment(seg *procio.MemorySegmentInfo) ([]yara.MatchRule, []byte, error) {
@@ -155,7 +176,8 @@ func (s *defaultSegmentScanner) ScanSegment(seg *procio.MemorySegmentInfo) ([]ya
 	}
 	defer rdr.Close()
 
-	data, err := ioutil.ReadAll(rdr)
+	data := make([]byte, seg.Size)
+	_, err = io.ReadFull(rdr, data)
 	if err != nil {
 		logrus.WithFields(logrus.Fields{
 			"process":       s.proc,

@@ -180,3 +180,30 @@ func (it *fsIterator) Close() error {
 
 	return it.ctx.Err()
 }
+
+type fileListIterator struct {
+	files []string
+	i     int
+}
+
+// IterateFileList starts an asynchronous, Iterator over the given files.
+func IterateFileList(files []string) Iterator {
+	return &fileListIterator{
+		files: files,
+		i:     0,
+	}
+}
+
+func (it *fileListIterator) Next() (File, error) {
+	if it.i >= len(it.files) {
+		return nil, io.EOF
+	}
+
+	file := NewFile(it.files[it.i])
+	it.i += 1
+	return file, nil
+}
+
+func (it *fileListIterator) Close() error {
+	return nil
+}

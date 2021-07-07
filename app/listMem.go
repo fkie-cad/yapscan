@@ -30,10 +30,18 @@ func listMemory(c *cli.Context) error {
 		return err
 	}
 
+	fmt.Printf("Filters: %s\n\n", f.Description())
+
 	proc, err := procio.OpenProcess(pid)
 	if err != nil {
 		return errors.Newf("could not open process with pid %d, reason: %w", pid, err)
 	}
+
+	format := "%19s %8s %8s %3s %13s %7s %s\n"
+	fmt.Printf(format, "Address", "Size", "RSS", "", "Type", "State", "Path")
+	fmt.Printf("-------------------+--------+--------+---+-------------+-------+------\n")
+
+	var estimatedRAMIncrease uintptr
 
 	segments, err := proc.MemorySegments()
 	if err != nil {
@@ -45,14 +53,14 @@ func listMemory(c *cli.Context) error {
 			continue
 		}
 
-		format := "%19s %8s %3s %7s %7s %s\n"
+		estimatedRAMIncrease += seg.EstimateRAMIncreaseByScanning()
 
 		filepath := ""
 		if seg.MappedFile != nil {
 			filepath = seg.MappedFile.Path()
 		}
 
-		fmt.Printf(format, procio.FormatMemorySegmentAddress(seg), humanize.Bytes(uint64(seg.Size)), seg.CurrentPermissions, seg.Type, seg.State, filepath)
+		fmt.Printf(format, procio.FormatMemorySegmentAddress(seg), humanize.Bytes(uint64(seg.Size)), humanize.Bytes(uint64(seg.RSS)), seg.CurrentPermissions, seg.Type, seg.State, filepath)
 
 		if c.Bool("list-subdivided") {
 			for i, sseg := range seg.SubSegments {
@@ -72,6 +80,7 @@ func listMemory(c *cli.Context) error {
 			}
 		}
 	}
+	fmt.Printf("Estimated RAM increase by scanning this process: %s\n", humanize.Bytes(uint64(estimatedRAMIncrease)))
 
 	return nil
 }

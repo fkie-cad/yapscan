@@ -237,6 +237,7 @@ func (rdr *mockMemoryReaderWithBuffer) Read(p []byte) (n int, err error) {
 	n, err = rdr.buffer.Read(p)
 	if rdr.err != nil {
 		err = rdr.err
+		n = 0
 	}
 	return
 }
@@ -334,7 +335,9 @@ func TestSegmentScanner(t *testing.T) {
 				Return(mockRdr, nil)
 
 			sc.rdrFactory = mockedFactory
-			match, data, err := sc.ScanSegment(&procio.MemorySegmentInfo{})
+			match, data, err := sc.ScanSegment(&procio.MemorySegmentInfo{
+				Size: uintptr(len(memoryData)),
+			})
 
 			Convey("should yield the error.", func() {
 				So(match, ShouldBeNil)
@@ -362,7 +365,9 @@ func TestSegmentScanner(t *testing.T) {
 			mockedMemoryScanner.On("ScanMem", memoryData).Return(expMatches, expErr).Once()
 
 			sc.rdrFactory = mockedFactory
-			match, data, err := sc.ScanSegment(&procio.MemorySegmentInfo{})
+			match, data, err := sc.ScanSegment(&procio.MemorySegmentInfo{
+				Size: uintptr(len(memoryData)),
+			})
 
 			Convey("should yield the expected data.", func() {
 				So(match, ShouldResemble, expMatches)

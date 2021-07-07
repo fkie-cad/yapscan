@@ -4,6 +4,9 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"syscall"
+
+	"github.com/sirupsen/logrus"
 
 	"github.com/targodan/go-errors"
 )
@@ -18,7 +21,7 @@ type memfileReader struct {
 }
 
 func newMemoryReader(proc Process, seg *MemorySegmentInfo) (memoryReaderImpl, error) {
-	memfile, err := os.OpenFile(fmt.Sprintf("/proc/%d/mem", proc.PID()), os.O_RDONLY, 0600)
+	memfile, err := os.OpenFile(fmt.Sprintf("/proc/%d/mem", proc.PID()), os.O_RDONLY, 0400)
 	if err != nil {
 		return nil, fmt.Errorf("could not open process memory for reading, reason: %w", err)
 	}
@@ -32,18 +35,11 @@ func newMemoryReader(proc Process, seg *MemorySegmentInfo) (memoryReaderImpl, er
 		position: 0,
 	}
 
-	rdr.seekToPosition()
-
 	return rdr, nil
 }
 
-func (rdr *memfileReader) seekToPosition() error {
-	filePos := rdr.seg.BaseAddress + rdr.position
-	_, err := rdr.memfile.Seek(int64(filePos), io.SeekStart)
-	if err != nil {
-		return fmt.Errorf("could not access process memory at address 0x%016X, reason: %w", filePos, err)
-	}
-	return nil
+func (rdr *memfileReader) computeFileOffset() uintptr {
+	return rdr.seg.BaseAddress + rdr.position
 }
 
 func (rdr *memfileReader) Read(data []byte) (int, error) {
@@ -54,9 +50,28 @@ func (rdr *memfileReader) Read(data []byte) (int, error) {
 	l := uintptr(len(data))
 	if rdr.position+l > rdr.seg.Size {
 		l = rdr.seg.Size - rdr.position
+		data = data[:l]
 	}
 
-	n, err := io.LimitReader(rdr.memfile, int64(l)).Read(data)
+	if len(data) == 0 {
+		return 0, nil
+	}
+
+	fd := int(rdr.memfile.Fd())
+	offset := int64(rdr.computeFileOffset())
+	n, err := syscall.Pread(fd, data, offset)
+
+	logrus.WithFields(logrus.Fields{
+		"pid":         rdr.proc.PID(),
+		"baseAddress": rdr.seg.BaseAddress,
+		"state":       rdr.seg.State,
+		"size":        rdr.seg.Size,
+	}).Tracef("pread(%d, len == %d, %d) -> %d, %v", fd, len(data), offset, n, err)
+
+	if n == 0 {
+		return n, io.EOF
+	}
+
 	rdr.position += uintptr(n)
 	return n, err
 }
@@ -75,7 +90,6 @@ func (rdr *memfileReader) Seek(offset int64, whence int) (pos int64, err error) 
 		err = errors.New("cannot seek before start of segment")
 	}
 	rdr.position = uintptr(pos)
-	err = rdr.seekToPosition()
 	return
 }
 

@@ -26,12 +26,18 @@ type MemorySegmentFilterFunc func(info *procio.MemorySegmentInfo) bool
 // *procio.MemorySegmentInfo instances.
 type MemorySegmentFilter interface {
 	Filter(info *procio.MemorySegmentInfo) *FilterMatch
+	Description() string
 }
 
 type baseFilter struct {
 	filter         MemorySegmentFilterFunc
 	Parameter      interface{}
 	reasonTemplate string
+	description    string
+}
+
+func (f *baseFilter) Description() string {
+	return f.description
 }
 
 func (f *baseFilter) renderReason(info *procio.MemorySegmentInfo) string {
@@ -97,11 +103,12 @@ func (f *baseFilter) Filter(info *procio.MemorySegmentInfo) *FilterMatch {
 }
 
 // NewFilterFromFunc creates a new filter from a given MemorySegmentFilterFunc.
-func NewFilterFromFunc(filter MemorySegmentFilterFunc, parameter interface{}, reasonTemplate string) MemorySegmentFilter {
+func NewFilterFromFunc(filter MemorySegmentFilterFunc, parameter interface{}, reasonTemplate string, description string) MemorySegmentFilter {
 	return &baseFilter{
 		filter:         filter,
 		Parameter:      parameter,
 		reasonTemplate: reasonTemplate,
+		description:    description,
 	}
 }
 
@@ -114,6 +121,7 @@ func NewMaxSizeFilter(size uintptr) MemorySegmentFilter {
 		},
 		size,
 		"segment too large, size: {{.MSI.Size|bytes}}, max-size: {{.Filter.Parameter|bytes}}",
+		fmt.Sprintf("segment must be smaller than %s", humanize.Bytes(uint64(size))),
 	)
 }
 
@@ -126,6 +134,7 @@ func NewMinSizeFilter(size uintptr) MemorySegmentFilter {
 		},
 		size,
 		"segment too small, size: {{.MSI.Size|bytes}}, min-size: {{.Filter.Parameter|bytes}}",
+		fmt.Sprintf("segment must be larger than %s", humanize.Bytes(uint64(size))),
 	)
 }
 
@@ -143,6 +152,7 @@ func NewStateFilter(states []procio.State) MemorySegmentFilter {
 		},
 		states,
 		"segment has wrong state, state: {{.MSI.State}}, allowed states: {{.Filter.Parameter|join \", \"}}",
+		fmt.Sprintf("segment state must be one of %q", states),
 	)
 }
 
@@ -160,6 +170,7 @@ func NewTypeFilter(types []procio.Type) MemorySegmentFilter {
 		},
 		types,
 		"segment has wrong type, type: {{.MSI.Type}}, allowed types: {{.Filter.Parameter|join \", \"}}",
+		fmt.Sprintf("segment type must be one of %q", types),
 	)
 }
 
@@ -177,6 +188,7 @@ func NewPermissionsFilterExact(perms []procio.Permissions) MemorySegmentFilter {
 		},
 		perms,
 		"segment has wrong permissions, permissions: {{.MSI.CurrentPermissions}}, allowed permissions: {{.Filter.Parameter|join \", \"}}",
+		fmt.Sprintf("permissions must be equal to one of %q", perms),
 	)
 }
 
@@ -189,6 +201,20 @@ func NewPermissionsFilter(perm procio.Permissions) MemorySegmentFilter {
 		},
 		perm,
 		"segment has wrong permissions, permissions: {{.MSI.CurrentPermissions}}, min-permissions: {{.Filter.Parameter}}",
+		fmt.Sprintf("permissions must be equally or more permissive than %v", perm),
+	)
+}
+
+// NewRSSRatioFilter creates a new filter, matching *procio.MemorySegmentInfo
+// with RSS/Size ratio equal or greater than the given value.
+func NewRSSRatioFilter(ratio float64) MemorySegmentFilter {
+	return NewFilterFromFunc(
+		func(info *procio.MemorySegmentInfo) bool {
+			return float64(info.RSS)/float64(info.Size) >= ratio
+		},
+		ratio,
+		"segment has too low RSS/Size ratio, actual ratio: {{.MSI.RSS}}/{{.MSI.Size}}, min ratio: {{.Filter.Parameter}}",
+		fmt.Sprintf("RSS/Size ratio must be at least %v", ratio),
 	)
 }
 
@@ -199,9 +225,35 @@ type andFilter struct {
 // NewAndFilter creates a new filter, which is the logical AND-combination
 // of all given MemorySegmentFilter instances.
 func NewAndFilter(filters ...MemorySegmentFilter) MemorySegmentFilter {
-	return &andFilter{
-		filters: filters,
+	fil := make([]MemorySegmentFilter, 0, len(filters))
+	for _, filter := range filters {
+		if filter != nil {
+			fil = append(fil, filter)
+		}
 	}
+	return &andFilter{
+		filters: fil,
+	}
+}
+
+func (f *andFilter) Description() string {
+	if len(f.filters) == 0 {
+		return ""
+	}
+
+	var sb strings.Builder
+	sb.WriteString(f.filters[0].Description())
+	if len(f.filters) > 1 {
+		for _, filter := range f.filters[1:] {
+			if filter == nil {
+				continue
+			}
+
+			sb.WriteString(" AND ")
+			sb.WriteString(filter.Description())
+		}
+	}
+	return sb.String()
 }
 
 func (f *andFilter) Filter(info *procio.MemorySegmentInfo) *FilterMatch {
@@ -211,10 +263,6 @@ func (f *andFilter) Filter(info *procio.MemorySegmentInfo) *FilterMatch {
 	}
 	reasons := make([]string, 0)
 	for _, filter := range f.filters {
-		if filter == nil {
-			continue
-		}
-
 		r := filter.Filter(info)
 		if !r.Result {
 			result.Result = false

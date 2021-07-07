@@ -100,6 +100,6 @@ func ZSTDCompressionDecorator() *OutputDecorator {
 				base:   out,
 			}, nil
 		},
-		suggestedFileExtension: ".zstd",
+		suggestedFileExtension: ".zst",
 	}
 }

@@ -1,4 +1,4 @@
-# yapscan [![Build Status](https://travis-ci.org/fkie-cad/yapscan.svg?branch=master)](https://travis-ci.org/fkie-cad/yapscan) [![codecov](https://codecov.io/gh/fkie-cad/yapscan/branch/master/graph/badge.svg?token=Y2ANV37QH6)](https://codecov.io/gh/fkie-cad/yapscan) [![Go Report Card](https://goreportcard.com/badge/github.com/fkie-cad/yapscan)](https://goreportcard.com/report/github.com/fkie-cad/yapscan)
+# yapscan ![build status](https://github.com/fkie-cad/yapscan/actions/workflows/ci.yml/badge.svg?branch=master) [![codecov](https://codecov.io/gh/fkie-cad/yapscan/branch/master/graph/badge.svg?token=Y2ANV37QH6)](https://codecov.io/gh/fkie-cad/yapscan) [![Go Report Card](https://goreportcard.com/badge/github.com/fkie-cad/yapscan)](https://goreportcard.com/report/github.com/fkie-cad/yapscan)
 
 Yapscan is a **YA**ra based **P**rocess **SCAN**ner, aimed at giving more control about what to scan and giving detailed reports on matches.
 
@@ -38,6 +38,7 @@ COMMANDS:
    scan                        scans processes or paths with yara rules
    zip-rules                   creates an encrypted zip containing compiled yara rules
    join                        joins dumps with padding
+   crash-processe, crash       crash a processe
    help, h                     Shows a list of commands or help for one command
 ```
 
@@ -58,18 +59,21 @@ OPTIONS:
    --file-extensions value, -e value                   list of file extensions to scan, use special extension "-" as no extension, use --file-extensions "" to allow any (default: "-", "so", "exe", "dll", "sys")
    --threads value, -t value                           number of threads (goroutines) used for scanning files (default: 6)
    --full-report                                       create a full report (default: false)
+   --scan-mapped-files                                 when encountering memory-mapped files also scan the backing file on disk (default: false)
    --report-dir value                                  the directory to which the report archive will be written (default: current working directory)
    --store-dumps                                       store dumps of memory regions that match rules, implies --full-report, the report will be encrypted with --password (default: false)
    --password value                                    setting this will encrypt the report with the given password; ignored without --full-report
    --pgpkey value                                      setting this will encrypt the report with the public key in the given file; ignored without --full-report
    --anonymize                                         anonymize any output, hashing any usernames, hostnames and IPs with a salt (default: false)
    --salt value                                        the salt (base64 string) to use for anonymization, ignored unless --anonmyize is provided (default: random salt)
+   --verbose, -v                                       show more information about rule matches (default: false)
    --filter-permissions value, --f-perm value          only consider segments with the given permissions or more, examples: "rw" includes segments with rw, rc and rwx
    --filter-permissions-exact value, --f-perm-e value  comma separated list of permissions to be considered, supported permissions: r, rw, rc, rwx, rcx
    --filter-type value, --f-type value                 comma separated list of considered types, supported types: image, mapped, private
    --filter-state value, --f-state value               comma separated list of considered states, supported states: free, commit, reserve (default: "commit")
    --filter-size-max value, --f-size-max value         maximum size of memory segments to be considered, can be absolute (e.g. "1.5GB"), percentage of total RAM (e.g. "10%T") or percentage of free RAM (e.g. "10%F") (default: "10%F")
    --filter-size-min value, --f-size-min value         minimum size of memory segments to be considered
+   --filter-rss-ratio-min value, --f-rss-min value     minimum RSS/Size ratio of memory segments to eb considered
    --suspend, -s                                       suspend the process before reading its memory (default: false)
    --force, -f                                         don't ask before suspending a process (default: false)
    --help, -h                                          show help (default: false)

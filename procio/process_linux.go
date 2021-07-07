@@ -1,7 +1,6 @@
 package procio
 
 import (
-	"bufio"
 	"fmt"
 	"io"
 	"os"
@@ -23,16 +22,37 @@ type processLinux struct {
 	paused bool
 }
 
+func tryReadingSmaps(pid int) error {
+	smaps, err := os.OpenFile(fmt.Sprintf("/proc/%d/smaps", pid), os.O_RDONLY, 0444)
+	if err != nil {
+		return err
+	}
+	buf := make([]byte, 8)
+	_, err = smaps.Read(buf)
+	return err
+}
+
 // GetRunningPIDs returns the PIDs of all running processes.
 func GetRunningPIDs() ([]int, error) {
-	maps, _ := filepath.Glob("/proc/*/maps")
+	maps, _ := filepath.Glob("/proc/*/smaps")
 
 	pids := make([]int, 0, len(maps)-2)
 	for _, path := range maps {
 		pid, err := strconv.Atoi(strings.Split(path, "/")[2])
 		if err != nil {
+			// This is fine, it can happen e.g. with /proc/self/smaps
 			continue
 		}
+
+		err = tryReadingSmaps(pid)
+		if err == io.EOF {
+			// smaps is empty, this happens sometimes
+			continue
+		}
+
+		// If there are other errors, such as permission based ones we don't
+		// want to handle them here. They will pop up when actually accessing the process.
+
 		pids = append(pids, pid)
 	}
 
@@ -150,33 +170,13 @@ func (p *processLinux) Close() error {
 }
 
 func (p *processLinux) MemorySegments() ([]*MemorySegmentInfo, error) {
-	maps, err := os.OpenFile(fmt.Sprintf("/proc/%d/maps", p.pid), os.O_RDONLY, 0444)
+	smaps, err := os.OpenFile(fmt.Sprintf("/proc/%d/smaps", p.pid), os.O_RDONLY, 0444)
 	if err != nil {
 		return nil, err
 	}
-	defer maps.Close()
+	defer smaps.Close()
 
-	segments := make([]*MemorySegmentInfo, 0)
-
-	rdr := bufio.NewReader(maps)
-	for {
-		line, err := rdr.ReadString('\n')
-		if err != nil {
-			if err == io.EOF {
-				break
-			} else {
-				return nil, err
-			}
-		}
-
-		seg, err := memorySegmentFromLine(line)
-		if err != nil {
-			return nil, errors.Newf("could not parse memory segment info, reason: %w", err)
-		}
-		segments = append(segments, seg)
-	}
-
-	return segments, nil
+	return parseSMEMFile(smaps)
 }
 
 func (p *processLinux) Crash(m CrashMethod) error {

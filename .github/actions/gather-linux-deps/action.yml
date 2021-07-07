@@ -1,0 +1,16 @@
+name: 'Gather Linux Dependencies'
+description: 'Gathers linux dependencies'
+runs:
+    using: "composite"
+    steps:
+        - name: Gathering linux dependencies
+          run: |
+              ldd yapscan
+              cp $(ldd yapscan | grep libyara | cut -d'>' -f2 | cut -d' ' -f2) .
+              ldd libyara.so*
+              cp $(ldd libyara.so* | grep libcrypto | cut -d'>' -f2 | cut -d' ' -f2) .
+          working-directory: cicd/build
+          shell: bash
+        - name: Copying libyara notice
+          run: cp deps/yara/COPYING cicd/build/libyara.license
+          shell: bash

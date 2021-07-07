@@ -27,6 +27,7 @@ import (
 
 const filenameDateFormat = "2006-01-02_15-04-05"
 const memoryScanInterval = 500 * time.Millisecond
+const archivePermissions = 0644
 
 func scan(c *cli.Context) error {
 	err := initAppAction(c)
@@ -38,6 +39,9 @@ func scan(c *cli.Context) error {
 	if err != nil {
 		return err
 	}
+
+	fmt.Printf("Filters: %s\n\n", f.Description())
+	logrus.Infof("Filters: %s", f.Description())
 
 	if c.NArg() == 0 && !c.Bool("all-processes") && !c.Bool("all-drives") && !c.Bool("all-shares") {
 		return errors.Newf("expected at least one argument, or one of the flags \"--all-processes\", \"--all-drives\", \"--all-shares\", got zero")
@@ -169,7 +173,7 @@ func scan(c *cli.Context) error {
 		if c.String("report-dir") != "" {
 			reportArchivePath = filepath.Join(c.String("report-dir"), reportArchivePath)
 		}
-		reportTar, err := os.OpenFile(reportArchivePath, os.O_CREATE|os.O_RDWR, 0600)
+		reportTar, err := os.OpenFile(reportArchivePath, os.O_CREATE|os.O_RDWR, archivePermissions)
 		if err != nil {
 			return fmt.Errorf("could not create output report archive, reason: %w", err)
 		}
@@ -259,6 +263,8 @@ func scan(c *cli.Context) error {
 		}
 	}()
 
+	encounteredMappedFiles := make(map[string]interface{}, 0)
+
 	for _, pid := range pids {
 		func() {
 			if pid == os.Getpid() {
@@ -327,6 +333,10 @@ func scan(c *cli.Context) error {
 				memScanChan <- prog
 			}
 			resume()
+
+			for _, f := range scanner.EncounteredMemoryMappedFiles() {
+				encounteredMappedFiles[f] = nil
+			}
 		}()
 	}
 	close(memScanChan)
@@ -348,6 +358,15 @@ func scan(c *cli.Context) error {
 
 	iteratorCtx := context.Background()
 	var pathIterator fileio.Iterator
+
+	if c.Bool("scan-mapped-files") && len(encounteredMappedFiles) > 0 {
+		encounteredMappedFilesList := make([]string, 0, len(encounteredMappedFiles))
+		for f, _ := range encounteredMappedFiles {
+			encounteredMappedFilesList = append(encounteredMappedFilesList, f)
+		}
+		pathIterator = fileio.IterateFileList(encounteredMappedFilesList)
+	}
+
 	for _, path := range paths {
 		pIt, err := fileio.IteratePath(iteratorCtx, path, fileExtensions)
 		if err != nil {

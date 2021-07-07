@@ -105,6 +105,21 @@ func BuildFilterSizeMin(fStr string) (yapscan.MemorySegmentFilter, error) {
 	return yapscan.NewMinSizeFilter(size), nil
 }
 
+func BuildRSSRatioMin(fStr string) (yapscan.MemorySegmentFilter, error) {
+	if len(fStr) == 0 {
+		return nil, nil
+	}
+
+	ratio, err := ParseRatioArgument(fStr)
+	if err != nil {
+		return nil, fmt.Errorf("could not parse ratio \"%s\", reason: %w", fStr, err)
+	}
+
+	logrus.Infof("Filtering for minimum RSS/Size ratio %v", ratio)
+
+	return yapscan.NewRSSRatioFilter(ratio), nil
+}
+
 func BuildFilterSizeMax(fStr string) (yapscan.MemorySegmentFilter, error) {
 	if len(fStr) == 0 {
 		return nil, nil
@@ -118,6 +133,25 @@ func BuildFilterSizeMax(fStr string) (yapscan.MemorySegmentFilter, error) {
 	logrus.Infof("Filtering for maximum size %s", humanize.Bytes(uint64(size)))
 
 	return yapscan.NewMaxSizeFilter(size), nil
+}
+
+func ParseRatioArgument(s string) (float64, error) {
+	s = strings.TrimSpace(s)
+	if len(s) == 0 {
+		return 0, fmt.Errorf("empty string is not a ratio")
+	}
+	mul := 1.
+	if s[len(s)-1] == '%' {
+		mul = 1 / 100.
+		s = strings.TrimSpace(s[:len(s)-1])
+	}
+
+	f, err := strconv.ParseFloat(s, 64)
+	if err != nil {
+		return 0, err
+	}
+
+	return f * mul, nil
 }
 
 func ParseSizeArgument(s string) (uintptr, error) {

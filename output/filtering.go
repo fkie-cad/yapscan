@@ -276,6 +276,7 @@ func (a *Anonymizer) AnonymizeMemorySegment(segment *procio.MemorySegmentInfo) *
 		AllocatedPermissions: segment.AllocatedPermissions,
 		CurrentPermissions:   segment.CurrentPermissions,
 		Size:                 segment.Size,
+		RSS:                  segment.RSS,
 		State:                segment.State,
 		Type:                 segment.Type,
 		MappedFile:           a.AnonymizeFile(segment.MappedFile),
