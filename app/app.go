@@ -435,9 +435,9 @@ func MakeApp(args []string) *cli.App {
 				},
 			},
 			&cli.Command{
-				Name:    "crash-processe",
+				Name:    "crash-process",
 				Aliases: []string{"crash"},
-				Usage:   "crash a processe",
+				Usage:   "crash a process",
 				Action:  crashProcess,
 				Flags: []cli.Flag{
 					&cli.StringFlag{

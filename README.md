@@ -38,7 +38,7 @@ COMMANDS:
    scan                        scans processes or paths with yara rules
    zip-rules                   creates an encrypted zip containing compiled yara rules
    join                        joins dumps with padding
-   crash-processe, crash       crash a processe
+   crash-process, crash        crash a process
    help, h                     Shows a list of commands or help for one command
 ```
 
