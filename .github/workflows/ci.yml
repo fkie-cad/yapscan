@@ -81,8 +81,12 @@ jobs:
 
             - name: Running unit tests
               run: go test -race -coverprofile=coverage.txt -covermode=atomic -coverpkg="$coverpkg" -v $(go list ./... | grep -v /acceptanceTests)
+              env:
+                  coverpkg: github.com/fkie-cad/yapscan/...
             - name: Running acceptance tests
               run: go test -race -coverprofile=coverage.txt -covermode=atomic -coverpkg="$coverpkg" -v -quickchecks=${QUICKCHECKS:-100} -short .
+              env:
+                  coverpkg: github.com/fkie-cad/yapscan/...
               working-directory: acceptanceTests
             - name: Consolidating coverage
               run: cat acceptanceTests/coverage.txt | tail -n+2 >> coverage.txt && rm acceptanceTests/coverage.txt
