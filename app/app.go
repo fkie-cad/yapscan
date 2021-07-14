@@ -209,7 +209,7 @@ func MakeApp(args []string) *cli.App {
 		Name:        "yapscan",
 		HelpName:    "yapscan",
 		Description: "A yara based scanner for files and process memory with some extras.",
-		Version:     "0.9.0",
+		Version:     "0.10.0",
 		Writer:      os.Stdout,
 		ErrWriter:   os.Stderr,
 		Authors: []*cli.Author{
