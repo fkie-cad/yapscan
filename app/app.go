@@ -34,7 +34,7 @@ func initAppAction(c *cli.Context) error {
 	case "--":
 		logrus.SetOutput(os.Stderr)
 	default:
-		logfile, err := os.OpenFile(c.String("log-path"), os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0666)
+		logfile, err := os.OpenFile(c.String("log-path"), os.O_WRONLY|os.O_CREATE|os.O_APPEND|os.O_SYNC, 0666)
 		if err != nil {
 			return fmt.Errorf("could not open logfile for writing, reason: %w", err)
 		}

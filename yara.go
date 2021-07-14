@@ -34,8 +34,9 @@ var YaraRulesFileExtensions = []string{
 }
 
 type MemoryProfile struct {
-	Time    time.Time `json:"time"`
-	FreeRAM uintptr   `json:"freeRAM"`
+	Time     time.Time `json:"time"`
+	FreeRAM  uintptr   `json:"freeRAM"`
+	FreeSwap uintptr   `json:"freeSwap"`
 }
 
 // ScanningStatistics holds statistic information about a scan.
@@ -84,9 +85,19 @@ func (s *ScanningStatistics) StartMemoryProfiler(ctx context.Context, scanInterv
 					logrus.WithError(err).Error("Could not retrieve free RAM.")
 					continue
 				}
+				freeSwap, err := system.FreeSwap()
+				if err != nil {
+					logrus.WithError(err).Error("Could not retrieve free RAM.")
+					continue
+				}
+				logrus.WithFields(logrus.Fields{
+					"freeRAM":  freeRAM,
+					"freeSwap": freeSwap,
+				}).Trace("Memory profile.")
 				s.MemoryProfile = append(s.MemoryProfile, &MemoryProfile{
-					Time:    time.Now(),
-					FreeRAM: freeRAM,
+					Time:     time.Now(),
+					FreeRAM:  freeRAM,
+					FreeSwap: freeSwap,
 				})
 			}
 		}
