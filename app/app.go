@@ -34,7 +34,7 @@ func initAppAction(c *cli.Context) error {
 	case "--":
 		logrus.SetOutput(os.Stderr)
 	default:
-		logfile, err := os.OpenFile(c.String("log-path"), os.O_WRONLY|os.O_CREATE|os.O_APPEND, 0666)
+		logfile, err := os.OpenFile(c.String("log-path"), os.O_WRONLY|os.O_CREATE|os.O_APPEND|os.O_SYNC, 0666)
 		if err != nil {
 			return fmt.Errorf("could not open logfile for writing, reason: %w", err)
 		}
@@ -209,7 +209,7 @@ func MakeApp(args []string) *cli.App {
 		Name:        "yapscan",
 		HelpName:    "yapscan",
 		Description: "A yara based scanner for files and process memory with some extras.",
-		Version:     "0.9.0",
+		Version:     "0.10.0",
 		Writer:      os.Stdout,
 		ErrWriter:   os.Stderr,
 		Authors: []*cli.Author{
@@ -435,9 +435,9 @@ func MakeApp(args []string) *cli.App {
 				},
 			},
 			&cli.Command{
-				Name:    "crash-processe",
+				Name:    "crash-process",
 				Aliases: []string{"crash"},
-				Usage:   "crash a processe",
+				Usage:   "crash a process",
 				Action:  crashProcess,
 				Flags: []cli.Flag{
 					&cli.StringFlag{
