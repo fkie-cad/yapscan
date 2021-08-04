@@ -32,14 +32,16 @@ const fifteenMinutes = 15
 const valuesPerMinute = 5 // 1 / 0.2 = 5
 
 type cpuLoadTracker struct {
-	mux             *sync.Mutex
-	minuteAvgBuffer []float64
+	mux               *sync.Mutex
+	minuteAvgBuffer   []float64
+	bufferInitialized bool
 }
 
 func newCpuLoadTracker() *cpuLoadTracker {
 	return &cpuLoadTracker{
-		mux:             new(sync.Mutex),
-		minuteAvgBuffer: make([]float64, fifteenMinutes*valuesPerMinute),
+		mux:               new(sync.Mutex),
+		minuteAvgBuffer:   make([]float64, fifteenMinutes*valuesPerMinute),
+		bufferInitialized: false,
 	}
 }
 
@@ -47,7 +49,14 @@ func (t *cpuLoadTracker) addValue(value float64) {
 	t.mux.Lock()
 	defer t.mux.Unlock()
 
-	t.minuteAvgBuffer = append(t.minuteAvgBuffer[1:], value)
+	if t.bufferInitialized {
+		t.minuteAvgBuffer = append(t.minuteAvgBuffer[1:], value)
+	} else {
+		for i := range t.minuteAvgBuffer {
+			t.minuteAvgBuffer[i] = value
+		}
+		t.bufferInitialized = true
+	}
 }
 
 func (t *cpuLoadTracker) average(numValues int) float64 {
