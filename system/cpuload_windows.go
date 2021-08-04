@@ -1,12 +1,13 @@
 package system
 
-// #include <windows.h>
+// #include<stdint.h>
+// #include<windows.h>
 // int myGetSystemTimes(int64_t* idleTime, int64_t* kernelTime, int64_t* userTime) {
 //     FILETIME fIdle, fKernel, fUser;
 //     int res = GetSystemTimes(&fIdle, &fKernel, &fUser);
-//     *idleTime = ((int64)fIdle.dwHighDateTime << 32) | fIdle.dwLowDateTime;
-//     *kernelTime = ((int64)fKernel.dwHighDateTime << 32) | fKernel.dwLowDateTime;
-//     *userTime = ((int64)fUser.dwHighDateTime << 32) | fUser.dwLowDateTime;
+//     *idleTime = ((int64_t)fIdle.dwHighDateTime << 32) | fIdle.dwLowDateTime;
+//     *kernelTime = ((int64_t)fKernel.dwHighDateTime << 32) | fKernel.dwLowDateTime;
+//     *userTime = ((int64_t)fUser.dwHighDateTime << 32) | fUser.dwLowDateTime;
 //     return res;
 // }
 import "C"
@@ -20,15 +21,7 @@ import (
 
 func getSystemTimes() (idleTicks int64, kernelTicks int64, userTicks int64, err error) {
 	// in ticks; one tick = 100 ns
-	result := C.myGetSystemTimes(&idleTicks, &kernelTicks, &userTicks)
-	if result == 0 {
-		err = syscall.GetLastError()
-	}
-	return
-}
-
-func queryPerformanceCounter() (ticks int64, err error) {
-	result := C.QueryPerformanceCounter(&ticks)
+	result := C.myGetSystemTimes((*C.int64_t)(&idleTicks), (*C.int64_t)(&kernelTicks), (*C.int64_t)(&userTicks))
 	if result == 0 {
 		err = syscall.GetLastError()
 	}
@@ -61,11 +54,11 @@ func (t *cpuLoadTracker) average(numValues int) float64 {
 	t.mux.Lock()
 	defer t.mux.Unlock()
 
-	l := len(t.minuteAvgBuffer)
+	last := len(t.minuteAvgBuffer) - 1
 
 	var sum float64
-	for i := 0; i < numValues; i-- {
-		sum += t.minuteAvgBuffer[l-i]
+	for i := 0; i < numValues; i++ {
+		sum += t.minuteAvgBuffer[last-i]
 	}
 
 	return sum / float64(numValues)
@@ -97,6 +90,7 @@ func (t *cpuLoadTracker) track() {
 			logrus.WithError(err).Error("could not query system load")
 			continue
 		}
+		loadTicks := kernelTicks + userTicks
 
 		idleDelta := lastIdleTicks - idleTicks
 		loadDelta := lastLoadTicks - kernelTicks - userTicks
@@ -106,6 +100,8 @@ func (t *cpuLoadTracker) track() {
 		// There can be some drift when computing averages if the ticker is not precise.
 		// This should be fine for our purposes though.
 		t.addValue(loadPercentInLastInterval)
+
+		lastIdleTicks, lastLoadTicks = idleTicks, loadTicks
 	}
 }
 
