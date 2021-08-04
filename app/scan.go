@@ -26,7 +26,7 @@ import (
 )
 
 const filenameDateFormat = "2006-01-02_15-04-05"
-const memoryScanInterval = 500 * time.Millisecond
+const profilingInterval = system.MaxCPULoadResolution
 const archivePermissions = 0644
 
 func scan(c *cli.Context) error {
@@ -58,7 +58,7 @@ func scan(c *cli.Context) error {
 	}
 
 	scannerStats := yaraScanner.Statistics()
-	scannerStats.StartMemoryProfiler(context.Background(), memoryScanInterval)
+	scannerStats.StartProfiler(context.Background(), profilingInterval)
 
 	var pids []int
 	var paths []string

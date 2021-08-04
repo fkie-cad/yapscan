@@ -33,22 +33,25 @@ var YaraRulesFileExtensions = []string{
 	".yara",
 }
 
-type MemoryProfile struct {
-	Time     time.Time `json:"time"`
-	FreeRAM  uintptr   `json:"freeRAM"`
-	FreeSwap uintptr   `json:"freeSwap"`
+type ProfilingInformation struct {
+	Time                  time.Time `json:"time"`
+	FreeRAM               uintptr   `json:"freeRAM"`
+	FreeSwap              uintptr   `json:"freeSwap"`
+	LoadAvgOneMinute      float64   `json:"loadAvgOneMinute"`
+	LoadAvgFiveMinutes    float64   `json:"loadAvgFiveMinutes"`
+	LoadAvgFifteenMinutes float64   `json:"loadAvgFifteenMinutes"`
 }
 
 // ScanningStatistics holds statistic information about a scan.
 type ScanningStatistics struct {
-	Start                      time.Time        `json:"start"`
-	End                        time.Time        `json:"end"`
-	NumberOfProcessesScanned   uint64           `json:"numberOfProcessesScanned"`
-	NumberOfSegmentsScanned    uint64           `json:"numberOfSegmentsScanned"`
-	NumberOfMemoryBytesScanned uint64           `json:"numberOfMemoryBytesScanned"`
-	NumberOfFileBytesScanned   uint64           `json:"numberOfFileBytesScanned"`
-	NumberOfFilesScanned       uint64           `json:"numberOfFilesScanned"`
-	MemoryProfile              []*MemoryProfile `json:"memoryProfile"`
+	Start                      time.Time               `json:"start"`
+	End                        time.Time               `json:"end"`
+	NumberOfProcessesScanned   uint64                  `json:"numberOfProcessesScanned"`
+	NumberOfSegmentsScanned    uint64                  `json:"numberOfSegmentsScanned"`
+	NumberOfMemoryBytesScanned uint64                  `json:"numberOfMemoryBytesScanned"`
+	NumberOfFileBytesScanned   uint64                  `json:"numberOfFileBytesScanned"`
+	NumberOfFilesScanned       uint64                  `json:"numberOfFilesScanned"`
+	ProfilingInformation       []*ProfilingInformation `json:"profilingInformation"`
 
 	mux          *sync.Mutex
 	ctx          context.Context
@@ -63,9 +66,10 @@ func NewScanningStatistics() *ScanningStatistics {
 	}
 }
 
-// StartMemoryProfiler starts a goroutine, regularly saving information about free memory.
-func (s *ScanningStatistics) StartMemoryProfiler(ctx context.Context, scanInterval time.Duration) {
-	s.MemoryProfile = make([]*MemoryProfile, 0, 16)
+// StartProfiler starts a goroutine, regularly saving information about free memory, free swap and
+// CPU load.
+func (s *ScanningStatistics) StartProfiler(ctx context.Context, scanInterval time.Duration) {
+	s.ProfilingInformation = make([]*ProfilingInformation, 0, 16)
 	s.ctx, s.ctxCancel = context.WithCancel(ctx)
 	s.profilerDone = make(chan interface{})
 
@@ -90,14 +94,19 @@ func (s *ScanningStatistics) StartMemoryProfiler(ctx context.Context, scanInterv
 					logrus.WithError(err).Error("Could not retrieve free RAM.")
 					continue
 				}
+				loadAvg1, loadAvg5, loadAvg15 := system.CPULoad()
+
 				logrus.WithFields(logrus.Fields{
 					"freeRAM":  freeRAM,
 					"freeSwap": freeSwap,
 				}).Trace("Memory profile.")
-				s.MemoryProfile = append(s.MemoryProfile, &MemoryProfile{
-					Time:     time.Now(),
-					FreeRAM:  freeRAM,
-					FreeSwap: freeSwap,
+				s.ProfilingInformation = append(s.ProfilingInformation, &ProfilingInformation{
+					Time:                  time.Now(),
+					FreeRAM:               freeRAM,
+					FreeSwap:              freeSwap,
+					LoadAvgOneMinute:      loadAvg1,
+					LoadAvgFiveMinutes:    loadAvg5,
+					LoadAvgFifteenMinutes: loadAvg15,
 				})
 			}
 		}
