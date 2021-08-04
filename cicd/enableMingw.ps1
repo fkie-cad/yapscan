@@ -3,6 +3,11 @@ Param(
     [string]$MsysPath
 )
 
+if ($ENV:MSYS_PATH -not -like "") {
+	# enableMingw was run before
+	Exit 0
+}
+
 if ($MsysPath -like "") {
     # Try to detect msys
     if (Test-Path "C:\msys64") {
@@ -13,6 +18,7 @@ if ($MsysPath -like "") {
     }
 }
 
+$ENV:MSYS_PATH = $MsysPath
 $ENV:PKG_CONFIG_PATH = "$MsysPath\opt\yapscan-deps\lib\pkgconfig"
 $ENV:PATH += ";$MsysPath\mingw64\bin"
 

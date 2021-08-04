@@ -3,7 +3,8 @@ package service
 import (
 	"fmt"
 	"os"
-	"syscall"
+
+	"golang.org/x/sys/windows"
 
 	"github.com/fkie-cad/yapscan/app"
 	"github.com/sirupsen/logrus"
@@ -124,7 +125,7 @@ func SvcMain(dwNumServicesArgs C.DWORD, lpServiceArgVectors **C.char) {
 
 func initializeNative() error {
 	if C.startServiceDispatcher() != C.int(0) {
-		return &NotInServiceModeError{Underlying: syscall.GetLastError()}
+		return &NotInServiceModeError{Underlying: windows.GetLastError()}
 	}
 	return nil
 }

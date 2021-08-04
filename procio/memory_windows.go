@@ -1,60 +1,60 @@
 package procio
 
 import (
-	"github.com/0xrawsec/golang-win32/win32"
-	"github.com/0xrawsec/golang-win32/win32/kernel32"
+	"github.com/fkie-cad/yapscan/win32"
+	"golang.org/x/sys/windows"
 )
 
 // SegmentFromMemoryBasicInformation converts the winapi win32.MemoryBasicInformation
 // into a *MemorySegmentInfo.
 func SegmentFromMemoryBasicInformation(info win32.MemoryBasicInformation) *MemorySegmentInfo {
 	return &MemorySegmentInfo{
-		ParentBaseAddress:    uintptr(info.AllocationBase),
-		BaseAddress:          uintptr(info.BaseAddress),
-		AllocatedPermissions: permissionsFromProtectDWORD(info.AllocationProtect),
-		CurrentPermissions:   permissionsFromProtectDWORD(info.Protect),
-		Size:                 uintptr(info.RegionSize),
-		State:                stateFromDWORD(info.State),
-		Type:                 typeFromDWORD(info.Type),
+		ParentBaseAddress:    info.AllocationBase,
+		BaseAddress:          info.BaseAddress,
+		AllocatedPermissions: permissionsFromNativeProtect(info.AllocationProtect),
+		CurrentPermissions:   permissionsFromNativeProtect(info.Protect),
+		Size:                 info.RegionSize,
+		State:                stateFromNative(info.State),
+		Type:                 typeFromNative(info.Type),
 		SubSegments:          make([]*MemorySegmentInfo, 0),
 	}
 }
 
 // LookupFilePathOfSegment attempts to lookup the module filename associated
 // with the given *MemorySegmentInfo.
-func LookupFilePathOfSegment(procHandle win32.HANDLE, seg *MemorySegmentInfo) (string, error) {
+func LookupFilePathOfSegment(procHandle windows.Handle, seg *MemorySegmentInfo) (string, error) {
 	if seg.BaseAddress != seg.ParentBaseAddress {
 		// Only check root segments
 		return "", nil
 	}
 	if seg.Type == TypeImage {
-		return kernel32.GetModuleFilenameExW(procHandle, win32.HANDLE(seg.BaseAddress))
+		return win32.GetModuleFilenameExW(procHandle, windows.Handle(seg.BaseAddress))
 	}
 	return "", nil
 }
 
 // PermissionsToNative converts the given Permissions to the
 // native windows representation.
-func PermissionsToNative(perms Permissions) win32.DWORD {
+func PermissionsToNative(perms Permissions) int {
 	switch perms.String() {
 	case "R--":
-		return win32.PAGE_READONLY
+		return windows.PAGE_READONLY
 	case "RW-":
-		return win32.PAGE_READWRITE
+		return windows.PAGE_READWRITE
 	case "RC-":
-		return win32.PAGE_WRITECOPY
+		return windows.PAGE_WRITECOPY
 	case "--X":
-		return win32.PAGE_EXECUTE
+		return windows.PAGE_EXECUTE
 	case "RWX":
-		return win32.PAGE_EXECUTE_READWRITE
+		return windows.PAGE_EXECUTE_READWRITE
 	case "RCX":
-		return win32.PAGE_EXECUTE_WRITECOPY
+		return windows.PAGE_EXECUTE_WRITECOPY
 	default:
-		return win32.PAGE_NOACCESS
+		return windows.PAGE_NOACCESS
 	}
 }
 
-func permissionsFromProtectDWORD(protect win32.DWORD) Permissions {
+func permissionsFromNativeProtect(protect uint32) Permissions {
 	mp := Permissions{
 		Read:    false,
 		Write:   false,
@@ -62,28 +62,28 @@ func permissionsFromProtectDWORD(protect win32.DWORD) Permissions {
 		Execute: false,
 	}
 
-	protect &= win32.DWORD(0xFF)
+	protect &= 0xFF
 
 	switch protect {
-	case win32.PAGE_READONLY:
+	case windows.PAGE_READONLY:
 		mp.Read = true
-	case win32.PAGE_READWRITE:
+	case windows.PAGE_READWRITE:
 		mp.Read = true
 		mp.Write = true
-	case win32.PAGE_WRITECOPY:
+	case windows.PAGE_WRITECOPY:
 		mp.Read = true
 		mp.Write = true
 		mp.COW = true
-	case win32.PAGE_EXECUTE:
+	case windows.PAGE_EXECUTE:
 		mp.Execute = true
-	case win32.PAGE_EXECUTE_READ:
+	case windows.PAGE_EXECUTE_READ:
 		mp.Read = true
 		mp.Execute = true
-	case win32.PAGE_EXECUTE_READWRITE:
+	case windows.PAGE_EXECUTE_READWRITE:
 		mp.Read = true
 		mp.Write = true
 		mp.Execute = true
-	case win32.PAGE_EXECUTE_WRITECOPY:
+	case windows.PAGE_EXECUTE_WRITECOPY:
 		mp.Read = true
 		mp.Write = true
 		mp.COW = true
@@ -93,7 +93,7 @@ func permissionsFromProtectDWORD(protect win32.DWORD) Permissions {
 	return mp
 }
 
-func stateFromDWORD(state win32.DWORD) State {
+func stateFromNative(state uint32) State {
 	switch state {
 	case win32.MEM_COMMIT:
 		return StateCommit
@@ -105,9 +105,9 @@ func stateFromDWORD(state win32.DWORD) State {
 	return State(state)
 }
 
-func typeFromDWORD(t win32.DWORD) Type {
+func typeFromNative(t uint32) Type {
 	switch t {
-	case win32.DWORD(0x1000000):
+	case win32.MEM_IMAGE:
 		return TypeImage
 	case win32.MEM_MAPPED:
 		return TypeMapped

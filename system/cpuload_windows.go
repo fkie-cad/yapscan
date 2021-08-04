@@ -1,32 +1,13 @@
 package system
 
-// #include<stdint.h>
-// #include<windows.h>
-// int myGetSystemTimes(int64_t* idleTime, int64_t* kernelTime, int64_t* userTime) {
-//     FILETIME fIdle, fKernel, fUser;
-//     int res = GetSystemTimes(&fIdle, &fKernel, &fUser);
-//     *idleTime = ((int64_t)fIdle.dwHighDateTime << 32) | fIdle.dwLowDateTime;
-//     *kernelTime = ((int64_t)fKernel.dwHighDateTime << 32) | fKernel.dwLowDateTime;
-//     *userTime = ((int64_t)fUser.dwHighDateTime << 32) | fUser.dwLowDateTime;
-//     return res;
-// }
-import "C"
 import (
 	"sync"
-	"syscall"
 	"time"
+
+	"github.com/fkie-cad/yapscan/win32"
 
 	"github.com/sirupsen/logrus"
 )
-
-func getSystemTimes() (idleTicks int64, kernelTicks int64, userTicks int64, err error) {
-	// in ticks; one tick = 100 ns
-	result := C.myGetSystemTimes((*C.int64_t)(&idleTicks), (*C.int64_t)(&kernelTicks), (*C.int64_t)(&userTicks))
-	if result == 0 {
-		err = syscall.GetLastError()
-	}
-	return
-}
 
 const fifteenMinutes = 15
 const valuesPerMinute = 5 // 1 / 0.2 = 5
@@ -87,14 +68,14 @@ func (t *cpuLoadTracker) fifteenMinutesAvg() float64 {
 
 func (t *cpuLoadTracker) track() {
 	// This function will never stop, sorry mom
-	lastIdleTicks, kernelTicks, userTicks, err := getSystemTimes()
+	lastIdleTicks, kernelTicks, userTicks, err := win32.GetSystemTimes()
 	lastLoadTicks := kernelTicks + userTicks
 	if err != nil {
 		logrus.WithError(err).Error("could not query system load")
 	}
 
 	for range time.Tick(loadPollIntervalWindows) {
-		idleTicks, kernelTicks, userTicks, err := getSystemTimes()
+		idleTicks, kernelTicks, userTicks, err := win32.GetSystemTimes()
 		if err != nil {
 			logrus.WithError(err).Error("could not query system load")
 			continue
