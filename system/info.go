@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"runtime"
 
 	"github.com/targodan/go-errors"
 
@@ -18,8 +19,14 @@ type Info struct {
 	OSArch    arch.T   `json:"osArch"`
 	Hostname  string   `json:"hostname"`
 	IPs       []string `json:"ips"`
+	NumCPUs   int      `json:"numCPUs"`
 	TotalRAM  uintptr  `json:"totalRAM"`
+	TotalSwap uintptr  `json:"totalSwap"`
 }
+
+// UnknownOSInfo is returned as OSName, OSVersion or OSFlavour if the OS information
+// could not be retrieved.
+const UnknownOSInfo = "UNKNOWN"
 
 var info *Info
 
@@ -33,7 +40,7 @@ func GetInfo() (*Info, error) {
 		info.OSArch = arch.Native()
 		info.OSName, info.OSVersion, info.OSFlavour, tmpErr = getOSInfo()
 		if tmpErr != nil {
-			info.OSName, info.OSVersion, info.OSFlavour = "UNKNOWN", "UNKNOWN", "UNKNOWN"
+			info.OSName, info.OSVersion, info.OSFlavour = UnknownOSInfo, UnknownOSInfo, UnknownOSInfo
 			err = errors.NewMultiError(err, fmt.Errorf("could not determine OS info, reason: %w", tmpErr))
 		}
 		info.Hostname, tmpErr = os.Hostname()
@@ -54,6 +61,10 @@ func GetInfo() (*Info, error) {
 		if tmpErr != nil {
 			err = errors.NewMultiError(err, fmt.Errorf("could not determine total RAM, reason: %w", tmpErr))
 		}
+		info.TotalSwap, tmpErr = TotalSwap()
+		if tmpErr != nil {
+			err = errors.NewMultiError(err, fmt.Errorf("could not determine total Swap, reason: %w", tmpErr))
+		}
 	}
 	return copyInfo(info), nil
 }
@@ -70,6 +81,8 @@ func copyInfo(info *Info) *Info {
 		OSArch:    info.OSArch,
 		Hostname:  info.Hostname,
 		IPs:       ips,
+		NumCPUs:   runtime.NumCPU(),
 		TotalRAM:  info.TotalRAM,
+		TotalSwap: info.TotalSwap,
 	}
 }
