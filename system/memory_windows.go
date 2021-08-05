@@ -1,12 +1,10 @@
 package system
 
-import (
-	"github.com/fkie-cad/yapscan/procio/customWin32"
-)
+import "github.com/fkie-cad/yapscan/win32"
 
 // TotalRAM returns the total amount of installed RAM in bytes.
 func TotalRAM() (uintptr, error) {
-	status, err := customWin32.GlobalMemoryStatusEx()
+	status, err := win32.GlobalMemoryStatusEx()
 	if err != nil {
 		return 0, err
 	}
@@ -15,7 +13,7 @@ func TotalRAM() (uintptr, error) {
 
 // FreeRAM returns the amount of free RAM available for allocation in bytes.
 func FreeRAM() (uintptr, error) {
-	status, err := customWin32.GlobalMemoryStatusEx()
+	status, err := win32.GlobalMemoryStatusEx()
 	if err != nil {
 		return 0, err
 	}
@@ -24,7 +22,7 @@ func FreeRAM() (uintptr, error) {
 
 // TotalSwap returns the amount of free RAM available for allocation in bytes.
 func TotalSwap() (uintptr, error) {
-	status, err := customWin32.GlobalMemoryStatusEx()
+	status, err := win32.GlobalMemoryStatusEx()
 	if err != nil {
 		return 0, err
 	}
@@ -33,7 +31,7 @@ func TotalSwap() (uintptr, error) {
 
 // FreeSwap returns the amount of free RAM available for allocation in bytes.
 func FreeSwap() (uintptr, error) {
-	status, err := customWin32.GlobalMemoryStatusEx()
+	status, err := win32.GlobalMemoryStatusEx()
 	if err != nil {
 		return 0, err
 	}

@@ -3,21 +3,18 @@ package procio
 import (
 	"fmt"
 	"os"
-	"syscall"
+	"unsafe"
 
 	"github.com/fkie-cad/yapscan/arch"
 	"github.com/fkie-cad/yapscan/fileio"
-	"github.com/fkie-cad/yapscan/procio/customWin32"
 
+	"github.com/fkie-cad/yapscan/win32"
 	"golang.org/x/sys/windows"
 
 	"github.com/targodan/go-errors"
-
-	"github.com/0xrawsec/golang-win32/win32"
-	"github.com/0xrawsec/golang-win32/win32/kernel32"
 )
 
-var specialPIDs = map[int]*ProcessInfo{
+var specialPIDs = map[uint32]*ProcessInfo{
 	0: &ProcessInfo{
 		PID:              0,
 		Bitness:          arch.Native().Bitness(),
@@ -40,61 +37,63 @@ var specialPIDs = map[int]*ProcessInfo{
 
 // GetRunningPIDs returns the PIDs of all running processes.
 func GetRunningPIDs() ([]int, error) {
-	snap, err := kernel32.CreateToolhelp32Snapshot(kernel32.TH32CS_SNAPPROCESS, 0)
+	snap, err := windows.CreateToolhelp32Snapshot(windows.TH32CS_SNAPPROCESS, 0)
 	if err != nil {
 		return nil, err
 	}
-	defer kernel32.CloseHandle(snap)
+	defer windows.CloseHandle(snap)
 
 	pids := make([]int, 0)
 
-	procEntry := kernel32.NewProcessEntry32W()
+	procEntry := windows.ProcessEntry32{
+		Size: uint32(unsafe.Sizeof(windows.ProcessEntry32{})),
+	}
 
-	_, err = kernel32.Process32FirstW(snap, &procEntry)
-	if err != nil && err.(syscall.Errno) != win32.ERROR_NO_MORE_FILES {
+	err = windows.Process32First(snap, &procEntry)
+	if err != nil && err != windows.ERROR_NO_MORE_FILES {
 		return nil, err
 	}
-	pids = append(pids, int(procEntry.Th32ProcessID))
+	pids = append(pids, int(procEntry.ProcessID))
 	for {
-		err = customWin32.Process32NextW(snap, &procEntry)
+		err = windows.Process32Next(snap, &procEntry)
 		if err != nil {
 			break
 		}
-		pids = append(pids, int(procEntry.Th32ProcessID))
+		pids = append(pids, int(procEntry.ProcessID))
 	}
-	if err.(syscall.Errno) != win32.ERROR_NO_MORE_FILES {
+	if err != windows.ERROR_NO_MORE_FILES {
 		return nil, err
 	}
 	return pids, nil
 }
 
 type processWindows struct {
-	pid        int
-	procHandle win32.HANDLE
+	pid        uint32
+	procHandle windows.Handle
 	suspended  bool
 }
 
 func open(pid int) (Process, error) {
 	if pid <= 4 {
 		// We'll create special processes without handle, so the info can at least be retreived
-		return &processWindows{pid: pid, procHandle: 0}, nil
+		return &processWindows{pid: uint32(pid), procHandle: 0}, nil
 	}
-	handle, err := kernel32.OpenProcess(
-		kernel32.PROCESS_VM_READ|kernel32.PROCESS_QUERY_INFORMATION|kernel32.PROCESS_SUSPEND_RESUME|
+	handle, err := windows.OpenProcess(
+		windows.PROCESS_VM_READ|windows.PROCESS_QUERY_INFORMATION|windows.PROCESS_SUSPEND_RESUME|
 			// Specifically needed for CreateRemoteThread:
-			kernel32.PROCESS_CREATE_THREAD|kernel32.PROCESS_VM_OPERATION|kernel32.PROCESS_VM_WRITE,
-		win32.FALSE,
-		win32.DWORD(pid),
+			windows.PROCESS_CREATE_THREAD|windows.PROCESS_VM_OPERATION|windows.PROCESS_VM_WRITE,
+		false,
+		uint32(pid),
 	)
 	if err != nil {
 		return nil, err
 	}
 
-	return &processWindows{pid: pid, procHandle: handle}, nil
+	return &processWindows{pid: uint32(pid), procHandle: handle}, nil
 }
 
 func (p *processWindows) PID() int {
-	return p.pid
+	return int(p.pid)
 }
 
 func (p *processWindows) Info() (*ProcessInfo, error) {
@@ -105,7 +104,7 @@ func (p *processWindows) Info() (*ProcessInfo, error) {
 
 	var tmpErr, err error
 	info := &ProcessInfo{
-		PID: p.pid,
+		PID: int(p.pid),
 	}
 
 	info.MemorySegments, tmpErr = p.MemorySegments()
@@ -114,7 +113,7 @@ func (p *processWindows) Info() (*ProcessInfo, error) {
 	}
 
 	var isWow64 bool
-	err = windows.IsWow64Process(windows.Handle(p.procHandle), &isWow64)
+	err = windows.IsWow64Process(p.procHandle, &isWow64)
 	if tmpErr != nil {
 		err = errors.NewMultiError(err, fmt.Errorf("could not determine process bitness, reason: %w", tmpErr))
 	}
@@ -126,7 +125,7 @@ func (p *processWindows) Info() (*ProcessInfo, error) {
 		info.Bitness = arch.Bitness64Bit
 	}
 
-	info.ExecutablePath, tmpErr = kernel32.GetModuleFilenameExW(p.procHandle, 0)
+	info.ExecutablePath, tmpErr = win32.QueryFullProcessImageName(p.procHandle)
 	if tmpErr != nil {
 		err = errors.NewMultiError(err, fmt.Errorf("could not retrieve executable path, reason: %w", tmpErr))
 	} else {
@@ -136,11 +135,12 @@ func (p *processWindows) Info() (*ProcessInfo, error) {
 		}
 	}
 
-	tokenHandle, tmpErr := customWin32.OpenProcessToken(syscall.Handle(p.procHandle), syscall.TOKEN_QUERY)
+	var tokenHandle windows.Token
+	tmpErr = windows.OpenProcessToken(p.procHandle, windows.TOKEN_QUERY, &tokenHandle)
 	if tmpErr != nil {
 		err = errors.NewMultiError(err, fmt.Errorf("could not retrieve process token, reason: %w", tmpErr))
 	} else {
-		sid, tmpErr := customWin32.GetTokenOwner(tokenHandle)
+		sid, tmpErr := win32.GetTokenOwner(tokenHandle)
 		if tmpErr != nil {
 			err = errors.NewMultiError(err, fmt.Errorf("could not get process token owner, reason: %w", tmpErr))
 		} else {
@@ -150,7 +150,7 @@ func (p *processWindows) Info() (*ProcessInfo, error) {
 			} else {
 				err = errors.NewMultiError(err, fmt.Errorf("could not lookup username from SID, reason: %w", tmpErr))
 
-				info.Username, tmpErr = customWin32.ConvertSidToStringSid(sid)
+				info.Username, tmpErr = win32.ConvertSidToStringSid(sid)
 				if tmpErr != nil {
 					err = errors.NewMultiError(err, fmt.Errorf("could not convert SID to string, reason: %w", tmpErr))
 				}
@@ -162,17 +162,17 @@ func (p *processWindows) Info() (*ProcessInfo, error) {
 }
 
 func (p *processWindows) String() string {
-	return FormatPID(p.pid)
+	return FormatPID(int(p.pid))
 }
 
 func (p *processWindows) Suspend() error {
-	if p.pid == os.Getpid() {
+	if int(p.pid) == os.Getpid() {
 		return ErrProcIsSelf
 	}
-	if p.pid == os.Getppid() {
+	if int(p.pid) == os.Getppid() {
 		return ErrProcIsParent
 	}
-	err := customWin32.SuspendProcess(p.pid)
+	err := win32.SuspendProcess(p.pid)
 	if err == nil {
 		p.suspended = true
 	}
@@ -182,7 +182,7 @@ func (p *processWindows) Suspend() error {
 func (p *processWindows) Resume() error {
 	var err error
 	if p.suspended {
-		err = customWin32.ResumeProcess(p.pid)
+		err = win32.ResumeProcess(p.pid)
 	}
 	if err == nil {
 		p.suspended = false
@@ -191,7 +191,7 @@ func (p *processWindows) Resume() error {
 }
 
 func (p *processWindows) Close() error {
-	return kernel32.CloseHandle(p.procHandle)
+	return windows.CloseHandle(p.procHandle)
 }
 
 func (p *processWindows) Handle() interface{} {
@@ -208,19 +208,18 @@ func (p *processWindows) MemorySegments() ([]*MemorySegmentInfo, error) {
 
 		var currentParent *MemorySegmentInfo
 
-		lpAddress := win32.LPCVOID(0)
+		var lpAddress uintptr
 		for {
-			var mbi win32.MemoryBasicInformation
-			mbi, err := kernel32.VirtualQueryEx(p.procHandle, lpAddress)
+			mbi, err := win32.VirtualQueryEx(p.procHandle, lpAddress)
 			if err != nil {
-				if err == syscall.Errno(87) {
-					// 87 = ERROR_INVALID_PARAMETER is emitted at end of iteration
+				if err == windows.ERROR_INVALID_PARAMETER {
+					// ERROR_INVALID_PARAMETER is emitted at end of iteration
 					err = nil
 				}
 				errors <- err
 				break
 			}
-			lpAddress += win32.LPCVOID(mbi.RegionSize)
+			lpAddress += mbi.RegionSize
 			seg := SegmentFromMemoryBasicInformation(mbi)
 			mappedFilePath, _ := LookupFilePathOfSegment(p.procHandle, seg)
 			if mappedFilePath != "" {
@@ -262,9 +261,9 @@ func (p *processWindows) MemorySegments() ([]*MemorySegmentInfo, error) {
 
 func (p *processWindows) Crash(m CrashMethod) error {
 	if m == CrashMethodCreateThreadOnNull {
-		err := customWin32.CreateRemoteThreadMinimal(p.procHandle, 0)
+		err := win32.CreateRemoteThreadMinimal(p.procHandle, 0)
 		if err != nil {
-			if err.(syscall.Errno) == customWin32.ERROR_NOT_ENOUGH_MEMORY {
+			if err == windows.ERROR_NOT_ENOUGH_MEMORY {
 				return fmt.Errorf("could not crash process, \"%w\", this may be due to service/non-service mode, note that only services can inject into services and services cannot inject into non-service processes", err)
 			}
 			return fmt.Errorf("could not crash process, %w", err)

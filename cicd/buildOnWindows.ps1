@@ -23,13 +23,15 @@ if ($OverwriteDeps) {
     $OverwriteFlag="-o"
 }
 
+& "$PSScriptRoot\enableMingw.ps1" -MsysPath "$MsysPath"
+$MsysPath=$ENV:MSYS_PATH
+
 if ($BuildDeps) {
     echo "Building dependencies..."
+	$ENV:INSTALL_PREFIX="/mingw64"
     Start -FilePath "$MsysPath\msys2_shell.cmd" -ArgumentList "-mingw64","-no-start","-defterm","-c","`"\`"$PSScriptRoot\buildAndInstallDependencies.sh\`" $OverwriteFlag \`"$SOURCES_DIR\`"; res=`$?; echo Press Enter to exit...; read; exit `$res`"" -Wait
     echo "Done."
 }
-
-& "$PSScriptRoot\enableMingw.ps1" -MsysPath "$MsysPath"
 
 New-Item -Path . -Name "build" -ItemType "directory" -Erroraction "silentlycontinue"
 

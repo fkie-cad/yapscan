@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"os/exec"
 	"runtime"
+	"strings"
 	"testing"
 	"time"
 
@@ -60,12 +61,15 @@ func TestPIDInEnumeration(t *testing.T) {
 func TestProcessInformation(t *testing.T) {
 	var testExe string
 	var testArgs []string
+	var fsIsCaseInsensitive bool
 	if runtime.GOOS == "windows" {
 		testExe = "cmd.exe"
 		testArgs = []string{"/C", "timeout 6000"}
+		fsIsCaseInsensitive = true
 	} else {
 		testExe = "bash"
 		testArgs = []string{"-c", "sleep 6000"}
+		fsIsCaseInsensitive = false
 	}
 
 	path, err := exec.LookPath(testExe)
@@ -118,7 +122,11 @@ func TestProcessInformation(t *testing.T) {
 			})
 
 			Convey("should return the correct filepath.", func() {
-				So(info.ExecutablePath, ShouldEqual, path)
+				if fsIsCaseInsensitive {
+					So(strings.ToLower(info.ExecutablePath), ShouldEqual, strings.ToLower(path))
+				} else {
+					So(info.ExecutablePath, ShouldEqual, path)
+				}
 			})
 		})
 	})

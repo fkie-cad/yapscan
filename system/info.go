@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"net"
 	"os"
+	"runtime"
 
 	"github.com/targodan/go-errors"
 
@@ -18,8 +19,14 @@ type Info struct {
 	OSArch    arch.T   `json:"osArch"`
 	Hostname  string   `json:"hostname"`
 	IPs       []string `json:"ips"`
+	NumCPUs   int      `json:"numCPUs"`
 	TotalRAM  uintptr  `json:"totalRAM"`
+	TotalSwap uintptr  `json:"totalSwap"`
 }
+
+// UnknownOSInfo is returned as OSName, OSVersion or OSFlavour if the OS information
+// could not be retrieved.
+const UnknownOSInfo = "UNKNOWN"
 
 var info *Info
 
@@ -29,31 +36,40 @@ func GetInfo() (*Info, error) {
 		var err error
 		var tmpErr error
 
-		info = new(Info)
-		info.OSArch = arch.Native()
-		info.OSName, info.OSVersion, info.OSFlavour, tmpErr = getOSInfo()
+		tmpInfo := new(Info)
+		tmpInfo.OSArch = arch.Native()
+		tmpInfo.OSName, tmpInfo.OSVersion, tmpInfo.OSFlavour, tmpErr = getOSInfo()
 		if tmpErr != nil {
-			info.OSName, info.OSVersion, info.OSFlavour = "UNKNOWN", "UNKNOWN", "UNKNOWN"
+			tmpInfo.OSName, tmpInfo.OSVersion, tmpInfo.OSFlavour = UnknownOSInfo, UnknownOSInfo, UnknownOSInfo
 			err = errors.NewMultiError(err, fmt.Errorf("could not determine OS info, reason: %w", tmpErr))
 		}
-		info.Hostname, tmpErr = os.Hostname()
+		tmpInfo.Hostname, tmpErr = os.Hostname()
 		if tmpErr != nil {
 			err = errors.NewMultiError(err, fmt.Errorf("could not determine hostname, reason: %w", tmpErr))
 		}
 		addrs, tmpErr := net.InterfaceAddrs()
 		if tmpErr != nil {
 			err = errors.NewMultiError(err, fmt.Errorf("could not determine IPs, reason: %w", tmpErr))
-			info.IPs = []string{"UNKNOWN"}
+			tmpInfo.IPs = []string{"UNKNOWN"}
 		} else {
-			info.IPs = make([]string, len(addrs))
+			tmpInfo.IPs = make([]string, len(addrs))
 			for i := range addrs {
-				info.IPs[i] = addrs[i].String()
+				tmpInfo.IPs[i] = addrs[i].String()
 			}
 		}
-		info.TotalRAM, tmpErr = TotalRAM()
+		tmpInfo.TotalRAM, tmpErr = TotalRAM()
 		if tmpErr != nil {
 			err = errors.NewMultiError(err, fmt.Errorf("could not determine total RAM, reason: %w", tmpErr))
 		}
+		tmpInfo.TotalSwap, tmpErr = TotalSwap()
+		if tmpErr != nil {
+			err = errors.NewMultiError(err, fmt.Errorf("could not determine total Swap, reason: %w", tmpErr))
+		}
+
+		if err != nil {
+			return tmpInfo, err
+		}
+		info = tmpInfo
 	}
 	return copyInfo(info), nil
 }
@@ -70,6 +86,8 @@ func copyInfo(info *Info) *Info {
 		OSArch:    info.OSArch,
 		Hostname:  info.Hostname,
 		IPs:       ips,
+		NumCPUs:   runtime.NumCPU(),
 		TotalRAM:  info.TotalRAM,
+		TotalSwap: info.TotalSwap,
 	}
 }
