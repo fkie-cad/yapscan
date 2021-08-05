@@ -125,7 +125,7 @@ func (p *processWindows) Info() (*ProcessInfo, error) {
 		info.Bitness = arch.Bitness64Bit
 	}
 
-	info.ExecutablePath, tmpErr = win32.GetModuleFilenameExW(p.procHandle, 0)
+	info.ExecutablePath, tmpErr = win32.QueryFullProcessImageName(p.procHandle)
 	if tmpErr != nil {
 		err = errors.NewMultiError(err, fmt.Errorf("could not retrieve executable path, reason: %w", tmpErr))
 	} else {

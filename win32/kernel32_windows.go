@@ -99,15 +99,25 @@ func GetSystemTimes() (idleTicks int64, kernelTicks int64, userTicks int64, err 
 }
 
 func GetModuleFilenameExW(process windows.Handle, module windows.Handle) (string, error) {
-	var buf [windows.MAX_PATH]uint16
+	buf := make([]uint16, windows.MAX_PATH)
 	n := len(buf)
 	r0, _, lastErr := getModuleFilenameExW.Call(
 		uintptr(process),
 		uintptr(module),
-		uintptr(unsafe.Pointer(&buf)),
+		uintptr(unsafe.Pointer(&buf[0])),
 		uintptr(n))
 	if r0 == 0 {
 		return "", lastErr
 	}
-	return windows.UTF16ToString(buf[:]), nil
+	return windows.UTF16ToString(buf), nil
+}
+
+func QueryFullProcessImageName(procHandle windows.Handle) (string, error) {
+	buf := make([]uint16, windows.MAX_PATH)
+	size := uint32(len(buf))
+	err := windows.QueryFullProcessImageName(procHandle, 0, (*uint16)(unsafe.Pointer(&buf[0])), &size)
+	if err != nil {
+		return "", err
+	}
+	return windows.UTF16ToString(buf), nil
 }
