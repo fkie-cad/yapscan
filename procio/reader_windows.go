@@ -3,13 +3,11 @@ package procio
 import (
 	"errors"
 	"io"
-	"syscall"
+
+	"github.com/fkie-cad/yapscan/win32"
+	"golang.org/x/sys/windows"
 
 	"github.com/sirupsen/logrus"
-
-	"github.com/fkie-cad/yapscan/procio/customWin32"
-
-	"github.com/0xrawsec/golang-win32/win32"
 )
 
 type copyReader struct {
@@ -31,10 +29,7 @@ func newMemoryReader(proc Process, seg *MemorySegmentInfo) (memoryReaderImpl, er
 }
 
 func (rdr *copyReader) Read(data []byte) (n int, err error) {
-	procHandle, ok := rdr.proc.Handle().(win32.HANDLE)
-	if !ok {
-		panic("expected process handle to be win32.HANDLE but wasn't; this should never happen")
-	}
+	procHandle := rdr.proc.Handle().(windows.Handle)
 
 	if rdr.position >= rdr.seg.Size {
 		return 0, io.EOF
@@ -45,8 +40,8 @@ func (rdr *copyReader) Read(data []byte) (n int, err error) {
 		l = rdr.seg.Size - rdr.position
 	}
 
-	n, err = customWin32.ReadProcessMemory(procHandle, win32.LPCVOID(rdr.seg.BaseAddress+rdr.position), data[:l])
-	if err != nil && err.(syscall.Errno) == 299 {
+	n, err = win32.ReadProcessMemory(procHandle, rdr.seg.BaseAddress+rdr.position, data[:l])
+	if err != nil && err == windows.ERROR_PARTIAL_COPY {
 		logrus.WithFields(logrus.Fields{
 			"segBaseAddress":   rdr.seg.BaseAddress,
 			"segSize":          rdr.seg.Size,

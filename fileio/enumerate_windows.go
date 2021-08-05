@@ -8,9 +8,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/targodan/go-errors"
-
 	"github.com/sirupsen/logrus"
+	"github.com/targodan/go-errors"
 
 	"golang.org/x/sys/windows"
 )
