@@ -98,7 +98,7 @@ if [[ "$?" != "0" ]]; then
     echo "ERROR: Could not create release!"
     exit 15
 fi
-upload_url=${upload_url%{*}
+upload_url=${upload_url%\{*}
 
 echo "Uploading assets to $upload_url..."
 
