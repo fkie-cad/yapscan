@@ -37,6 +37,8 @@ func GetInfo() (*Info, error) {
 		var tmpErr error
 
 		tmpInfo := new(Info)
+		// TODO: #16 This causes false detection if yapscan was compiled for 32-bit but run on a 64-bit
+		// 		 system.
 		tmpInfo.OSArch = arch.Native()
 		tmpInfo.OSName, tmpInfo.OSVersion, tmpInfo.OSFlavour, tmpErr = getOSInfo()
 		if tmpErr != nil {
@@ -65,6 +67,7 @@ func GetInfo() (*Info, error) {
 		if tmpErr != nil {
 			err = errors.NewMultiError(err, fmt.Errorf("could not determine total Swap, reason: %w", tmpErr))
 		}
+		tmpInfo.NumCPUs = runtime.NumCPU()
 
 		if err != nil {
 			return tmpInfo, err
@@ -86,7 +89,7 @@ func copyInfo(info *Info) *Info {
 		OSArch:    info.OSArch,
 		Hostname:  info.Hostname,
 		IPs:       ips,
-		NumCPUs:   runtime.NumCPU(),
+		NumCPUs:   info.NumCPUs,
 		TotalRAM:  info.TotalRAM,
 		TotalSwap: info.TotalSwap,
 	}

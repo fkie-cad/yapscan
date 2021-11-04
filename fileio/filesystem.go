@@ -46,10 +46,8 @@ func IteratePath(ctx context.Context, path string, validExtensions []string) (It
 		return nil, errors.New("path must be a directory")
 	}
 
-	if validExtensions != nil {
-		for i := range validExtensions {
-			validExtensions[i] = strings.ToLower(validExtensions[i])
-		}
+	for i := range validExtensions {
+		validExtensions[i] = strings.ToLower(validExtensions[i])
 	}
 
 	it := &fsIterator{
@@ -97,6 +95,8 @@ func (it *fsIterator) dirScanner() {
 	for {
 		select {
 		case <-it.ctx.Done():
+			// This break is intentionally only causing a non-blocking read, not
+			// breaking the loop. The loop-break is below.
 			break
 		default:
 		}

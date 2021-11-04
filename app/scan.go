@@ -4,7 +4,6 @@ import (
 	"context"
 	"crypto/md5"
 	"encoding/base64"
-	"encoding/binary"
 	"encoding/hex"
 	"fmt"
 	"math/rand"
@@ -157,9 +156,12 @@ func scan(c *cli.Context) error {
 		hostname, err := os.Hostname()
 		if err != nil {
 			logrus.WithError(err).Warn("Could not determine hostname.")
+
+			// Generate random name
 			h := md5.New()
-			binary.Write(h, binary.LittleEndian, rand.Int())
-			binary.Write(h, binary.LittleEndian, rand.Int())
+			randBytes := make([]byte, 32)
+			rand.Read(randBytes)
+			h.Write(randBytes)
 			hostname = hex.EncodeToString(h.Sum(nil))
 		}
 		if anonymizer != nil {

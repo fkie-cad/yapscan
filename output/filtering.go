@@ -418,7 +418,7 @@ func (p *anonymizedProcess) Info() (*procio.ProcessInfo, error) {
 }
 
 func (p *anonymizedProcess) Handle() interface{} {
-	return p.Handle()
+	return p.orig.Handle()
 }
 
 func (p *anonymizedProcess) MemorySegments() ([]*procio.MemorySegmentInfo, error) {
@@ -430,13 +430,13 @@ func (p *anonymizedProcess) MemorySegments() ([]*procio.MemorySegmentInfo, error
 }
 
 func (p *anonymizedProcess) Suspend() error {
-	return p.Suspend()
+	return p.orig.Suspend()
 }
 
 func (p *anonymizedProcess) Resume() error {
-	return p.Resume()
+	return p.orig.Resume()
 }
 
 func (p *anonymizedProcess) Crash(method procio.CrashMethod) error {
-	return p.Crash(method)
+	return p.orig.Crash(method)
 }

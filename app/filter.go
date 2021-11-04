@@ -33,7 +33,7 @@ func BuildFilterPermissions(fStr string) (yapscan.MemorySegmentFilter, error) {
 func BuildFilterPermissionsExact(fStr []string) (yapscan.MemorySegmentFilter, error) {
 	var err error
 
-	if fStr == nil || len(fStr) == 0 {
+	if len(fStr) == 0 {
 		return nil, nil
 	}
 
@@ -51,7 +51,7 @@ func BuildFilterPermissionsExact(fStr []string) (yapscan.MemorySegmentFilter, er
 func BuildFilterType(fStr []string) (yapscan.MemorySegmentFilter, error) {
 	var err error
 
-	if fStr == nil || len(fStr) == 0 {
+	if len(fStr) == 0 {
 		return nil, nil
 	}
 
@@ -72,7 +72,7 @@ func BuildFilterType(fStr []string) (yapscan.MemorySegmentFilter, error) {
 func BuildFilterState(fStr []string) (yapscan.MemorySegmentFilter, error) {
 	var err error
 
-	if fStr == nil || len(fStr) == 0 {
+	if len(fStr) == 0 {
 		return nil, nil
 	}
 
@@ -256,6 +256,9 @@ func ParseAbsoluteSize(s string) (uintptr, error) {
 
 	num := numReg.FindString(s)
 	value, err := strconv.ParseFloat(num, 64)
+	if err != nil {
+		return 0, err
+	}
 
 	unit := strings.Trim(s[len(num):], " \t")
 	mult, err := ParseByteUnit(unit)

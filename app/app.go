@@ -11,8 +11,6 @@ import (
 	"github.com/urfave/cli/v2"
 )
 
-const yaraRulesNamespace = ""
-
 var DefaultNumberOfFilescanThreads int
 
 func init() {
