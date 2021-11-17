@@ -131,7 +131,7 @@ func parseSegmentHead(line string) (*MemorySegmentInfo, error) {
 		return seg, fmt.Errorf("permissions have invalid format, %w", err)
 	}
 
-	var t Type
+	var t SegmentType
 	switch matches[fieldPerms][3] {
 	case 's':
 		t = TypeMapped

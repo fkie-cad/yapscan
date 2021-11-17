@@ -51,9 +51,8 @@ func (c *Compiler) Compile(ctx context.Context) error {
 		exitErr, ok := err.(*exec.ExitError)
 		if ok {
 			return fmt.Errorf("could not build %s\n==== STDOUT ====\n%s\n==== STDERR ====\n%s", c.srcPath, output, exitErr.Stderr)
-		} else {
-			return fmt.Errorf("could not build %s, reason: %w", c.srcPath, err)
 		}
+		return fmt.Errorf("could not build %s, reason: %w", c.srcPath, err)
 	}
 
 	c.compiled = true

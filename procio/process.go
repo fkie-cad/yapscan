@@ -1,7 +1,6 @@
 package procio
 
 import (
-	"errors"
 	"fmt"
 	"io"
 	"sync"
@@ -10,12 +9,12 @@ import (
 )
 
 // ErrProcIsSelf is returned when trying to suspend the current process.
-var ErrProcIsSelf = errors.New("not supported on self")
+var ErrProcIsSelf = fmt.Errorf("not supported on self")
 
 // ErrProcIsParent is returned when trying to suspend the immediate parent process.
 // Reason for this is the assumption that the parent process always is some form of
 // console, which needs to be running in order to handle IO.
-var ErrProcIsParent = errors.New("not supported on parent")
+var ErrProcIsParent = fmt.Errorf("not supported on parent")
 
 // ProcessInfo represents information about a Process.
 type ProcessInfo struct {

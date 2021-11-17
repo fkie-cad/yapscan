@@ -105,7 +105,7 @@ func stateFromNative(state uint32) State {
 	return State(state)
 }
 
-func typeFromNative(t uint32) Type {
+func typeFromNative(t uint32) SegmentType {
 	switch t {
 	case win32.MEM_IMAGE:
 		return TypeImage
@@ -114,5 +114,5 @@ func typeFromNative(t uint32) Type {
 	case win32.MEM_PRIVATE:
 		return TypePrivate
 	}
-	return Type(t)
+	return SegmentType(t)
 }

@@ -150,7 +150,7 @@ func (s *ProcessScanner) Scan() (<-chan *MemoryScanProgress, error) {
 
 func (s *ProcessScanner) EncounteredMemoryMappedFiles() []string {
 	files := make([]string, 0, len(s.memoryMappedFiles))
-	for f, _ := range s.memoryMappedFiles {
+	for f := range s.memoryMappedFiles {
 		files = append(files, f)
 	}
 	return files

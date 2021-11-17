@@ -2,7 +2,7 @@ package fileio
 
 import (
 	"context"
-	"errors"
+	"fmt"
 	"io"
 	"os"
 	"path/filepath"
@@ -15,7 +15,7 @@ var (
 	FilesBuffer = 8
 )
 
-var ErrSkipped error = errors.New("skipped")
+var ErrSkipped = fmt.Errorf("skipped")
 
 type nextEntry struct {
 	File File
@@ -43,7 +43,7 @@ func IteratePath(ctx context.Context, path string, validExtensions []string) (It
 		return nil, err
 	}
 	if !stat.IsDir() {
-		return nil, errors.New("path must be a directory")
+		return nil, fmt.Errorf("path must be a directory")
 	}
 
 	for i := range validExtensions {
@@ -95,9 +95,11 @@ func (it *fsIterator) dirScanner() {
 	for {
 		select {
 		case <-it.ctx.Done():
+			//revive:disable:useless-break
 			// This break is intentionally only causing a non-blocking read, not
 			// breaking the loop. The loop-break is below.
 			break
+			//revive:enable:useless-break
 		default:
 		}
 
@@ -200,7 +202,7 @@ func (it *fileListIterator) Next() (File, error) {
 	}
 
 	file := NewFile(it.files[it.i])
-	it.i += 1
+	it.i++
 	return file, nil
 }
 

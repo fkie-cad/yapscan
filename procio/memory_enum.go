@@ -80,13 +80,13 @@ func (x *State) UnmarshalText(text []byte) error {
 }
 
 const (
-	// TypeImage is a Type of type Image
-	TypeImage Type = iota
-	// TypeMapped is a Type of type Mapped
+	// TypeImage is a SegmentType of type Image
+	TypeImage SegmentType = iota
+	// TypeMapped is a SegmentType of type Mapped
 	TypeMapped
-	// TypePrivate is a Type of type Private
+	// TypePrivate is a SegmentType of type Private
 	TypePrivate
-	// TypePrivateMapped is a Type of type PrivateMapped
+	// TypePrivateMapped is a SegmentType of type PrivateMapped
 	TypePrivateMapped
 )
 
@@ -99,14 +99,14 @@ var _TypeNames = []string{
 	_TypeName[18:31],
 }
 
-// TypeNames returns a list of possible string values of Type.
+// TypeNames returns a list of possible string values of SegmentType.
 func TypeNames() []string {
 	tmp := make([]string, len(_TypeNames))
 	copy(tmp, _TypeNames)
 	return tmp
 }
 
-var _TypeMap = map[Type]string{
+var _TypeMap = map[SegmentType]string{
 	0: _TypeName[0:5],
 	1: _TypeName[5:11],
 	2: _TypeName[11:18],
@@ -114,14 +114,14 @@ var _TypeMap = map[Type]string{
 }
 
 // String implements the Stringer interface.
-func (x Type) String() string {
+func (x SegmentType) String() string {
 	if str, ok := _TypeMap[x]; ok {
 		return str
 	}
-	return fmt.Sprintf("Type(%d)", x)
+	return fmt.Sprintf("SegmentType(%d)", x)
 }
 
-var _TypeValue = map[string]Type{
+var _TypeValue = map[string]SegmentType{
 	_TypeName[0:5]:                    0,
 	strings.ToLower(_TypeName[0:5]):   0,
 	_TypeName[5:11]:                   1,
@@ -132,21 +132,21 @@ var _TypeValue = map[string]Type{
 	strings.ToLower(_TypeName[18:31]): 3,
 }
 
-// ParseType attempts to convert a string to a Type
-func ParseType(name string) (Type, error) {
+// ParseType attempts to convert a string to a SegmentType
+func ParseType(name string) (SegmentType, error) {
 	if x, ok := _TypeValue[name]; ok {
 		return x, nil
 	}
-	return Type(0), fmt.Errorf("%s is not a valid Type, try [%s]", name, strings.Join(_TypeNames, ", "))
+	return SegmentType(0), fmt.Errorf("%s is not a valid SegmentType, try [%s]", name, strings.Join(_TypeNames, ", "))
 }
 
 // MarshalText implements the text marshaller method
-func (x Type) MarshalText() ([]byte, error) {
+func (x SegmentType) MarshalText() ([]byte, error) {
 	return []byte(x.String()), nil
 }
 
 // UnmarshalText implements the text unmarshaller method
-func (x *Type) UnmarshalText(text []byte) error {
+func (x *SegmentType) UnmarshalText(text []byte) error {
 	name := string(text)
 	tmp, err := ParseType(name)
 	if err != nil {

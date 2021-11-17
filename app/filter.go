@@ -55,7 +55,7 @@ func BuildFilterType(fStr []string) (yapscan.MemorySegmentFilter, error) {
 		return nil, nil
 	}
 
-	types := make([]procio.Type, len(fStr))
+	types := make([]procio.SegmentType, len(fStr))
 	for i, s := range fStr {
 		if s == "" {
 			continue

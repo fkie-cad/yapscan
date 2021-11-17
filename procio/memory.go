@@ -44,8 +44,8 @@ type MemorySegmentInfo struct {
 	State State `json:"state"`
 
 	// Type contains the Type of the segment.
-	// Equivalence on windows: _MEMORY_BASIC_INFORMATION->Type
-	Type Type `json:"type"`
+	// Equivalence on windows: _MEMORY_BASIC_INFORMATION->SegmentType
+	Type SegmentType `json:"type"`
 
 	// File contains the path to the mapped file, or empty string if
 	// no file mapping is associated with this memory segment.
@@ -230,7 +230,7 @@ Reserve
 */
 type State int
 
-// Type represents the type of a memory segment.
+// SegmentType represents the type of a memory segment.
 /*
 ENUM(
 Image
@@ -239,4 +239,4 @@ Private
 PrivateMapped
 )
 */
-type Type int
+type SegmentType int

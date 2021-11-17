@@ -40,5 +40,4 @@ func main() {
 	}
 	// Started as service.
 	// The ServiceMain is called by the service manager, we can just exit.
-	return
 }
