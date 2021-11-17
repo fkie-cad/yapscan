@@ -134,9 +134,9 @@ func parseSegmentHead(line string) (*MemorySegmentInfo, error) {
 	var t SegmentType
 	switch matches[fieldPerms][3] {
 	case 's':
-		t = TypeMapped
+		t = SegmentTypeMapped
 	case 'p':
-		t = TypePrivate
+		t = SegmentTypePrivate
 		perms.COW = true
 	default:
 		return seg, errors.Newf("invalid memory type \"%c\"", matches[fieldPerms][3])
@@ -154,8 +154,8 @@ func parseSegmentHead(line string) (*MemorySegmentInfo, error) {
 		}
 
 		seg.MappedFile = fileio.NewFile(fpath)
-		if seg.Type == TypePrivate {
-			seg.Type = TypePrivateMapped
+		if seg.Type == SegmentTypePrivate {
+			seg.Type = SegmentTypePrivateMapped
 		}
 	}
 

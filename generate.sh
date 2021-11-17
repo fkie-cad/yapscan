@@ -17,3 +17,4 @@ go mod tidy
 find . -name 'mock_*_test.go' -type f -delete
 
 go generate ./...
+
