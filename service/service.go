@@ -4,7 +4,7 @@ import "fmt"
 
 type MainFunction func(args []string) error
 
-var registeredMainFunction MainFunction = nil
+var registeredMainFunction MainFunction
 
 func Initialize(mainFunc MainFunction) error {
 	if registeredMainFunction != nil {

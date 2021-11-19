@@ -43,7 +43,7 @@ func free(addr uintptr, size uint64) {
 	C.munmap(unsafe.Pointer(addr), C.size_t(size))
 }
 
-func memset(addr uintptr, value byte, count uint64) {
+func memset(addr uintptr, _ byte, count uint64) {
 	C.memset(unsafe.Pointer(addr), 0xAA, C.size_t(count))
 }
 

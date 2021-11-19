@@ -67,7 +67,12 @@ func (t *cpuLoadTracker) fifteenMinutesAvg() float64 {
 }
 
 func (t *cpuLoadTracker) track() {
-	// This function will never stop, sorry mom
+	// This function will never stop, sorry mom.
+	// This may not be gentlemanly but is okay because the track is only
+	// implementing a sort of profiler, intended to run during the entire
+	// execution time of yapscan.
+	// Thus it's only invoked as a goroutine in the init() function and
+	// will be garbage-collected by the go runtime during shutdown.
 	lastIdleTicks, kernelTicks, userTicks, err := win32.GetSystemTimes()
 	lastLoadTicks := kernelTicks + userTicks
 	if err != nil {

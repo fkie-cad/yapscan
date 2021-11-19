@@ -372,6 +372,9 @@ func loadZippedRules(in io.ReaderAt, size int64) (*yara.Rules, error) {
 		}
 
 		t, rdr, err := detectRuleType(f)
+		if err != nil {
+			return nil, fmt.Errorf("invalid rules zip, reason: %v", err)
+		}
 		switch t {
 		case ruleTypeCompiled:
 			if len(zipRdr.File) != 1 {

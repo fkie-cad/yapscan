@@ -1,7 +1,7 @@
 package testutil
 
 import (
-	"errors"
+	"fmt"
 	"path/filepath"
 	"runtime"
 )
@@ -9,7 +9,7 @@ import (
 func GetProjectRoot() (string, error) {
 	_, filename, _, ok := runtime.Caller(0)
 	if !ok {
-		return "", errors.New("could not determine caller")
+		return "", fmt.Errorf("could not determine caller")
 	}
 
 	dir := filepath.Dir(filename)

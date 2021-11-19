@@ -1,0 +1,3 @@
+#!/bin/bash
+
+revive -formatter stylish -config revive.toml -exclude vendor/... -exclude app/... ./...

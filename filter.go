@@ -157,8 +157,8 @@ func NewStateFilter(states []procio.State) MemorySegmentFilter {
 }
 
 // NewTypeFilter creates a new filter, matching *procio.MemorySegmentInfo
-// with a procio.Type equal to one of the given types.
-func NewTypeFilter(types []procio.Type) MemorySegmentFilter {
+// with a procio.SegmentType equal to one of the given types.
+func NewTypeFilter(types []procio.SegmentType) MemorySegmentFilter {
 	return NewFilterFromFunc(
 		func(info *procio.MemorySegmentInfo) bool {
 			for _, t := range types {
@@ -169,7 +169,7 @@ func NewTypeFilter(types []procio.Type) MemorySegmentFilter {
 			return false
 		},
 		types,
-		"segment has wrong type, type: {{.MSI.Type}}, allowed types: {{.Filter.Parameter|join \", \"}}",
+		"segment has wrong type, type: {{.MSI.SegmentType}}, allowed types: {{.Filter.Parameter|join \", \"}}",
 		fmt.Sprintf("segment type must be one of %q", types),
 	)
 }

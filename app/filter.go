@@ -33,7 +33,7 @@ func BuildFilterPermissions(fStr string) (yapscan.MemorySegmentFilter, error) {
 func BuildFilterPermissionsExact(fStr []string) (yapscan.MemorySegmentFilter, error) {
 	var err error
 
-	if fStr == nil || len(fStr) == 0 {
+	if len(fStr) == 0 {
 		return nil, nil
 	}
 
@@ -51,16 +51,16 @@ func BuildFilterPermissionsExact(fStr []string) (yapscan.MemorySegmentFilter, er
 func BuildFilterType(fStr []string) (yapscan.MemorySegmentFilter, error) {
 	var err error
 
-	if fStr == nil || len(fStr) == 0 {
+	if len(fStr) == 0 {
 		return nil, nil
 	}
 
-	types := make([]procio.Type, len(fStr))
+	types := make([]procio.SegmentType, len(fStr))
 	for i, s := range fStr {
 		if s == "" {
 			continue
 		}
-		types[i], err = procio.ParseType(strings.ToUpper(s[0:1]) + strings.ToLower(s[1:]))
+		types[i], err = procio.ParseSegmentType(strings.ToUpper(s[0:1]) + strings.ToLower(s[1:]))
 		if err != nil {
 			return nil, fmt.Errorf("could not parse type \"%s\", reason: %w", s, err)
 		}
@@ -72,7 +72,7 @@ func BuildFilterType(fStr []string) (yapscan.MemorySegmentFilter, error) {
 func BuildFilterState(fStr []string) (yapscan.MemorySegmentFilter, error) {
 	var err error
 
-	if fStr == nil || len(fStr) == 0 {
+	if len(fStr) == 0 {
 		return nil, nil
 	}
 
@@ -256,6 +256,9 @@ func ParseAbsoluteSize(s string) (uintptr, error) {
 
 	num := numReg.FindString(s)
 	value, err := strconv.ParseFloat(num, 64)
+	if err != nil {
+		return 0, err
+	}
 
 	unit := strings.Trim(s[len(num):], " \t")
 	mult, err := ParseByteUnit(unit)

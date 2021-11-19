@@ -44,8 +44,8 @@ type MemorySegmentInfo struct {
 	State State `json:"state"`
 
 	// Type contains the Type of the segment.
-	// Equivalence on windows: _MEMORY_BASIC_INFORMATION->Type
-	Type Type `json:"type"`
+	// Equivalence on windows: _MEMORY_BASIC_INFORMATION->SegmentType
+	Type SegmentType `json:"type"`
 
 	// File contains the path to the mapped file, or empty string if
 	// no file mapping is associated with this memory segment.
@@ -195,22 +195,6 @@ func (p Permissions) IsMoreOrEquallyPermissiveThan(other Permissions) bool {
 	return true
 }
 
-// IsMorePermissiveThan returns true if the other Permissions is more permissive than
-// this one.
-// E.g. "rx" is more permissive than "r".
-func (p Permissions) IsMorePermissiveThan(other Permissions) bool {
-	if other.Read && !p.Read {
-		return false
-	}
-	if other.Write && !p.Write {
-		return false
-	}
-	if other.Execute && !p.Execute {
-		return false
-	}
-	return !p.EqualTo(other)
-}
-
 // String returns the string representation of this Permissions.
 func (p Permissions) String() string {
 	ret := ""
@@ -246,7 +230,7 @@ Reserve
 */
 type State int
 
-// Type represents the type of a memory segment.
+// SegmentType represents the type of a memory segment.
 /*
 ENUM(
 Image
@@ -255,4 +239,4 @@ Private
 PrivateMapped
 )
 */
-type Type int
+type SegmentType int

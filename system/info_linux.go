@@ -22,12 +22,6 @@ func getOSInfo() (name, version, flavour string, err error) {
 	}
 	version = strings.TrimSpace(string(buf))
 
-	cmd = exec.Command("uname", "-m")
-	buf, err = cmd.Output()
-	if err != nil {
-		return
-	}
-
 	cmd = exec.Command("uname", "-o")
 	buf, err = cmd.Output()
 	if err != nil {

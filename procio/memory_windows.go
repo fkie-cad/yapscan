@@ -27,7 +27,7 @@ func LookupFilePathOfSegment(procHandle windows.Handle, seg *MemorySegmentInfo) 
 		// Only check root segments
 		return "", nil
 	}
-	if seg.Type == TypeImage {
+	if seg.Type == SegmentTypeImage {
 		return win32.GetModuleFilenameExW(procHandle, windows.Handle(seg.BaseAddress))
 	}
 	return "", nil
@@ -105,14 +105,14 @@ func stateFromNative(state uint32) State {
 	return State(state)
 }
 
-func typeFromNative(t uint32) Type {
+func typeFromNative(t uint32) SegmentType {
 	switch t {
 	case win32.MEM_IMAGE:
-		return TypeImage
+		return SegmentTypeImage
 	case win32.MEM_MAPPED:
-		return TypeMapped
+		return SegmentTypeMapped
 	case win32.MEM_PRIVATE:
-		return TypePrivate
+		return SegmentTypePrivate
 	}
-	return Type(t)
+	return SegmentType(t)
 }

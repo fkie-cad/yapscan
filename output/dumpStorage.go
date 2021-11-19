@@ -42,12 +42,6 @@ type ReadableDumpStorage interface {
 	Retrieve(ctx context.Context) <-chan *DumpOrError
 }
 
-type fileDump struct {
-	Process  *procio.ProcessInfo
-	Segment  *procio.MemorySegmentInfo
-	Filename string
-}
-
 // ArchiveDumpStorage stores dumps using an Archiver.
 type ArchiveDumpStorage struct {
 	archiver Archiver

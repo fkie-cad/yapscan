@@ -396,17 +396,17 @@ func conveyReportIsReadable(c C, openReport reportOpenFunc, pid int, addressOfDa
 		So(err, ShouldBeNil)
 		defer report.Close()
 
-		reportFiles, err := readReport(c, report)
+		reportFiles, err := readReport(report)
 
 		c.So(reportFiles, ShouldNotBeEmpty)
 		c.So(err, ShouldBeNil)
 
-		var memoryScansJson *file
+		var memoryScansJSON *file
 		filenames := make([]string, len(reportFiles))
 		for i, file := range reportFiles {
 			filenames[i] = file.Name
 			if file.Name == "memory-scans.json" {
-				memoryScansJson = file
+				memoryScansJSON = file
 			}
 		}
 		c.Convey("which contains the expected files", func(c C) {
@@ -414,9 +414,9 @@ func conveyReportIsReadable(c C, openReport reportOpenFunc, pid int, addressOfDa
 			c.So(filenames, ShouldContain, "processes.json")
 			c.So(filenames, ShouldContain, "memory-scans.json")
 			c.So(filenames, ShouldContain, "stats.json")
-			c.So(memoryScansJson, ShouldNotBeNil)
+			c.So(memoryScansJSON, ShouldNotBeNil)
 
-			conveyReportHasMatch(c, pid, addressOfData, memoryScansJson)
+			conveyReportHasMatch(c, pid, addressOfData, memoryScansJSON)
 		})
 	})
 }
@@ -434,17 +434,17 @@ func conveyReportIsReadableButDoesNotHaveMatch(c C, openReport reportOpenFunc, p
 		So(err, ShouldBeNil)
 		defer report.Close()
 
-		reportFiles, err := readReport(c, report)
+		reportFiles, err := readReport(report)
 
 		c.So(reportFiles, ShouldNotBeEmpty)
 		c.So(err, ShouldBeNil)
 
-		var memoryScansJson *file
+		var memoryScansJSON *file
 		filenames := make([]string, len(reportFiles))
 		for i, file := range reportFiles {
 			filenames[i] = file.Name
 			if file.Name == "memory-scans.json" {
-				memoryScansJson = file
+				memoryScansJSON = file
 			}
 		}
 		c.Convey("which contains the expected files", func(c C) {
@@ -452,9 +452,9 @@ func conveyReportIsReadableButDoesNotHaveMatch(c C, openReport reportOpenFunc, p
 			c.So(filenames, ShouldContain, "processes.json")
 			c.So(filenames, ShouldContain, "memory-scans.json")
 			c.So(filenames, ShouldContain, "stats.json")
-			c.So(memoryScansJson, ShouldNotBeNil)
+			c.So(memoryScansJSON, ShouldNotBeNil)
 
-			conveyReportDoesNotHaveMatch(c, pid, addressOfData, memoryScansJson)
+			conveyReportDoesNotHaveMatch(c, pid, addressOfData, memoryScansJSON)
 		})
 	})
 }
@@ -472,7 +472,7 @@ func conveyReportIsAnonymized(c C, openReport reportOpenFunc, reportDir string) 
 		So(err, ShouldBeNil)
 		defer report.Close()
 
-		reportFiles, err := readReport(c, report)
+		reportFiles, err := readReport(report)
 
 		c.So(reportFiles, ShouldNotBeEmpty)
 		c.So(err, ShouldBeNil)
@@ -523,14 +523,14 @@ func conveyReportIsNotReadable(c C, openReport reportOpenFunc, reportDir string)
 		}
 		defer report.Close()
 
-		_, err = readReport(c, report)
+		_, err = readReport(report)
 		c.So(err, ShouldNotBeNil)
 	})
 }
 
-func conveyReportHasMatch(c C, pid int, addressOfData uintptr, memoryScansJson *file) {
+func conveyReportHasMatch(c C, pid int, addressOfData uintptr, memoryScansJSON *file) {
 	c.Convey("with the memory-scans.json containing the correct match.", func() {
-		dec := json.NewDecoder(bytes.NewReader(memoryScansJson.Data))
+		dec := json.NewDecoder(bytes.NewReader(memoryScansJSON.Data))
 		foundCorrectMatch := false
 		var err error
 		for {
@@ -549,9 +549,9 @@ func conveyReportHasMatch(c C, pid int, addressOfData uintptr, memoryScansJson *
 	})
 }
 
-func conveyReportDoesNotHaveMatch(c C, pid int, addressOfData uintptr, memoryScansJson *file) {
+func conveyReportDoesNotHaveMatch(c C, pid int, addressOfData uintptr, memoryScansJSON *file) {
 	c.Convey("with the memory-scans.json not containing a false positive.", func() {
-		dec := json.NewDecoder(bytes.NewReader(memoryScansJson.Data))
+		dec := json.NewDecoder(bytes.NewReader(memoryScansJSON.Data))
 		foundMatchForPID := false
 		foundMatchForAddressInPID := false
 		var err error
@@ -580,7 +580,7 @@ type file struct {
 	Data []byte
 }
 
-func readReport(c C, rdr io.Reader) ([]*file, error) {
+func readReport(rdr io.Reader) ([]*file, error) {
 	zstdRdr, err := zstd.NewReader(rdr)
 	if err != nil {
 		return nil, err
