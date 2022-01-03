@@ -6,6 +6,8 @@ import (
 	"runtime"
 	"strings"
 
+	"github.com/fkie-cad/yapscan/version"
+
 	"github.com/fkie-cad/yapscan"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
@@ -207,7 +209,7 @@ func MakeApp(args []string) *cli.App {
 		Name:        "yapscan",
 		HelpName:    "yapscan",
 		Description: "A yara based scanner for files and process memory with some extras.",
-		Version:     "0.12.0",
+		Version:     version.YapscanVersion.String(),
 		Writer:      os.Stdout,
 		ErrWriter:   os.Stderr,
 		Authors: []*cli.Author{
