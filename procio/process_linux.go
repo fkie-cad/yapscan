@@ -60,6 +60,16 @@ func GetRunningPIDs() ([]int, error) {
 }
 
 func open(pid int) (Process, error) {
+	_, err := os.Stat(fmt.Sprintf("/proc/%d", pid))
+	if os.IsNotExist(err) {
+		return nil, fmt.Errorf("process does not exist")
+	}
+	if os.IsPermission(err) {
+		return nil, fmt.Errorf("insufficient permissions")
+	}
+	if err != nil {
+		return nil, fmt.Errorf("unexpected error: %w", err)
+	}
 	return &processLinux{pid: pid}, nil
 }
 
