@@ -220,11 +220,17 @@ func scan(c *cli.Context) error {
 
 			fmt.Printf("Dumps will be written to \"%s\".\n", dumpArchivePath)
 		}
+
+		tmpReporter, err := repFac.Build()
+		if err != nil {
+			return err
+		}
+
 		reporter = &output.MultiReporter{
 			Reporters: []output.Reporter{
 				reporter,
 				&output.FilteringReporter{
-					Reporter: repFac.Build(),
+					Reporter: tmpReporter,
 					Filter:   analysisFilter,
 				},
 			},
