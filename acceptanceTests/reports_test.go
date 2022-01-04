@@ -15,12 +15,12 @@ import (
 	"testing"
 	"testing/quick"
 
+	"github.com/fkie-cad/yapscan/report"
+
 	"github.com/fkie-cad/yapscan/procio"
 	"github.com/fkie-cad/yapscan/system"
 
 	"golang.org/x/crypto/openpgp"
-
-	"github.com/fkie-cad/yapscan/output"
 
 	"github.com/klauspost/compress/zstd"
 
@@ -534,13 +534,13 @@ func conveyReportHasMatch(c C, pid int, addressOfData uintptr, memoryScansJSON *
 		foundCorrectMatch := false
 		var err error
 		for {
-			report := new(output.MemoryScanProgressReport)
-			err = dec.Decode(report)
+			re := new(report.MemoryScan)
+			err = dec.Decode(re)
 			if err != nil {
 				break
 			}
 
-			if report.PID == pid && report.MemorySegment == addressOfData && len(report.Matches) > 0 {
+			if re.PID == pid && re.MemorySegment == addressOfData && len(re.Matches) > 0 {
 				foundCorrectMatch = true
 			}
 		}
@@ -556,15 +556,15 @@ func conveyReportDoesNotHaveMatch(c C, pid int, addressOfData uintptr, memorySca
 		foundMatchForAddressInPID := false
 		var err error
 		for {
-			report := new(output.MemoryScanProgressReport)
-			err = dec.Decode(report)
+			re := new(report.MemoryScan)
+			err = dec.Decode(re)
 			if err != nil {
 				break
 			}
 
-			if report.PID == pid && len(report.Matches) > 0 {
+			if re.PID == pid && len(re.Matches) > 0 {
 				foundMatchForPID = true
-				if report.MemorySegment == addressOfData {
+				if re.MemorySegment == addressOfData {
 					foundMatchForAddressInPID = true
 				}
 			}

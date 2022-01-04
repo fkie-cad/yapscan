@@ -156,7 +156,7 @@ func (r *AnalysisReporter) ConsumeMemoryScanProgress(progress <-chan *yapscan.Me
 		if prog.Error != nil {
 			jsonErr = prog.Error.Error()
 		}
-		err = encoder.Encode(&MemoryScanProgressReport{
+		err = encoder.Encode(&report.MemoryScan{
 			PID:           info.PID,
 			MemorySegment: prog.MemorySegment.BaseAddress,
 			Matches:       ConvertYaraMatchRules(prog.Matches),
@@ -206,7 +206,7 @@ func (r *AnalysisReporter) ConsumeFSScanProgress(progress <-chan *fileio.FSScanP
 			}
 		}
 
-		err = encoder.Encode(&FSScanProgressReport{
+		err = encoder.Encode(&report.FileScan{
 			File:    prog.File,
 			Matches: ConvertYaraMatchRules(prog.Matches),
 			Error:   jsonErr,
