@@ -22,7 +22,7 @@ const (
 	SegmentTypePrivateMapped
 )
 
-const _SegmentTypeName = "ImageMappedPrivatePrivateMapped"
+const _SegmentTypeName = "imagemappedprivateprivateMapped"
 
 var _SegmentTypeNames = []string{
 	_SegmentTypeName[0:5],
@@ -97,7 +97,7 @@ const (
 	StateReserve
 )
 
-const _StateName = "CommitFreeReserve"
+const _StateName = "commitfreereserve"
 
 var _StateNames = []string{
 	_StateName[0:6],

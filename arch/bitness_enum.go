@@ -20,7 +20,7 @@ const (
 	Bitness64Bit Bitness = iota + 62
 )
 
-const _BitnessName = "Invalid32Bit64Bit"
+const _BitnessName = "invalid32Bit64Bit"
 
 var _BitnessNames = []string{
 	_BitnessName[0:7],

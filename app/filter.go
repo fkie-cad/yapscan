@@ -60,7 +60,7 @@ func BuildFilterType(fStr []string) (yapscan.MemorySegmentFilter, error) {
 		if s == "" {
 			continue
 		}
-		types[i], err = procio.ParseSegmentType(strings.ToUpper(s[0:1]) + strings.ToLower(s[1:]))
+		types[i], err = procio.ParseSegmentType(s)
 		if err != nil {
 			return nil, fmt.Errorf("could not parse type \"%s\", reason: %w", s, err)
 		}
@@ -81,7 +81,7 @@ func BuildFilterState(fStr []string) (yapscan.MemorySegmentFilter, error) {
 		if s == "" {
 			continue
 		}
-		states[i], err = procio.ParseState(strings.ToUpper(s[0:1]) + strings.ToLower(s[1:]))
+		states[i], err = procio.ParseState(s)
 		if err != nil {
 			return nil, fmt.Errorf("could not parse state \"%s\", reason: %w", s, err)
 		}
