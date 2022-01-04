@@ -19,5 +19,10 @@ func (v Version) String() string {
 }
 
 func (v Version) MarshalJSON() ([]byte, error) {
-	return []byte(v.String()), nil
+	s := v.String()
+	b := make([]byte, 0, len(s)+2)
+	b = append(b, '"')
+	b = append(b, s...)
+	b = append(b, '"')
+	return b, nil
 }
