@@ -1,6 +1,8 @@
 package report
 
 import (
+	"encoding/json"
+	"fmt"
 	"time"
 )
 
@@ -23,7 +25,13 @@ func (t Time) MarshalJSON() ([]byte, error) {
 }
 
 func (t *Time) UnmarshalJSON(b []byte) error {
-	tmp, err := time.Parse(`"`+Format+`"`, string(b))
+	var s string
+	err := json.Unmarshal(b, &s)
+	if err != nil {
+		return fmt.Errorf("expected a JSON-string as Time, %w", err)
+	}
+
+	tmp, err := time.Parse(Format, string(b))
 	t.Time = tmp
 	return err
 }
