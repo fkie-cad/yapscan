@@ -11,7 +11,7 @@ require (
 	github.com/hillu/go-yara/v4 v4.1.0
 	github.com/klauspost/compress v1.13.6
 	github.com/kr/text v0.2.0 // indirect
-	github.com/mattn/go-colorable v0.1.11 // indirect
+	github.com/mattn/go-colorable v0.1.12 // indirect
 	github.com/sirupsen/logrus v1.8.1
 	github.com/smartystreets/assertions v1.2.0 // indirect
 	github.com/smartystreets/goconvey v1.6.4
@@ -20,8 +20,8 @@ require (
 	github.com/targodan/go-errors v1.0.0
 	github.com/urfave/cli/v2 v2.3.0
 	github.com/yeka/zip v0.0.0-20180914125537-d046722c6feb
-	golang.org/x/crypto v0.0.0-20211115234514-b4de73f9ece8
-	golang.org/x/sys v0.0.0-20211116061358-0a5406a5449c
+	golang.org/x/crypto v0.0.0-20211215165025-cf75a172585e
+	golang.org/x/sys v0.0.0-20211216021012-1d35b9e2eb4e
 	gopkg.in/check.v1 v1.0.0-20201130134442-10cb98267c6c // indirect
 	gopkg.in/yaml.v3 v3.0.0-20210107192922-496545a6307b // indirect
 )
