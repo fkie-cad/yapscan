@@ -54,7 +54,7 @@ type MemorySegmentInfo struct {
 	// SubSegments contains sub-segments, i.e. segment where their ParentBaseAddress
 	// is equal to this segments BaseAddress.
 	// If no such segments exist, this will be a slice of length 0.
-	SubSegments []*MemorySegmentInfo `json:"subSegments"`
+	SubSegments []*MemorySegmentInfo `json:"-"`
 }
 
 // EstimateRAMIncreaseByScanning estimates the increase in RAM usage when

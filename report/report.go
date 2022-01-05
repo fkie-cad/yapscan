@@ -89,11 +89,6 @@ type MemorySegmentInfo struct {
 	// File contains the path to the mapped file, or empty string if
 	// no file mapping is associated with this memory segment.
 	MappedFile fileio.File `json:"mappedFile"`
-
-	// SubSegments contains sub-segments, i.e. segment where their ParentBaseAddress
-	// is equal to this segments BaseAddress.
-	// If no such segments exist, this will be a slice of length 0.
-	SubSegments []*MemorySegmentInfo `json:"subSegments"`
 }
 
 // SystemInfo contains information about the running system.
