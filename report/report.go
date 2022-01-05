@@ -88,7 +88,7 @@ type MemorySegmentInfo struct {
 
 	// File contains the path to the mapped file, or empty string if
 	// no file mapping is associated with this memory segment.
-	MappedFile fileio.File `json:"mappedFile"`
+	MappedFile *fileio.OSFile `json:"mappedFile"`
 }
 
 // SystemInfo contains information about the running system.
@@ -115,9 +115,9 @@ type MemoryScan struct {
 
 // FileScan represents all matches on a file.
 type FileScan struct {
-	File    fileio.File `json:"file"`
-	Matches []*Match    `json:"match"`
-	Error   interface{} `json:"error"`
+	File    *fileio.OSFile `json:"file"`
+	Matches []*Match       `json:"match"`
+	Error   interface{}    `json:"error"`
 }
 
 // Match represents the match of a yara Rule.

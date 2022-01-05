@@ -15,6 +15,13 @@ import (
 	"github.com/targodan/go-errors"
 )
 
+// FileScan represents all matches on a file.
+type FileScan struct {
+	File    fileio.File     `json:"file"`
+	Matches []*report.Match `json:"match"`
+	Error   interface{}     `json:"error"`
+}
+
 // AnalysisReporter implements a Reporter, which is
 // specifically intended for later analysis of the report
 // in order to determine rule quality.
@@ -96,6 +103,7 @@ func (r *AnalysisReporter) ReportRules(rules *yara.Rules) error {
 func (r *AnalysisReporter) flattenSubsegments(segments []*procio.MemorySegmentInfo) []*procio.MemorySegmentInfo {
 	newSegments := make([]*procio.MemorySegmentInfo, 0, len(segments))
 	for _, seg := range segments {
+		newSegments = append(newSegments, seg)
 		if len(seg.SubSegments) > 0 {
 			subSegments := r.flattenSubsegments(seg.SubSegments)
 			newSegments = append(newSegments, subSegments...)
@@ -219,7 +227,7 @@ func (r *AnalysisReporter) ConsumeFSScanProgress(progress <-chan *fileio.FSScanP
 			}
 		}
 
-		err = encoder.Encode(&report.FileScan{
+		err = encoder.Encode(&FileScan{
 			File:    prog.File,
 			Matches: ConvertYaraMatchRules(prog.Matches),
 			Error:   jsonErr,
