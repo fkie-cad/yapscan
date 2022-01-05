@@ -4,7 +4,6 @@ import (
 	"archive/tar"
 	"bytes"
 	"context"
-	"encoding/json"
 	"fmt"
 	"io"
 	"io/ioutil"
@@ -14,6 +13,8 @@ import (
 	"strings"
 	"testing"
 	"testing/quick"
+
+	"github.com/fkie-cad/yapscan/testutil"
 
 	"github.com/fkie-cad/yapscan/report"
 
@@ -169,7 +170,7 @@ func TestFullReportIsWritten_Unencrypted(t *testing.T) {
 		cleanupCapture()
 
 		conveyMatchWasSuccessful(c, addressOfData, err, stdout, stderr)
-		conveyReportIsReadable(c, openReportCleartext(), pid, addressOfData, reportDir)
+		conveyReportIsValidAndHasMatch(c, openReportCleartext(), pid, addressOfData, reportDir)
 	})
 }
 
@@ -195,8 +196,8 @@ func TestFullReportIsWritten_Unencrypted_WhenScanningTwoProcesses(t *testing.T) 
 		cleanupCapture()
 
 		conveyMatchWasSuccessful(c, addressOfMatchingData, err, stdout, stderr)
-		conveyReportIsReadable(c, openReportCleartext(), matchingPID, addressOfMatchingData, reportDir)
-		conveyReportIsReadableButDoesNotHaveMatch(c, openReportCleartext(), nonMatchingPID, addressOfNonMatchingData, reportDir)
+		conveyReportIsValidAndHasMatch(c, openReportCleartext(), matchingPID, addressOfMatchingData, reportDir)
+		conveyReportIsValidButDoesNotHaveMatch(c, openReportCleartext(), nonMatchingPID, addressOfNonMatchingData, reportDir)
 	})
 
 	Convey("Scanning two prepared processes (first benign, then matching) with full-report", t, func(c C) {
@@ -220,8 +221,8 @@ func TestFullReportIsWritten_Unencrypted_WhenScanningTwoProcesses(t *testing.T) 
 		cleanupCapture()
 
 		conveyMatchWasSuccessful(c, addressOfMatchingData, err, stdout, stderr)
-		conveyReportIsReadable(c, openReportCleartext(), matchingPID, addressOfMatchingData, reportDir)
-		conveyReportIsReadableButDoesNotHaveMatch(c, openReportCleartext(), nonMatchingPID, addressOfNonMatchingData, reportDir)
+		conveyReportIsValidAndHasMatch(c, openReportCleartext(), matchingPID, addressOfMatchingData, reportDir)
+		conveyReportIsValidButDoesNotHaveMatch(c, openReportCleartext(), nonMatchingPID, addressOfNonMatchingData, reportDir)
 	})
 }
 
@@ -250,7 +251,7 @@ func TestPasswordProtectedFullReport(t *testing.T) {
 
 		conveyMatchWasSuccessful(c, addressOfData, err, stdout, stderr)
 		conveyReportIsNotReadable(c, openReportCleartext(), reportDir)
-		conveyReportIsReadable(c, openReportWithPassword(password), pid, addressOfData, reportDir)
+		conveyReportIsValidAndHasMatch(c, openReportWithPassword(password), pid, addressOfData, reportDir)
 	})
 }
 
@@ -279,7 +280,7 @@ func TestPGPProtectedFullReport(t *testing.T) {
 
 		conveyMatchWasSuccessful(c, addressOfData, err, stdout, stderr)
 		conveyReportIsNotReadable(c, openReportCleartext(), reportDir)
-		conveyReportIsReadable(c, openReportPGP(keyring), pid, addressOfData, reportDir)
+		conveyReportIsValidAndHasMatch(c, openReportPGP(keyring), pid, addressOfData, reportDir)
 	})
 }
 
@@ -334,56 +335,31 @@ func (r *readerWithCloser) Close() error {
 	return r.closer.Close()
 }
 
-type reportOpenFunc func(reportPath string) (io.ReadCloser, error)
+type reportOpenFunc func(reportPath string) (report.Reader, error)
 
 func openReportCleartext() reportOpenFunc {
-	return func(reportPath string) (io.ReadCloser, error) {
-		return os.Open(reportPath)
+	return func(reportPath string) (report.Reader, error) {
+		return report.NewFileReader(reportPath), nil
 	}
 }
 
 func openReportWithPassword(password string) reportOpenFunc {
-	return func(reportPath string) (io.ReadCloser, error) {
-		f, err := os.Open(reportPath)
-		if err != nil {
-			return nil, err
-		}
-
-		prompt := func(keys []openpgp.Key, symmetric bool) ([]byte, error) {
-			return []byte(password), nil
-		}
-		msg, err := openpgp.ReadMessage(f, nil, prompt, nil)
-		if err != nil {
-			f.Close()
-			return nil, err
-		}
-		return &readerWithCloser{
-			rdr:    msg.UnverifiedBody,
-			closer: f,
-		}, nil
+	return func(reportPath string) (report.Reader, error) {
+		rdr := report.NewFileReader(reportPath)
+		rdr.SetPassword(password)
+		return rdr, nil
 	}
 }
 
 func openReportPGP(keyring openpgp.EntityList) reportOpenFunc {
-	return func(reportPath string) (io.ReadCloser, error) {
-		f, err := os.Open(reportPath)
-		if err != nil {
-			return nil, err
-		}
-
-		msg, err := openpgp.ReadMessage(f, keyring, nil, nil)
-		if err != nil {
-			f.Close()
-			return nil, err
-		}
-		return &readerWithCloser{
-			rdr:    msg.UnverifiedBody,
-			closer: f,
-		}, nil
+	return func(reportPath string) (report.Reader, error) {
+		rdr := report.NewFileReader(reportPath)
+		rdr.SetKeyring(keyring)
+		return rdr, nil
 	}
 }
 
-func conveyReportIsReadable(c C, openReport reportOpenFunc, pid int, addressOfData uintptr, reportDir string) {
+func conveyReportIsValidAndHasMatch(c C, openReport reportOpenFunc, pid int, addressOfData uintptr, reportDir string) {
 	c.Convey("should yield a valid report", func(c C) {
 		reportPath, exists := findReportPath(reportDir)
 
@@ -392,36 +368,22 @@ func conveyReportIsReadable(c C, openReport reportOpenFunc, pid int, addressOfDa
 			return
 		}
 
-		report, err := openReport(reportPath)
+		reportRdr, err := openReport(reportPath)
 		So(err, ShouldBeNil)
-		defer report.Close()
+		defer reportRdr.Close()
 
-		reportFiles, err := readReport(report)
+		projectRoot, err := testutil.GetProjectRoot()
+		So(err, ShouldBeNil)
 
-		c.So(reportFiles, ShouldNotBeEmpty)
-		c.So(err, ShouldBeNil)
+		validator := report.NewOfflineValidator(projectRoot + "/report")
+		err = validator.ValidateReport(reportRdr)
+		So(err, ShouldBeNil)
 
-		var memoryScansJSON *file
-		filenames := make([]string, len(reportFiles))
-		for i, file := range reportFiles {
-			filenames[i] = file.Name
-			if file.Name == "memory-scans.json" {
-				memoryScansJSON = file
-			}
-		}
-		c.Convey("which contains the expected files", func(c C) {
-			c.So(filenames, ShouldContain, "systeminfo.json")
-			c.So(filenames, ShouldContain, "processes.json")
-			c.So(filenames, ShouldContain, "memory-scans.json")
-			c.So(filenames, ShouldContain, "stats.json")
-			c.So(memoryScansJSON, ShouldNotBeNil)
-
-			conveyReportHasMatch(c, pid, addressOfData, memoryScansJSON)
-		})
+		conveyReportHasMatch(c, pid, addressOfData, reportRdr)
 	})
 }
 
-func conveyReportIsReadableButDoesNotHaveMatch(c C, openReport reportOpenFunc, pid int, addressOfData uintptr, reportDir string) {
+func conveyReportIsValidButDoesNotHaveMatch(c C, openReport reportOpenFunc, pid int, addressOfData uintptr, reportDir string) {
 	c.Convey("should yield a readable report", func(c C) {
 		reportPath, exists := findReportPath(reportDir)
 
@@ -430,32 +392,18 @@ func conveyReportIsReadableButDoesNotHaveMatch(c C, openReport reportOpenFunc, p
 			return
 		}
 
-		report, err := openReport(reportPath)
+		reportRdr, err := openReport(reportPath)
 		So(err, ShouldBeNil)
-		defer report.Close()
+		defer reportRdr.Close()
 
-		reportFiles, err := readReport(report)
+		projectRoot, err := testutil.GetProjectRoot()
+		So(err, ShouldBeNil)
 
-		c.So(reportFiles, ShouldNotBeEmpty)
-		c.So(err, ShouldBeNil)
+		validator := report.NewOfflineValidator(projectRoot + "/report")
+		err = validator.ValidateReport(reportRdr)
+		So(err, ShouldBeNil)
 
-		var memoryScansJSON *file
-		filenames := make([]string, len(reportFiles))
-		for i, file := range reportFiles {
-			filenames[i] = file.Name
-			if file.Name == "memory-scans.json" {
-				memoryScansJSON = file
-			}
-		}
-		c.Convey("which contains the expected files", func(c C) {
-			c.So(filenames, ShouldContain, "systeminfo.json")
-			c.So(filenames, ShouldContain, "processes.json")
-			c.So(filenames, ShouldContain, "memory-scans.json")
-			c.So(filenames, ShouldContain, "stats.json")
-			c.So(memoryScansJSON, ShouldNotBeNil)
-
-			conveyReportDoesNotHaveMatch(c, pid, addressOfData, memoryScansJSON)
-		})
+		conveyReportDoesNotHaveMatch(c, pid, addressOfData, reportRdr)
 	})
 }
 
@@ -468,14 +416,16 @@ func conveyReportIsAnonymized(c C, openReport reportOpenFunc, reportDir string) 
 			return
 		}
 
-		report, err := openReport(reportPath)
+		reportRdr, err := openReport(reportPath)
 		So(err, ShouldBeNil)
-		defer report.Close()
+		defer reportRdr.Close()
 
-		reportFiles, err := readReport(report)
+		projectRoot, err := testutil.GetProjectRoot()
+		So(err, ShouldBeNil)
 
-		c.So(reportFiles, ShouldNotBeEmpty)
-		c.So(err, ShouldBeNil)
+		validator := report.NewOfflineValidator(projectRoot + "/report")
+		err = validator.ValidateReport(reportRdr)
+		So(err, ShouldBeNil)
 
 		c.Convey("which does not contain the hostname, username or any IPs.", func(c C) {
 			info, err := system.GetInfo()
@@ -487,15 +437,45 @@ func conveyReportIsAnonymized(c C, openReport reportOpenFunc, reportDir string) 
 			selfInfo, err := self.Info()
 			So(err, ShouldBeNil)
 
-			allJSONBuilder := &strings.Builder{}
-			for _, file := range reportFiles {
-				if strings.Contains(file.Name, ".json") {
-					allJSONBuilder.Write(file.Data)
-				}
-			}
-			allJSON := allJSONBuilder.String()
+			buffer := &bytes.Buffer{}
 
-			fmt.Println(info.Hostname)
+			r, err := reportRdr.OpenMeta()
+			So(err, ShouldBeNil)
+			_, err = io.Copy(buffer, r)
+			So(err, ShouldBeNil)
+			r.Close()
+
+			r, err = reportRdr.OpenStatistics()
+			So(err, ShouldBeNil)
+			_, err = io.Copy(buffer, r)
+			So(err, ShouldBeNil)
+			r.Close()
+
+			r, err = reportRdr.OpenSystemInformation()
+			So(err, ShouldBeNil)
+			_, err = io.Copy(buffer, r)
+			So(err, ShouldBeNil)
+			r.Close()
+
+			r, err = reportRdr.OpenProcesses()
+			So(err, ShouldBeNil)
+			_, err = io.Copy(buffer, r)
+			So(err, ShouldBeNil)
+			r.Close()
+
+			r, err = reportRdr.OpenMemoryScans()
+			So(err, ShouldBeNil)
+			_, err = io.Copy(buffer, r)
+			So(err, ShouldBeNil)
+			r.Close()
+
+			r, err = reportRdr.OpenFileScans()
+			So(err, ShouldBeNil)
+			_, err = io.Copy(buffer, r)
+			So(err, ShouldBeNil)
+			r.Close()
+
+			allJSON := buffer.String()
 
 			So(allJSON, ShouldNotBeEmpty)
 			So(allJSON, ShouldNotContainSubstring, info.Hostname)
@@ -516,60 +496,62 @@ func conveyReportIsNotReadable(c C, openReport reportOpenFunc, reportDir string)
 			return
 		}
 
-		report, err := openReport(reportPath)
+		reportRdr, err := openReport(reportPath)
 		if err != nil {
 			So(err, ShouldNotBeNil)
 			return
 		}
-		defer report.Close()
+		defer reportRdr.Close()
 
-		_, err = readReport(report)
-		c.So(err, ShouldNotBeNil)
+		_, errMeta := reportRdr.OpenMeta()
+		_, errStatistics := reportRdr.OpenStatistics()
+		_, errSystemInformation := reportRdr.OpenSystemInformation()
+		_, errProcesses := reportRdr.OpenProcesses()
+		_, errMemoryScans := reportRdr.OpenMemoryScans()
+		_, errFileScans := reportRdr.OpenFileScans()
+		So(errMeta, ShouldNotBeNil)
+		So(errStatistics, ShouldNotBeNil)
+		So(errSystemInformation, ShouldNotBeNil)
+		So(errProcesses, ShouldNotBeNil)
+		So(errMemoryScans, ShouldNotBeNil)
+		So(errFileScans, ShouldNotBeNil)
 	})
 }
 
-func conveyReportHasMatch(c C, pid int, addressOfData uintptr, memoryScansJSON *file) {
+func conveyReportHasMatch(c C, pid int, addressOfData uintptr, reportRdr report.Reader) {
 	c.Convey("with the memory-scans.json containing the correct match.", func() {
-		dec := json.NewDecoder(bytes.NewReader(memoryScansJSON.Data))
+		parser := report.NewParser()
+		rprt, err := parser.Parse(reportRdr)
+		So(err, ShouldBeNil)
+
 		foundCorrectMatch := false
-		var err error
-		for {
-			re := new(report.MemoryScan)
-			err = dec.Decode(re)
-			if err != nil {
+		for _, scan := range rprt.MemoryScans {
+			if scan.PID == pid && scan.MemorySegment == addressOfData && len(scan.Matches) > 0 {
+				foundCorrectMatch = true
 				break
 			}
-
-			if re.PID == pid && re.MemorySegment == addressOfData && len(re.Matches) > 0 {
-				foundCorrectMatch = true
-			}
 		}
-		c.So(err, ShouldResemble, io.EOF)
 		c.So(foundCorrectMatch, ShouldBeTrue)
 	})
 }
 
-func conveyReportDoesNotHaveMatch(c C, pid int, addressOfData uintptr, memoryScansJSON *file) {
+func conveyReportDoesNotHaveMatch(c C, pid int, addressOfData uintptr, reportRdr report.Reader) {
 	c.Convey("with the memory-scans.json not containing a false positive.", func() {
-		dec := json.NewDecoder(bytes.NewReader(memoryScansJSON.Data))
+		parser := report.NewParser()
+		rprt, err := parser.Parse(reportRdr)
+		So(err, ShouldBeNil)
+
 		foundMatchForPID := false
 		foundMatchForAddressInPID := false
-		var err error
-		for {
-			re := new(report.MemoryScan)
-			err = dec.Decode(re)
-			if err != nil {
-				break
-			}
-
-			if re.PID == pid && len(re.Matches) > 0 {
+		for _, scan := range rprt.MemoryScans {
+			if scan.PID == pid && len(scan.Matches) > 0 {
 				foundMatchForPID = true
-				if re.MemorySegment == addressOfData {
+				if scan.MemorySegment == addressOfData {
 					foundMatchForAddressInPID = true
+					break
 				}
 			}
 		}
-		c.So(err, ShouldResemble, io.EOF)
 		c.So(foundMatchForPID, ShouldBeFalse)
 		c.So(foundMatchForAddressInPID, ShouldBeFalse)
 	})
