@@ -31,7 +31,7 @@ func (t *Time) UnmarshalJSON(b []byte) error {
 		return fmt.Errorf("expected a JSON-string as Time, %w", err)
 	}
 
-	tmp, err := time.Parse(Format, string(b))
+	tmp, err := time.Parse(Format, s)
 	t.Time = tmp
 	return err
 }
