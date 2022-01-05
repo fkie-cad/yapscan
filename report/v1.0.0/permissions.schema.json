@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://yapscan.targodan.de/reportFormat/1.0.0/permissions.schema.json",
+  "$id": "https://yapscan.targodan.de/reportFormat/v1.0.0/permissions.schema.json",
   "title": "permissions",
   "description": "Permissions of a memory segment",
   "type": "object",

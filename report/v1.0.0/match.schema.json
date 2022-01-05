@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://yapscan.targodan.de/reportFormat/1.0.0/match.schema.json",
+  "$id": "https://yapscan.targodan.de/reportFormat/v1.0.0/match.schema.json",
   "title": "match",
   "description": "Information about a yara rule match",
   "type": "object",

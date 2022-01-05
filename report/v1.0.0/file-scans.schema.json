@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://yapscan.targodan.de/reportFormat/1.0.0/match.schema.json",
+  "$id": "https://yapscan.targodan.de/reportFormat/v1.0.0/match.schema.json",
   "title": "file-scans",
   "description": "Scan results of file-scans. For each scanned file, where either a match was found or an error was emitted, one JSON object per line is stored.",
   "type": "object",
@@ -29,7 +29,7 @@
       "type": "array",
       "description": "Contains information about matched rules. Is empty-array if no rules matched.",
       "items": {
-        "$ref": "https://yapscan.targodan.de/reportFormat/1.0.0/match.schema.json"
+        "$ref": "https://yapscan.targodan.de/reportFormat/v1.0.0/match.schema.json"
       }
     },
     "error": {

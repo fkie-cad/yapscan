@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://yapscan.targodan.de/reportFormat/1.0.0/systeminfo.schema.json",
+  "$id": "https://yapscan.targodan.de/reportFormat/v1.0.0/systeminfo.schema.json",
   "title": "Yapscan Systeminfo",
   "description": "System information gathered by Yapscan",
   "type": "object",

@@ -1,6 +1,6 @@
 {
   "$schema": "https://json-schema.org/draft/2020-12/schema",
-  "$id": "https://yapscan.targodan.de/reportFormat/1.0.0/processes.schema.json",
+  "$id": "https://yapscan.targodan.de/reportFormat/v1.0.0/processes.schema.json",
   "title": "processes",
   "description": "Information about running processes of a scanned system",
   "type": "object",
@@ -59,11 +59,11 @@
             "description": "Address of this segment. Note, this value can get very large. make sure your parser uses an int64."
           },
           "allocatedPermissions": {
-            "$ref": "https://yapscan.targodan.de/reportFormat/1.0.0/permissions.schema.json",
+            "$ref": "https://yapscan.targodan.de/reportFormat/v1.0.0/permissions.schema.json",
             "description": "The permissions, this segment was initialized with"
           },
           "currentPermissions": {
-            "$ref": "https://yapscan.targodan.de/reportFormat/1.0.0/permissions.schema.json",
+            "$ref": "https://yapscan.targodan.de/reportFormat/v1.0.0/permissions.schema.json",
             "description": "The permissions, this segment had during time of the scan"
           },
           "size": {
@@ -83,8 +83,28 @@
             "description": "The type of the memory segment"
           },
           "mappedFile": {
-            "type": ["string", "null"],
-            "description": "The path to the mapped file, if the memory segment has a backing-file"
+            "oneOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "SHA256": {
+                    "type": "string",
+                    "description": "SHA256 hexdigest of the mapped file, if the file could be read"
+                  },
+                  "path": {
+                    "type": "string",
+                    "description": "The path of the mapped file"
+                  },
+                  "MD5": {
+                    "type": "string",
+                    "description": "MD5 hexdigest of the mapped file, if the file could be read"
+                  }
+                },
+                "required": ["path"],
+                "additionalProperties": false
+              },
+              {"type": "null"}
+            ]
           }
         },
         "required": ["parentBaseAddress", "baseAddress", "allocatedPermissions", "currentPermissions", "size", "rss", "state", "type", "mappedFile"],

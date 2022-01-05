@@ -13,14 +13,14 @@ const SystemInfoFileName = "systeminfo.json"
 // RulesFileName is the name of the file, where the used rules will be stored.
 const RulesFileName = "rules.yarc"
 
-// ProcessFileName is the name of the file used to report information about processes.
-const ProcessFileName = "processes.json"
+// ProcessesFileName is the name of the file used to report information about processes.
+const ProcessesFileName = "processes.json"
 
-// MemoryProgressFileName is the name of the file used to report information about memory scans.
-const MemoryProgressFileName = "memory-scans.json"
+// MemoryScansFileName is the name of the file used to report information about memory scans.
+const MemoryScansFileName = "memory-scans.json"
 
-// FSProgressFileName is the name of the file used to report information about file scans.
-const FSProgressFileName = "file-scans.json"
+// FileScansFileName is the name of the file used to report information about file scans.
+const FileScansFileName = "file-scans.json"
 
 // ScanningStatisticsFileName is the name of the file used to report scanning.
 const ScanningStatisticsFileName = "stats.json"
@@ -33,7 +33,12 @@ var FormatVersion = version.Version{
 	Minor:  0,
 	Bugfix: 0,
 }
-var schemaURLBase = "https://yapscan.targodan.de/reportFormat/%s/%s"
+
+const schemaURLBase = "https://yapscan.targodan.de/reportFormat"
+
+var schemaURLFormat = schemaURLBase + "/v%s/%s"
+
+var MetaV1Schema = fmt.Sprintf(schemaURLFormat, "1.0.0", "meta.schema.json")
 
 type MetaInformation struct {
 	YapscanVersion version.Version   `json:"yapscanVersion"`
@@ -46,7 +51,7 @@ func generateSchemaURLs(files []string) map[string]string {
 	for _, file := range files {
 		fileParts := strings.Split(file, ".")
 		schemaFile := strings.Join(fileParts[0:len(fileParts)-1], ".") + ".schema." + fileParts[len(fileParts)-1]
-		ret[file] = fmt.Sprintf(schemaURLBase, FormatVersion, schemaFile)
+		ret[file] = fmt.Sprintf(schemaURLFormat, FormatVersion, schemaFile)
 	}
 	return ret
 }
@@ -57,9 +62,9 @@ func GetMetaInformation() *MetaInformation {
 		FormatVersion:  FormatVersion,
 		SchemaURLs: generateSchemaURLs([]string{
 			SystemInfoFileName,
-			ProcessFileName,
-			MemoryProgressFileName,
-			FSProgressFileName,
+			ProcessesFileName,
+			MemoryScansFileName,
+			FileScansFileName,
 			ScanningStatisticsFileName,
 			MetaFileName,
 		}),
