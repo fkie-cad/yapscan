@@ -8,9 +8,7 @@
     "match": {
       "type": "array",
       "description": "Contains information about matched rules. Is empty-array if no rules matched.",
-      "items": {
-        "$ref": "https://yapscan.targodan.de/reportFormat/v1.0.0/match.schema.json"
-      }
+      "items": {"$ref": "https://yapscan.targodan.de/reportFormat/v1.0.0/match.schema.json"}
     },
     "pid": {
       "type": "integer",

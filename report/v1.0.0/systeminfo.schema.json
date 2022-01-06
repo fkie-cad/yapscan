@@ -35,9 +35,7 @@
     },
     "ips": {
       "type": "array",
-      "items": {
-        "type": "string"
-      },
+      "items": {"type": "string"},
       "description": "List of local IPs"
     },
     "totalRAM": {

@@ -23,9 +23,7 @@
           "type": "string",
           "pattern": "^[a-f0-9]{32}$"
         },
-        {
-          "type": "null"
-        }
+        {"type": "null"}
       ],
       "description": "MD5 hexdigest of the executable file, if the file could be read"
     },
@@ -35,9 +33,7 @@
           "type": "string",
           "pattern": "^[a-f0-9]{64}$"
         },
-        {
-          "type": "null"
-        }
+        {"type": "null"}
       ],
       "description": "SHA256 hexdigest of the executable file, if the file could be read"
     },

@@ -13,9 +13,7 @@
       "type": "object",
       "description": "SchemaURLs for the files of the report. There is one schema link for each JSON file contained in the report.",
       "patternProperties": {
-        "\\.json$": {
-          "type": "string"
-        }
+        "\\.json$": {"type": "string"}
       }
     },
     "formatVersion": {

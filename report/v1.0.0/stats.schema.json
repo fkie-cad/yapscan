@@ -5,11 +5,12 @@
   "description": "Statistic information about the Yapscan run",
   "type": "object",
   "properties": {
-    "numberOfFileBytesScanned": {
-      "type": "integer",
-      "description": "Number of total bytes scanned from files. Note, this value can get very large. make sure your parser uses an int64."
-    },
     "start": {
+      "type": "string",
+      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}.\\d{6}Z[+-]\\d{2}:\\d{2}$",
+      "description": "Datetime of the start of the scan. Format is RFC3339 with added micro seconds."
+    },
+    "end": {
       "type": "string",
       "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}.\\d{6}Z[+-]\\d{2}:\\d{2}$",
       "description": "Datetime of the start of the scan. Format is RFC3339 with added micro seconds."
@@ -26,12 +27,6 @@
             "type": "integer",
             "description": "The currently free swap in bytes. Note, this value can get very large. make sure your parser uses an int64."
           },
-          "loadAvgFifteenMinutes": {
-            "type": "number",
-            "description": "The load average over the last fifteen minutes, normalized over the number of CPUs. Note, that on windows load checking start with the scan, thus this value will be inaccurate for the first 15 minutes of the scan.",
-            "minimum": 0.0,
-            "maximum": 1.0
-          },
           "loadAvgOneMinute": {
             "type": "number",
             "description": "The load average over the last minute, normalized over the number of CPUs. Note, that on windows load checking start with the scan, thus this value will be inaccurate for the first minute of the scan.",
@@ -44,18 +39,21 @@
             "minimum": 0.0,
             "maximum": 1.0
           },
+          "loadAvgFifteenMinutes": {
+            "type": "number",
+            "description": "The load average over the last fifteen minutes, normalized over the number of CPUs. Note, that on windows load checking start with the scan, thus this value will be inaccurate for the first 15 minutes of the scan.",
+            "minimum": 0.0,
+            "maximum": 1.0
+          },
           "time": {
             "type": "string",
             "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}.\\d{6}Z[+-]\\d{2}:\\d{2}$",
             "description": "Datetime of the stats snapshot. Format is RFC3339 with added micro seconds."
           }
-        }
+        },
+        "required": ["freeRAM", "freeSwap", "loadAvgOneMinute", "loadAvgFiveMinutes", "loadAvgFifteenMinutes", "time"],
+        "additionalProperties": false
       }
-    },
-    "end": {
-      "type": "string",
-      "pattern": "^\\d{4}-\\d{2}-\\d{2}T\\d{2}:\\d{2}:\\d{2}.\\d{6}Z[+-]\\d{2}:\\d{2}$",
-      "description": "Datetime of the start of the scan. Format is RFC3339 with added micro seconds."
     },
     "numberOfProcessesScanned": {
       "type": "number",
@@ -72,6 +70,12 @@
     "numberOfFilesScanned": {
       "type": "number",
       "description": "The number of scanned files"
+    },
+    "numberOfFileBytesScanned": {
+      "type": "integer",
+      "description": "Number of total bytes scanned from files. Note, this value can get very large. make sure your parser uses an int64."
     }
-  }
+  },
+  "required": ["start", "end", "profilingInformation", "numberOfProcessesScanned", "numberOfSegmentsScanned", "numberOfMemoryBytesScanned", "numberOfFilesScanned", "numberOfFileBytesScanned"],
+  "additionalProperties": false
 }
