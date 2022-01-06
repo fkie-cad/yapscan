@@ -38,29 +38,29 @@ The only exception from this is the `meta.schema.json`, which is more lax to all
 
 This file contains meta information about the report.
 The `meta.json` has stricter promises regarding compatibility than the other files, as it is essential for parser implementations.
-The `meta.json` will validate correctly against the [meta.schema.json of version 1.0.0](https://yapscan.targodan.de/reportFormat/1.0.0/meta.schema.json) for **any update except a MAJOR-Update**.
+The `meta.json` will validate correctly against the [meta.schema.json of version 1.0.0](https://yapscan.targodan.de/reportFormat/v1.0.0/meta.schema.json) for **any update except a MAJOR-Update**.
 This means only the addition of fields to this file is allowed, not removal, renaming or changing of contents.
 
-Latest Schema: [meta.schema.json](https://yapscan.targodan.de/reportFormat/latest/meta.schema.json)
+Latest Schema: [meta.schema.json](https://yapscan.targodan.de/reportFormat/v1.0.0/meta.schema.json) / [meta.schema.html](https://yapscan.targodan.de/reportFormat/v1.0.0/meta.schema.html)
 
 ### stats.json
 
 This file contains statistic information about the scan.
 
-Latest Schema: [stats.schema.json](https://yapscan.targodan.de/reportFormat/latest/stats.schema.json)
+Latest Schema: [stats.schema.json](https://yapscan.targodan.de/reportFormat/v1.0.0/stats.schema.json) / [stats.schema.html](https://yapscan.targodan.de/reportFormat/v1.0.0/stats.schema.html)
 
 ### systeminfo.json
 
 This file contains information about the scanned system.
 
-Latest Schema: [systeminfo.schema.json](https://yapscan.targodan.de/reportFormat/latest/systeminfo.schema.json)
+Latest Schema: [systeminfo.schema.json](https://yapscan.targodan.de/reportFormat/v1.0.0/systeminfo.schema.json) / [systeminfo.schema.html](https://yapscan.targodan.de/reportFormat/v1.0.0/systeminfo.schema.html)
 
 ### processes.json
 
 This file contains information about the scanned processes and their memory layouts.
 There is one JSON-Object per line in this file (splitting on `'\n'` is safe).
 
-Latest Schema: [processes.schema.json](https://yapscan.targodan.de/reportFormat/latest/processes.schema.json)
+Latest Schema: [processes.schema.json](https://yapscan.targodan.de/reportFormat/v1.0.0/processes.schema.json) / [processes.schema.html](https://yapscan.targodan.de/reportFormat/v1.0.0/processes.schema.html)
 
 ### memory-scans.json
 
@@ -68,7 +68,7 @@ This file contains information about the scanned memory segments and any related
 There is one JSON-Object per line in this file (splitting on `'\n'` is safe).
 It may be omitted if no memory was scanned.
 
-Latest Schema: [memory-scans.schema.json](https://yapscan.targodan.de/reportFormat/latest/memory-scans.schema.json)
+Latest Schema: [memory-scans.schema.json](https://yapscan.targodan.de/reportFormat/v1.0.0/memory-scans.schema.json) / [memory-scans.schema.html](https://yapscan.targodan.de/reportFormat/v1.0.0/memory-scans.schema.html)
 
 ### file-scans.json
 
@@ -76,4 +76,4 @@ This file contains information about the scanned files and any related yara rule
 There is one JSON-Object per line in this file (splitting on `'\n'` is safe).
 It may be omitted if no files were scanned.
 
-Latest Schema: [file-scans.schema.json](https://yapscan.targodan.de/reportFormat/latest/file-scans.schema.json)
+Latest Schema: [file-scans.schema.json](https://yapscan.targodan.de/reportFormat/v1.0.0/file-scans.schema.json) / [file-scans.schema.html](https://yapscan.targodan.de/reportFormat/v1.0.0/file-scans.schema.html)
