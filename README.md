@@ -2,6 +2,8 @@
 
 Yapscan is a **YA**ra based **P**rocess **SCAN**ner, aimed at giving more control about what to scan and giving detailed reports on matches.
 
+**The report format is now versioned and a stable version 1.0.0 is released with compatibility guarantees, see the [report format documentation](report/v1.0.0/README.md).**
+
 ## Features
 
 You can use yapscan to selectively scan the memory of running processes as well as files in local hard drives and/or mounted shares.
