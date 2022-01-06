@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	jsonschema "github.com/santhosh-tekuri/jsonschema/v5"
+	// Enable HTTP loading of schemas by default
 	_ "github.com/santhosh-tekuri/jsonschema/v5/httploader"
 )
 
