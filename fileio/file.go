@@ -14,8 +14,8 @@ type File interface {
 
 type OSFile struct {
 	FilePath  string `json:"path"`
-	MD5Sum    string `json:"MD5,omitempty"`
-	SHA256Sum string `json:"SHA256,omitempty"`
+	MD5Sum    string `json:"md5,omitempty"`
+	SHA256Sum string `json:"sha256,omitempty"`
 }
 
 func NewFile(path string) File {

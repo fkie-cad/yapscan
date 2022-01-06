@@ -2,7 +2,6 @@ package report
 
 import (
 	"github.com/fkie-cad/yapscan/arch"
-	"github.com/fkie-cad/yapscan/fileio"
 	"github.com/fkie-cad/yapscan/procio"
 )
 
@@ -88,7 +87,7 @@ type MemorySegmentInfo struct {
 
 	// File contains the path to the mapped file, or empty string if
 	// no file mapping is associated with this memory segment.
-	MappedFile *fileio.OSFile `json:"mappedFile"`
+	MappedFile *File `json:"mappedFile"`
 }
 
 // SystemInfo contains information about the running system.
@@ -115,9 +114,9 @@ type MemoryScan struct {
 
 // FileScan represents all matches on a file.
 type FileScan struct {
-	File    *fileio.OSFile `json:"file"`
-	Matches []*Match       `json:"match"`
-	Error   interface{}    `json:"error"`
+	File    *File       `json:"file"`
+	Matches []*Match    `json:"match"`
+	Error   interface{} `json:"error"`
 }
 
 // Match represents the match of a yara Rule.
@@ -132,4 +131,10 @@ type MatchString struct {
 	Name   string `json:"name"`
 	Base   uint64 `json:"base"`
 	Offset uint64 `json:"offset"`
+}
+
+type File struct {
+	FilePath  string `json:"path"`
+	MD5Sum    string `json:"md5,omitempty"`
+	SHA256Sum string `json:"sha256,omitempty"`
 }
