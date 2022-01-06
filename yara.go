@@ -12,6 +12,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/fkie-cad/yapscan/report"
 	"github.com/fkie-cad/yapscan/system"
 
 	"github.com/yeka/zip"
@@ -34,18 +35,18 @@ var YaraRulesFileExtensions = []string{
 }
 
 type ProfilingInformation struct {
-	Time                  time.Time `json:"time"`
-	FreeRAM               uintptr   `json:"freeRAM"`
-	FreeSwap              uintptr   `json:"freeSwap"`
-	LoadAvgOneMinute      float64   `json:"loadAvgOneMinute"`
-	LoadAvgFiveMinutes    float64   `json:"loadAvgFiveMinutes"`
-	LoadAvgFifteenMinutes float64   `json:"loadAvgFifteenMinutes"`
+	Time                  report.Time `json:"time"`
+	FreeRAM               uintptr     `json:"freeRAM"`
+	FreeSwap              uintptr     `json:"freeSwap"`
+	LoadAvgOneMinute      float64     `json:"loadAvgOneMinute"`
+	LoadAvgFiveMinutes    float64     `json:"loadAvgFiveMinutes"`
+	LoadAvgFifteenMinutes float64     `json:"loadAvgFifteenMinutes"`
 }
 
 // ScanningStatistics holds statistic information about a scan.
 type ScanningStatistics struct {
-	Start                      time.Time               `json:"start"`
-	End                        time.Time               `json:"end"`
+	Start                      report.Time             `json:"start"`
+	End                        report.Time             `json:"end"`
 	NumberOfProcessesScanned   uint64                  `json:"numberOfProcessesScanned"`
 	NumberOfSegmentsScanned    uint64                  `json:"numberOfSegmentsScanned"`
 	NumberOfMemoryBytesScanned uint64                  `json:"numberOfMemoryBytesScanned"`
@@ -61,7 +62,7 @@ type ScanningStatistics struct {
 
 func NewScanningStatistics() *ScanningStatistics {
 	return &ScanningStatistics{
-		Start: time.Now(),
+		Start: report.Now(),
 		mux:   &sync.Mutex{},
 	}
 }
@@ -101,7 +102,7 @@ func (s *ScanningStatistics) StartProfiler(ctx context.Context, scanInterval tim
 					"freeSwap": freeSwap,
 				}).Trace("Memory profile.")
 				s.ProfilingInformation = append(s.ProfilingInformation, &ProfilingInformation{
-					Time:                  time.Now(),
+					Time:                  report.Now(),
 					FreeRAM:               freeRAM,
 					FreeSwap:              freeSwap,
 					LoadAvgOneMinute:      loadAvg1,
@@ -153,7 +154,7 @@ func (s *ScanningStatistics) Finalize() {
 		<-s.profilerDone
 	}
 
-	s.End = time.Now()
+	s.End = report.Now()
 }
 
 // YaraScanner is a wrapper for yara.Rules, with a more go-like interface.

@@ -4,7 +4,7 @@ package arch
 // Bitness describes the bitness of an architecture.
 /*
 ENUM(
-Invalid
+invalid
 32Bit = 32
 64Bit = 64
 )

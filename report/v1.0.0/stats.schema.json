@@ -1,0 +1,75 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://yapscan.targodan.de/reportFormat/v1.0.0/stats.schema.json",
+  "title": "stats",
+  "description": "Statistic information about the Yapscan run",
+  "type": "object",
+  "properties": {
+    "start": {
+      "$ref": "https://yapscan.targodan.de/reportFormat/v1.0.0/datetime.schema.json",
+      "description": "Datetime of the start of the scan. Format is RFC3339 with added micro seconds."
+    },
+    "end": {
+      "$ref": "https://yapscan.targodan.de/reportFormat/v1.0.0/datetime.schema.json",
+      "description": "Datetime of the start of the scan. Format is RFC3339 with added micro seconds."
+    },
+    "profilingInformation": {
+      "type": "array",
+      "items": {
+        "properties": {
+          "freeRAM": {
+            "type": "integer",
+            "description": "The currently free RAM in bytes. Note, this value can get very large. make sure your parser uses an int64."
+          },
+          "freeSwap": {
+            "type": "integer",
+            "description": "The currently free swap in bytes. Note, this value can get very large. make sure your parser uses an int64."
+          },
+          "loadAvgOneMinute": {
+            "type": "number",
+            "description": "The load average over the last minute, normalized over the number of CPUs, i.e. a value of 1.0 means the system is fully loaded. On linux this value can exceed 1.0, meaning processes are waiting for CPU time. Note, that on windows load checking start with the scan, thus this value will be inaccurate for the first minute of the scan.",
+            "minimum": 0.0
+          },
+          "loadAvgFiveMinutes": {
+            "type": "number",
+            "description": "The load average over the last five minutes, normalized over the number of CPUs, i.e. a value of 1.0 means the system is fully loaded. On linux this value can exceed 1.0, meaning processes are waiting for CPU time. Note, that on windows load checking start with the scan, thus this value will be inaccurate for the first 5 minutes of the scan.",
+            "minimum": 0.0
+          },
+          "loadAvgFifteenMinutes": {
+            "type": "number",
+            "description": "The load average over the last fifteen minutes, normalized over the number of CPUs, i.e. a value of 1.0 means the system is fully loaded. On linux this value can exceed 1.0, meaning processes are waiting for CPU time. Note, that on windows load checking start with the scan, thus this value will be inaccurate for the first 15 minutes of the scan.",
+            "minimum": 0.0
+          },
+          "time": {
+            "$ref": "https://yapscan.targodan.de/reportFormat/v1.0.0/datetime.schema.json",
+            "description": "Datetime of the stats snapshot. Format is RFC3339 with added micro seconds."
+          }
+        },
+        "required": ["freeRAM", "freeSwap", "loadAvgOneMinute", "loadAvgFiveMinutes", "loadAvgFifteenMinutes", "time"],
+        "additionalProperties": false
+      }
+    },
+    "numberOfProcessesScanned": {
+      "type": "number",
+      "description": "The number of scanned processes"
+    },
+    "numberOfSegmentsScanned": {
+      "type": "number",
+      "description": "The number of scanned memory segments"
+    },
+    "numberOfMemoryBytesScanned": {
+      "type": "number",
+      "description": "Number of total bytes scanned from memory. Note, this value can get very large. make sure your parser uses an int64."
+    },
+    "numberOfFilesScanned": {
+      "type": "number",
+      "description": "The number of scanned files"
+    },
+    "numberOfFileBytesScanned": {
+      "type": "integer",
+      "description": "Number of total bytes scanned from files. Note, this value can get very large. make sure your parser uses an int64."
+    }
+  },
+  "required": ["start", "end", "profilingInformation", "numberOfProcessesScanned", "numberOfSegmentsScanned", "numberOfMemoryBytesScanned", "numberOfFilesScanned", "numberOfFileBytesScanned"],
+  "additionalProperties": false
+}

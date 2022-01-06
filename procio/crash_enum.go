@@ -16,7 +16,7 @@ const (
 	CrashMethodCreateThreadOnNull CrashMethod = iota
 )
 
-const _CrashMethodName = "CreateThreadOnNull"
+const _CrashMethodName = "createThreadOnNull"
 
 var _CrashMethodNames = []string{
 	_CrashMethodName[0:18],

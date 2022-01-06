@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://yapscan.targodan.de/reportFormat/v1.0.0/meta.schema.json",
+  "title": "meta",
+  "description": "Metainformation about the yapscan report.",
+  "type": "object",
+  "properties": {
+    "yapscanVersion": {
+      "type": "string",
+      "description": "Version of Yapscan, used to generate the report"
+    },
+    "schemaURLs": {
+      "type": "object",
+      "description": "SchemaURLs for the files of the report. There is one schema link for each JSON file contained in the report.",
+      "patternProperties": {
+        "\\.json$": {"type": "string"}
+      }
+    },
+    "formatVersion": {
+      "type": "string",
+      "description": "Version of the report format"
+    }
+  },
+  "required": ["yapscanVersion", "schemaURLs", "formatVersion"]
+}

@@ -12,6 +12,8 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/fatih/color"
+
 	"github.com/fkie-cad/yapscan/system"
 
 	"github.com/fkie-cad/yapscan"
@@ -218,11 +220,17 @@ func scan(c *cli.Context) error {
 
 			fmt.Printf("Dumps will be written to \"%s\".\n", dumpArchivePath)
 		}
+
+		tmpReporter, err := repFac.Build()
+		if err != nil {
+			return err
+		}
+
 		reporter = &output.MultiReporter{
 			Reporters: []output.Reporter{
 				reporter,
 				&output.FilteringReporter{
-					Reporter: repFac.Build(),
+					Reporter: tmpReporter,
 					Filter:   analysisFilter,
 				},
 			},
@@ -270,12 +278,14 @@ func scan(c *cli.Context) error {
 	for _, pid := range pids {
 		func() {
 			if pid == os.Getpid() {
+				color.Yellow("\nWARN: PID %d is the yapscan process, skipping!", pid)
 				// Don't scan yourself as that will cause unwanted matches.
 				return
 			}
 
 			proc, err := procio.OpenProcess(pid)
 			if err != nil {
+				color.Red("\nERROR: Could not open process %d for scanning, reason: %v!", pid, err)
 				logrus.WithError(err).Errorf("could not open process %d for scanning", pid)
 				return
 			}
