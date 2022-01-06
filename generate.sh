@@ -2,19 +2,11 @@
 
 cd $(dirname "$0") || exit 1
 
-update=""
 if [[ "$1" == "-u" ]]; then
-    update="-u"
+    go install github.com/abice/go-enum@latest
+    go install github.com/vektra/mockery/v2@latest
 fi
-
-go mod tidy
-go mod vendor
-
-go get -v $update github.com/abice/go-enum
-go get -v $update github.com/vektra/mockery/v2/.../
-go mod tidy
 
 find . -name 'mock_*_test.go' -type f -delete
 
 go generate ./...
-

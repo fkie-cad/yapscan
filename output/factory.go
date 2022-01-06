@@ -1,5 +1,7 @@
 package output
 
+import "github.com/targodan/go-errors"
+
 type AnalysisReporterFactory struct {
 	reporter *AnalysisReporter
 }
@@ -27,6 +29,10 @@ func (f *AnalysisReporterFactory) WithFilenamePrefix(prefix string) *AnalysisRep
 	return f
 }
 
-func (f *AnalysisReporterFactory) Build() *AnalysisReporter {
-	return f.reporter
+func (f *AnalysisReporterFactory) Build() (*AnalysisReporter, error) {
+	err := f.reporter.reportMeta()
+	if err != nil {
+		return nil, errors.NewMultiError(err, f.reporter.Close())
+	}
+	return f.reporter, nil
 }

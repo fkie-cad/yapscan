@@ -54,7 +54,7 @@ type MemorySegmentInfo struct {
 	// SubSegments contains sub-segments, i.e. segment where their ParentBaseAddress
 	// is equal to this segments BaseAddress.
 	// If no such segments exist, this will be a slice of length 0.
-	SubSegments []*MemorySegmentInfo `json:"subSegments"`
+	SubSegments []*MemorySegmentInfo `json:"-"`
 }
 
 // EstimateRAMIncreaseByScanning estimates the increase in RAM usage when
@@ -90,13 +90,13 @@ func (s *MemorySegmentInfo) CopyWithoutSubSegments() *MemorySegmentInfo {
 // Permissions describes the permissions of a memory segment.
 type Permissions struct {
 	// Is read-only access allowed
-	Read bool `yaml:"read"`
+	Read bool `json:"read"`
 	// Is write access allowed (also true if COW is enabled)
-	Write bool `yaml:"write"`
+	Write bool `json:"write"`
 	// Is copy-on-write access allowed (if this is true, then so is Write)
-	COW bool `yaml:"cow"`
+	COW bool `json:"COW"`
 	// Is execute access allowed
-	Execute bool `yaml:"execute"`
+	Execute bool `json:"execute"`
 }
 
 // PermR is readonly Permissions.
@@ -223,9 +223,9 @@ func (p Permissions) String() string {
 // State represents the state of a memory segment.
 /*
 ENUM(
-Commit
-Free
-Reserve
+commit
+free
+reserve
 )
 */
 type State int
@@ -233,10 +233,10 @@ type State int
 // SegmentType represents the type of a memory segment.
 /*
 ENUM(
-Image
-Mapped
-Private
-PrivateMapped
+image
+mapped
+private
+privateMapped
 )
 */
 type SegmentType int

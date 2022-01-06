@@ -8,29 +8,19 @@ import (
 	"github.com/fkie-cad/yapscan"
 	"github.com/fkie-cad/yapscan/fileio"
 	"github.com/fkie-cad/yapscan/procio"
+	"github.com/fkie-cad/yapscan/report"
 	"github.com/fkie-cad/yapscan/system"
 	"github.com/hillu/go-yara/v4"
 	"github.com/sirupsen/logrus"
 	"github.com/targodan/go-errors"
 )
 
-// SystemInfoFileName is the name of the file, where system info is stored.
-const SystemInfoFileName = "systeminfo.json"
-
-// RulesFileName is the name of the file, where the used rules will be stored.
-const RulesFileName = "rules.yarc"
-
-// ProcessFileName is the name of the file used to report information about processes.
-const ProcessFileName = "processes.json"
-
-// MemoryProgressFileName is the name of the file used to report information about memory scans.
-const MemoryProgressFileName = "memory-scans.json"
-
-// FSProgressFileName is the name of the file used to report information about file scans.
-const FSProgressFileName = "file-scans.json"
-
-// ScanningStatisticsFileName is the name of the file used to report scanning.
-const ScanningStatisticsFileName = "stats.json"
+// FileScan represents all matches on a file.
+type FileScan struct {
+	File    fileio.File     `json:"file"`
+	Matches []*report.Match `json:"match"`
+	Error   interface{}     `json:"error"`
+}
 
 // AnalysisReporter implements a Reporter, which is
 // specifically intended for later analysis of the report
@@ -45,11 +35,25 @@ type AnalysisReporter struct {
 	processInfos map[int]*procio.ProcessInfo
 }
 
+func (r *AnalysisReporter) reportMeta() error {
+	w, err := r.archiver.Create(r.filenamePrefix + report.MetaFileName)
+	if err != nil {
+		return err
+	}
+
+	err = json.NewEncoder(w).Encode(report.GetMetaInformation())
+	if err != nil {
+		return errors.NewMultiError(err, w.Close())
+	}
+
+	return w.Close()
+}
+
 // ReportSystemInfo reports info about the running system.
 // This function may only called once, otherwise the behaviour depends on the
 // used Archiver.
 func (r *AnalysisReporter) ReportSystemInfo(info *system.Info) error {
-	w, err := r.archiver.Create(r.filenamePrefix + SystemInfoFileName)
+	w, err := r.archiver.Create(r.filenamePrefix + report.SystemInfoFileName)
 	if err != nil {
 		return err
 	}
@@ -66,7 +70,7 @@ func (r *AnalysisReporter) ReportSystemInfo(info *system.Info) error {
 // This function may only called once, otherwise the behaviour depends on the
 // used Archiver.
 func (r *AnalysisReporter) ReportScanningStatistics(stats *yapscan.ScanningStatistics) error {
-	w, err := r.archiver.Create(r.filenamePrefix + ScanningStatisticsFileName)
+	w, err := r.archiver.Create(r.filenamePrefix + report.ScanningStatisticsFileName)
 	if err != nil {
 		return err
 	}
@@ -83,7 +87,7 @@ func (r *AnalysisReporter) ReportScanningStatistics(stats *yapscan.ScanningStati
 // This function may only called once, otherwise the behaviour depends on the
 // used Archiver.
 func (r *AnalysisReporter) ReportRules(rules *yara.Rules) error {
-	w, err := r.archiver.Create(r.filenamePrefix + RulesFileName)
+	w, err := r.archiver.Create(r.filenamePrefix + report.RulesFileName)
 	if err != nil {
 		return err
 	}
@@ -96,8 +100,20 @@ func (r *AnalysisReporter) ReportRules(rules *yara.Rules) error {
 	return w.Close()
 }
 
+func (r *AnalysisReporter) flattenSubsegments(segments []*procio.MemorySegmentInfo) []*procio.MemorySegmentInfo {
+	newSegments := make([]*procio.MemorySegmentInfo, 0, len(segments))
+	for _, seg := range segments {
+		newSegments = append(newSegments, seg)
+		if len(seg.SubSegments) > 0 {
+			subSegments := r.flattenSubsegments(seg.SubSegments)
+			newSegments = append(newSegments, subSegments...)
+		}
+	}
+	return newSegments
+}
+
 func (r *AnalysisReporter) reportProcessInfos() error {
-	w, err := r.archiver.Create(r.filenamePrefix + ProcessFileName)
+	w, err := r.archiver.Create(r.filenamePrefix + report.ProcessesFileName)
 	if err != nil {
 		return err
 	}
@@ -109,6 +125,8 @@ func (r *AnalysisReporter) reportProcessInfos() error {
 	encoder := json.NewEncoder(w)
 
 	for _, info := range r.processInfos {
+		info.MemorySegments = r.flattenSubsegments(info.MemorySegments)
+
 		err = encoder.Encode(info)
 		if err != nil {
 			logrus.WithError(err).Error("Could not report process info.")
@@ -123,7 +141,7 @@ func (r *AnalysisReporter) reportProcessInfos() error {
 // This function may only called once, otherwise the behaviour depends on the
 // used Archiver.
 func (r *AnalysisReporter) ConsumeMemoryScanProgress(progress <-chan *yapscan.MemoryScanProgress) error {
-	w, err := r.archiver.Create(r.filenamePrefix + MemoryProgressFileName)
+	w, err := r.archiver.Create(r.filenamePrefix + report.MemoryScansFileName)
 	if err != nil {
 		return err
 	}
@@ -159,7 +177,7 @@ func (r *AnalysisReporter) ConsumeMemoryScanProgress(progress <-chan *yapscan.Me
 		if prog.Error != nil {
 			jsonErr = prog.Error.Error()
 		}
-		err = encoder.Encode(&MemoryScanProgressReport{
+		err = encoder.Encode(&report.MemoryScan{
 			PID:           info.PID,
 			MemorySegment: prog.MemorySegment.BaseAddress,
 			Matches:       ConvertYaraMatchRules(prog.Matches),
@@ -187,7 +205,7 @@ func (r *AnalysisReporter) ConsumeMemoryScanProgress(progress <-chan *yapscan.Me
 // This function may only called once, otherwise the behaviour depends on the
 // used Archiver.
 func (r *AnalysisReporter) ConsumeFSScanProgress(progress <-chan *fileio.FSScanProgress) error {
-	w, err := r.archiver.Create(r.filenamePrefix + FSProgressFileName)
+	w, err := r.archiver.Create(r.filenamePrefix + report.FileScansFileName)
 	if err != nil {
 		return err
 	}
@@ -209,7 +227,7 @@ func (r *AnalysisReporter) ConsumeFSScanProgress(progress <-chan *fileio.FSScanP
 			}
 		}
 
-		err = encoder.Encode(&FSScanProgressReport{
+		err = encoder.Encode(&FileScan{
 			File:    prog.File,
 			Matches: ConvertYaraMatchRules(prog.Matches),
 			Error:   jsonErr,

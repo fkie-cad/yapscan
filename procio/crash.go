@@ -4,7 +4,7 @@ package procio
 // CrashMethod selects a method to crash a process.
 /*
 ENUM(
-CreateThreadOnNull
+createThreadOnNull
 )
 */
 type CrashMethod int

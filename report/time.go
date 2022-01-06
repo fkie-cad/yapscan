@@ -1,10 +1,12 @@
 package report
 
 import (
+	"encoding/json"
+	"fmt"
 	"time"
 )
 
-const Format = "2006-01-02T15:04:05.000000Z07:00"
+const Format = "2006-01-02T15:04:05.000000Z-07:00"
 
 type Time struct {
 	time.Time
@@ -23,7 +25,13 @@ func (t Time) MarshalJSON() ([]byte, error) {
 }
 
 func (t *Time) UnmarshalJSON(b []byte) error {
-	tmp, err := time.Parse(`"`+Format+`"`, string(b))
+	var s string
+	err := json.Unmarshal(b, &s)
+	if err != nil {
+		return fmt.Errorf("expected a JSON-string as Time, %w", err)
+	}
+
+	tmp, err := time.Parse(Format, s)
 	t.Time = tmp
 	return err
 }
