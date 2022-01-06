@@ -27,21 +27,18 @@
           },
           "loadAvgOneMinute": {
             "type": "number",
-            "description": "The load average over the last minute, normalized over the number of CPUs. Note, that on windows load checking start with the scan, thus this value will be inaccurate for the first minute of the scan.",
-            "minimum": 0.0,
-            "maximum": 1.0
+            "description": "The load average over the last minute, normalized over the number of CPUs, i.e. a value of 1.0 means the system is fully loaded. On linux this value can exceed 1.0, meaning processes are waiting for CPU time. Note, that on windows load checking start with the scan, thus this value will be inaccurate for the first minute of the scan.",
+            "minimum": 0.0
           },
           "loadAvgFiveMinutes": {
             "type": "number",
-            "description": "The load average over the last five minutes, normalized over the number of CPUs. Note, that on windows load checking start with the scan, thus this value will be inaccurate for the first 5 minutes of the scan.",
-            "minimum": 0.0,
-            "maximum": 1.0
+            "description": "The load average over the last five minutes, normalized over the number of CPUs, i.e. a value of 1.0 means the system is fully loaded. On linux this value can exceed 1.0, meaning processes are waiting for CPU time. Note, that on windows load checking start with the scan, thus this value will be inaccurate for the first 5 minutes of the scan.",
+            "minimum": 0.0
           },
           "loadAvgFifteenMinutes": {
             "type": "number",
-            "description": "The load average over the last fifteen minutes, normalized over the number of CPUs. Note, that on windows load checking start with the scan, thus this value will be inaccurate for the first 15 minutes of the scan.",
-            "minimum": 0.0,
-            "maximum": 1.0
+            "description": "The load average over the last fifteen minutes, normalized over the number of CPUs, i.e. a value of 1.0 means the system is fully loaded. On linux this value can exceed 1.0, meaning processes are waiting for CPU time. Note, that on windows load checking start with the scan, thus this value will be inaccurate for the first 15 minutes of the scan.",
+            "minimum": 0.0
           },
           "time": {
             "$ref": "https://yapscan.targodan.de/reportFormat/v1.0.0/datetime.schema.json",
