@@ -41,6 +41,7 @@ COMMANDS:
    zip-rules                   creates an encrypted zip containing compiled yara rules
    join                        joins dumps with padding
    crash-process, crash        crash a process
+   as-service                  executes yapscan as a windows service (windows only)
    help, h                     Shows a list of commands or help for one command
 ```
 
@@ -105,6 +106,32 @@ yapscan scan -r rules.zip --filter-permissions-exact rx --all-processes
 yapscan --log-level debug --log-path yapscan.log scan -r rules.zip --full-report --store-dumps --all-processes
 ```
 
+## Running as Service
+
+Yapscan can be run as a windows service in order to gain SYSTEM privileges.
+This allows you to crash even other windows services, using the crash command.
+Running as service is currently an **experimental feature**.
+
+For memory scanning this should not be necessary.
+In my experiments it has been sufficient to run yapscan as administrator in order to read the memory of any process.
+If you find a process that yapscan cannot scan with administrator privileges but that can be scanned as a service, please let me know in the [issues](https://github.com/fkie-cad/yapscan/issues/new).
+
+In order to use yapscan as a service just prepend the `as-service` command to the command (and flags) you wish to execute.
+Example:
+
+```shell
+# Normal mode
+.\yapscan.exe crash 42
+# Service mode
+.\yapscan.exe as-service crash 42
+```
+
+The output of the windows service is transmitted to the terminal via two TCP connections.
+If this breaks a warning will be emitted.
+In such a case the service may still be running, you just won't see any output.
+Also CTRL-C will break the proxy command, preventing you from seeing any output, but will not affect the running service.
+If you want to kill the service, you'll have to use the windows service manager for now.
+
 ## Executable DLL
 
 **The DLL built by this project is not a usual DLL, meant for importing functions from.**
@@ -126,7 +153,7 @@ extern void run(HWND hWnd, HINSTANCE hInst, LPTSTR lpCmdLine, int nCmdShow);
 Some environments like VDIs (Virtual Desktop Infrastructure) may prevent the execution of arbitrary exe-files but still allows for use of arbitrary DLLs.
 If you gain access to a command line terminal in such an environment you can call yapscan via the built DLL like so.
 
-```
+```shell
 rundll32.exe yapscan.dll,run scan -r rules.zip --all-processes
 ```  
 
