@@ -13,7 +13,7 @@ import (
 var onExit func()
 
 func runApp(args []string) {
-	err := app.MakeApp(args).Run(args)
+	err := app.MakeApp().Run(args)
 
 	if err != nil {
 		fmt.Println(err)

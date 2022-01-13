@@ -53,7 +53,7 @@ func TestMatchIsFound(t *testing.T) {
 			"--filter-size-max", maxSizeFilter,
 			strconv.Itoa(pid)}
 		ctx, cancel := context.WithTimeout(context.Background(), yapscanTimeout)
-		err := app.MakeApp(args).RunContext(ctx, args)
+		err := app.MakeApp().RunContext(ctx, args)
 		cancel()
 
 		cleanupCapture()
@@ -90,7 +90,7 @@ func TestMatchIsFound_Fuzzy(t *testing.T) {
 			"--filter-size-max", maxSizeFilter,
 			strconv.Itoa(pid)}
 		ctx, cancel := context.WithTimeout(context.Background(), yapscanTimeout)
-		err := app.MakeApp(args).RunContext(ctx, args)
+		err := app.MakeApp().RunContext(ctx, args)
 		cancel()
 
 		cleanupCapture()
@@ -133,7 +133,7 @@ func TestDoesNotMatchFalsePositive_Fuzzy(t *testing.T) {
 			"--filter-size-max", maxSizeFilter,
 			strconv.Itoa(pid)}
 		ctx, cancel := context.WithTimeout(context.Background(), yapscanTimeout)
-		err := app.MakeApp(args).RunContext(ctx, args)
+		err := app.MakeApp().RunContext(ctx, args)
 		cancel()
 
 		cleanupCapture()
@@ -164,7 +164,7 @@ func TestFullReportIsWritten_Unencrypted(t *testing.T) {
 			"--full-report", "--report-dir", reportDir,
 			strconv.Itoa(pid)}
 		ctx, cancel := context.WithTimeout(context.Background(), yapscanTimeout)
-		err := app.MakeApp(args).RunContext(ctx, args)
+		err := app.MakeApp().RunContext(ctx, args)
 		cancel()
 
 		cleanupCapture()
@@ -190,7 +190,7 @@ func TestFullReportIsWritten_Unencrypted_WhenScanningTwoProcesses(t *testing.T) 
 			"--full-report", "--report-dir", reportDir,
 			strconv.Itoa(matchingPID), strconv.Itoa(nonMatchingPID)}
 		ctx, cancel := context.WithTimeout(context.Background(), yapscanTimeout)
-		err := app.MakeApp(args).RunContext(ctx, args)
+		err := app.MakeApp().RunContext(ctx, args)
 		cancel()
 
 		cleanupCapture()
@@ -215,7 +215,7 @@ func TestFullReportIsWritten_Unencrypted_WhenScanningTwoProcesses(t *testing.T) 
 			"--full-report", "--report-dir", reportDir,
 			strconv.Itoa(nonMatchingPID), strconv.Itoa(matchingPID)}
 		ctx, cancel := context.WithTimeout(context.Background(), yapscanTimeout)
-		err := app.MakeApp(args).RunContext(ctx, args)
+		err := app.MakeApp().RunContext(ctx, args)
 		cancel()
 
 		cleanupCapture()
@@ -244,7 +244,7 @@ func TestPasswordProtectedFullReport(t *testing.T) {
 			"--full-report", "--report-dir", reportDir,
 			strconv.Itoa(pid)}
 		ctx, cancel := context.WithTimeout(context.Background(), yapscanTimeout)
-		err := app.MakeApp(args).RunContext(ctx, args)
+		err := app.MakeApp().RunContext(ctx, args)
 		cancel()
 
 		cleanupCapture()
@@ -273,7 +273,7 @@ func TestPGPProtectedFullReport(t *testing.T) {
 			"--full-report", "--report-dir", reportDir,
 			strconv.Itoa(pid)}
 		ctx, cancel := context.WithTimeout(context.Background(), yapscanTimeout)
-		err := app.MakeApp(args).RunContext(ctx, args)
+		err := app.MakeApp().RunContext(ctx, args)
 		cancel()
 
 		cleanupCapture()
@@ -300,7 +300,7 @@ func TestAnonymizedFullReport(t *testing.T) {
 			"--full-report", "--report-dir", reportDir,
 			strconv.Itoa(pid)}
 		ctx, cancel := context.WithTimeout(context.Background(), yapscanTimeout)
-		err := app.MakeApp(args).RunContext(ctx, args)
+		err := app.MakeApp().RunContext(ctx, args)
 		cancel()
 
 		cleanupCapture()

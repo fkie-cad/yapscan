@@ -101,7 +101,7 @@ func SvcMain(dwNumServicesArgs C.DWORD, lpServiceArgVectors **C.char) {
 	for i := range args {
 		args[i] = C.GoString(C.arg_index(lpServiceArgVectors, C.int(i)))
 	}
-	os.Args = args
+	os.Args = args[1:]
 
 	C.report_running()
 
@@ -115,7 +115,7 @@ func SvcMain(dwNumServicesArgs C.DWORD, lpServiceArgVectors **C.char) {
 		exiter(-1)
 	})
 
-	err := app.MakeApp(args).Run(args)
+	err := app.MakeApp().Run(args[1:])
 	if err != nil {
 		fmt.Println(err)
 		logrus.Error(err)
