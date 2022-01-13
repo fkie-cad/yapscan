@@ -3,6 +3,9 @@ package service
 import (
 	"fmt"
 	"os"
+	"strconv"
+
+	"github.com/fkie-cad/yapscan/service/output"
 
 	"golang.org/x/sys/windows"
 
@@ -97,15 +100,55 @@ func SvcMain(dwNumServicesArgs C.DWORD, lpServiceArgVectors **C.char) {
 		return
 	}
 
+	out, _ := os.OpenFile("C:\\yapscanOut.txt", os.O_CREATE|os.O_TRUNC|os.O_WRONLY, 0666)
+	defer out.Close()
+
 	args := make([]string, dwNumServicesArgs)
 	for i := range args {
 		args[i] = C.GoString(C.arg_index(lpServiceArgVectors, C.int(i)))
 	}
+	fmt.Fprintf(out, "ARGS: %v\r\n", args)
+
+	var outputProxyClient *output.OutputProxyClient
+	if args[1] != "0" && args[2] != "0" {
+		outputProxyClient = output.NewOutputProxyClient()
+		stdoutPort, err := strconv.Atoi(args[1])
+		if err != nil {
+			outputProxyClient = nil
+			fmt.Fprintf(out, "SERVER CONNECT ERROR: %v\r\n", err)
+		}
+		stderrPort, err := strconv.Atoi(args[2])
+		if err != nil {
+			outputProxyClient = nil
+			fmt.Fprintf(out, "SERVER CONNECT ERROR: %v\r\n", err)
+		}
+
+		fmt.Fprintf(out, "Got server ports %d / %d\n\n", stdoutPort, stderrPort)
+
+		if outputProxyClient != nil {
+			err = outputProxyClient.Connect(stdoutPort, stderrPort)
+			if err != nil {
+				outputProxyClient = nil
+			}
+			fmt.Fprintf(out, "SERVER CONNECT ERROR: %v\r\n", err)
+		}
+
+		if outputProxyClient != nil {
+			os.Stdout = outputProxyClient.Stdout
+			os.Stderr = outputProxyClient.Stderr
+			cli.ErrWriter = outputProxyClient.Stderr
+		}
+	}
+	args = args[3:]
+
 	os.Args = args
 
 	C.report_running()
 
 	exiter := func(code int) {
+		if outputProxyClient != nil {
+			outputProxyClient.Close()
+		}
 		C.report_stopped()
 	}
 	defer exiter(0)
@@ -115,7 +158,10 @@ func SvcMain(dwNumServicesArgs C.DWORD, lpServiceArgVectors **C.char) {
 		exiter(-1)
 	})
 
-	err := app.MakeApp(args).Run(args)
+	cliApp := app.MakeApp()
+	cliApp.Writer = os.Stdout
+	cliApp.ErrWriter = os.Stderr
+	err := cliApp.Run(args)
 	if err != nil {
 		fmt.Println(err)
 		logrus.Error(err)

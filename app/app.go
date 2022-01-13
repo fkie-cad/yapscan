@@ -149,7 +149,7 @@ func askYesNoAlwaysNever(msg string) (yes bool, always bool, never bool) {
 	return
 }
 
-func MakeApp(args []string) *cli.App {
+func MakeApp() *cli.App {
 	suspendFlags := []cli.Flag{
 		&cli.BoolFlag{
 			Name:    "suspend",
@@ -454,18 +454,23 @@ func MakeApp(args []string) *cli.App {
 	if runtime.GOOS == "windows" {
 		app.Commands = append(app.Commands,
 			&cli.Command{
-				Name:  "as-service",
-				Usage: "executes yapscan as a windows service",
+				Name:            "as-service",
+				Usage:           "executes yapscan as a windows service",
+				SkipFlagParsing: true,
 				Action: func(c *cli.Context) error {
-					// This is a dummy
-					return cli.Exit("\"as-service\" must be the first argument", 1)
+					if len(os.Args) < 2 || os.Args[1] != "as-service" {
+						return cli.Exit("\"as-service\" must be the first argument", 1)
+					}
+					if len(os.Args) == 2 {
+						return cli.Exit("not enough arguments for \"as-service\", "+
+							"please provide the command to execute as a service", 1)
+					}
+					args := make([]string, 0, len(os.Args)-1)
+					args = append(args, os.Args[0])
+					args = append(args, os.Args[2:]...) // Cut out the "as-service" argument
+					return asService(args)
 				},
 			})
-
-		if len(args) >= 2 && args[1] == "as-service" {
-			asService(args)
-			return nil
-		}
 	}
 
 	return app
