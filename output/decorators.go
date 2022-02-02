@@ -4,6 +4,8 @@ import (
 	"io"
 	"strings"
 
+	"github.com/fkie-cad/yapscan/pgp"
+
 	"github.com/targodan/go-errors"
 	"golang.org/x/crypto/openpgp"
 )
@@ -65,10 +67,10 @@ func (b *WriteCloserBuilder) Build(finalOutput io.WriteCloser) (io.WriteCloser, 
 	return out, nil
 }
 
-func PGPEncryptionDecorator(ring []*openpgp.Entity, dataIsBinary bool) *OutputDecorator {
+func PGPEncryptionDecorator(ring openpgp.EntityList, dataIsBinary bool) *OutputDecorator {
 	return &OutputDecorator{
 		decorate: func(out io.WriteCloser) (io.WriteCloser, error) {
-			in, err := NewPGPEncryptor(ring, dataIsBinary, out)
+			in, err := pgp.NewPGPEncryptor(ring, dataIsBinary, out)
 			return &cascadingWriteCloser{
 				writer: in,
 				base:   out,
@@ -81,7 +83,7 @@ func PGPEncryptionDecorator(ring []*openpgp.Entity, dataIsBinary bool) *OutputDe
 func PGPSymmetricEncryptionDecorator(password string, dataIsBinary bool) *OutputDecorator {
 	return &OutputDecorator{
 		decorate: func(out io.WriteCloser) (io.WriteCloser, error) {
-			in, err := NewPGPSymmetricEncryptor(password, dataIsBinary, out)
+			in, err := pgp.NewPGPSymmetricEncryptor(password, dataIsBinary, out)
 			return &cascadingWriteCloser{
 				writer: in,
 				base:   out,

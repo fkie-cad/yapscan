@@ -373,12 +373,14 @@ func MakeApp() *cli.App {
 						Value: false,
 					},
 					&cli.StringFlag{
-						Name:  "password",
-						Usage: "setting this will encrypt the report with the given password; ignored without --full-report",
+						Name:    "password",
+						Aliases: []string{"p"},
+						Usage:   "setting this will encrypt the report with the given password; ignored without --full-report",
 					},
 					&cli.StringFlag{
-						Name:  "pgpkey",
-						Usage: "setting this will encrypt the report with the public key in the given file; ignored without --full-report",
+						Name:    "pgpkey",
+						Aliases: []string{"k"},
+						Usage:   "setting this will encrypt the report with the public key in the given file; ignored without --full-report",
 					},
 					&cli.BoolFlag{
 						Name:  "anonymize",
@@ -396,6 +398,49 @@ func MakeApp() *cli.App {
 						Value:   false,
 					},
 				}, segmentFilterFlags...), suspendFlags...),
+			},
+			&cli.Command{
+				Name:      "anonymize",
+				Usage:     "anonymize reports",
+				Action:    anonymize,
+				ArgsUsage: "<path...>",
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:        "output-dir",
+						Usage:       "the directory to which the anonymized report(s) will be written",
+						DefaultText: "same directory as the input report",
+					},
+					&cli.StringFlag{
+						Name:    "decrypt-password",
+						Aliases: []string{"P"},
+						Usage: "decryption password, if --decrypt-pgpkey is specified this is used as the password " +
+							"for the keyring, otherwise this is used for symmetric decryption",
+					},
+					&cli.StringFlag{
+						Name:    "decrypt-pgpkey",
+						Aliases: []string{"K"},
+						Usage:   "private pgp key for reading the reports",
+					},
+					&cli.BoolFlag{
+						Name:  "decrypt",
+						Usage: "permanently decrypt the reports without reencryption",
+					},
+					&cli.StringFlag{
+						Name:    "password",
+						Aliases: []string{"p"},
+						Usage:   "setting this will encrypt the anonymized reports with the given password",
+					},
+					&cli.StringFlag{
+						Name:    "pgpkey",
+						Aliases: []string{"k"},
+						Usage:   "setting this will encrypt the anonymized report with the public key in the given file",
+					},
+					&cli.StringFlag{
+						Name:        "salt",
+						Usage:       "the salt (base64 string) to use for anonymization",
+						DefaultText: "random salt",
+					},
+				},
 			},
 			&cli.Command{
 				Name:      "zip-rules",

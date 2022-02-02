@@ -5,6 +5,8 @@ import (
 	"encoding/json"
 	"io/ioutil"
 
+	archiver2 "github.com/fkie-cad/yapscan/archiver"
+
 	"github.com/fkie-cad/yapscan"
 	"github.com/fkie-cad/yapscan/fileio"
 	"github.com/fkie-cad/yapscan/procio"
@@ -26,7 +28,7 @@ type FileScan struct {
 // specifically intended for later analysis of the report
 // in order to determine rule quality.
 type AnalysisReporter struct {
-	archiver      Archiver
+	archiver      archiver2.Archiver
 	closeArchiver bool
 
 	filenamePrefix string

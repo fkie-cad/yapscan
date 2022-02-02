@@ -5,6 +5,8 @@ import (
 	"fmt"
 	"io"
 
+	archiver2 "github.com/fkie-cad/yapscan/archiver"
+
 	"github.com/fkie-cad/yapscan/procio"
 )
 
@@ -44,14 +46,14 @@ type ReadableDumpStorage interface {
 
 // ArchiveDumpStorage stores dumps using an Archiver.
 type ArchiveDumpStorage struct {
-	archiver Archiver
+	archiver archiver2.Archiver
 
 	// The prefix of filenames created in the Archiver.
 	FilePrefix string
 }
 
 // NewArchiveDumpStorage creates a new ArchiveDumpStorage with an Archiver backend.
-func NewArchiveDumpStorage(archiver Archiver) *ArchiveDumpStorage {
+func NewArchiveDumpStorage(archiver archiver2.Archiver) *ArchiveDumpStorage {
 	return &ArchiveDumpStorage{
 		archiver:   archiver,
 		FilePrefix: "",
