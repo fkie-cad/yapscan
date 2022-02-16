@@ -82,7 +82,7 @@ func anonymize(c *cli.Context) error {
 
 	var multiErr error
 	for _, inputPath := range c.Args().Slice() {
-		fmt.Printf("Anonymizing %s...", inputPath)
+		fmt.Printf("Anonymizing %s", inputPath)
 		outputPath, err := anonymizeReport(inputPath, rdrFactory, salt, wcBuilder, c.String("output-dir"))
 		multiErr = errors.NewMultiError(multiErr, err)
 		if err == nil {
@@ -95,7 +95,7 @@ func anonymize(c *cli.Context) error {
 	return multiErr
 }
 
-var nameRe = regexp.MustCompile("^(.+)_(.+)\\.tar.*$")
+var nameRe = regexp.MustCompile("^(.+?)_(.+)\\.tar.*$")
 
 func anonymizeReport(
 	inputPath string, rdrFactory *report.ReaderFactory,
