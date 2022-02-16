@@ -348,6 +348,9 @@ func (a *ReportAnonymizer) AnonymizeMemorySegments(segments []*report.MemorySegm
 }
 
 func (a *ReportAnonymizer) AnonymizeFile(file *report.File) *report.File {
+	if file == nil {
+		return nil
+	}
 	file.FilePath = a.Anonymizer.AnonymizePath(file.FilePath)
 	return file
 }

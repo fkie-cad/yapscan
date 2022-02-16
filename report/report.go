@@ -14,6 +14,12 @@ type Report struct {
 	FileScans   []*FileScan
 }
 
+func NewReport() *Report {
+	return &Report{
+		Meta: GetMetaInformation(),
+	}
+}
+
 type ProfilingInformation struct {
 	Time                  Time    `json:"time"`
 	FreeRAM               uintptr `json:"freeRAM"`
