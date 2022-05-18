@@ -6,7 +6,7 @@ require (
 	github.com/dustin/go-humanize v1.0.0
 	github.com/fatih/color v1.13.0
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510
-	github.com/hillu/go-yara/v4 v4.1.0
+	github.com/hillu/go-yara/v4 v4.2.3
 	github.com/klauspost/compress v1.13.6
 	github.com/rjNemo/underscore v0.3.1-0.20220323145844-235b36b7f6e8
 	github.com/santhosh-tekuri/jsonschema/v5 v5.0.0
