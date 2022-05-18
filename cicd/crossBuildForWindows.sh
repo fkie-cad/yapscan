@@ -1,16 +1,9 @@
 #!/bin/bash
 
-if [[ "$#" == "0" ]]; then
-    # Build all by default
-    buildYapscan=1
-    buildYapscanDll=1
-    buildMemtest=1
-else
-    # Build depends on arguments
-    buildYapscan=0
-    buildYapscanDll=0
-    buildMemtest=0
-fi
+buildYapscan=0
+buildYapscanDll=0
+buildMemtest=0
+pull=0
 
 for arg in "$@"; do
     case "$arg" in
@@ -27,6 +20,9 @@ for arg in "$@"; do
         buildYapscan=1
         buildMemtest=1
         ;;
+    --pull)
+        pull=1
+        ;;
     *)
         echo "Invalid build target \"$arg\"!"
         exit 1
@@ -34,6 +30,12 @@ for arg in "$@"; do
     esac
 done
 
+buildCount=$((buildYapscan+buildYapscanDll+buildMemtest))
+if [[ "$buildCount" == "0" ]]; then
+    buildYapscan=1
+    buildYapscanDll=1
+    buildMemtest=1
+fi
 
 cores=$(cat /proc/cpuinfo | grep "cpu cores" | head -n1 | cut -d: -f2 | cut -d' ' -f2)
 cores=$((cores*2))
@@ -49,7 +51,13 @@ mkdir -p build/ &>/dev/null
 OPENSSL_VERSION=$("$cicd/opensslVersion.sh") || exit $?
 YARA_VERSION=$("$cicd/yaraVersion.sh") || exit $?
 
+dockerBuildExtraArgs=""
+if [[ "$pull" == "1" ]]; then
+    dockerBuildExtraArgs="--pull"
+fi
+
 docker build \
+    $dockerBuildExtraArgs \
     --build-arg BUILD_THREADS=$cores \
     --build-arg OPENSSL_VERSION=$OPENSSL_VERSION --build-arg YARA_VERSION=$YARA_VERSION \
     --network=host -t yapscan-xcompile -f Dockerfile.xwin . || exit $?

@@ -1,0 +1,28 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://yapscan.targodan.de/reportFormat/v1.1.0/memory-scans.schema.json",
+  "title": "memory-scans",
+  "description": "Memory scan results. For each scanned memory section, where either a match was found or an error was emitted, one JSON object per line is stored.",
+  "type": "object",
+  "properties": {
+    "match": {
+      "type": "array",
+      "description": "Contains information about matched rules. Is empty-array if no rules matched.",
+      "items": {"$ref": "match.schema.json"}
+    },
+    "pid": {
+      "type": "integer",
+      "description": "PID of the scanned process"
+    },
+    "error": {
+      "type": ["string", "null"],
+      "description": "The error message or null if no error happened. Note, there may still be matches if an error happened."
+    },
+    "memorySegment": {
+      "type": "integer",
+      "description": "The base address of the scanned memory segment. This can be used to resolve the memory segment information in the processes.json. Note, this value can get very large. make sure your parser uses an int64."
+    }
+  },
+  "required": ["match", "pid", "error", "memorySegment"],
+  "additionalProperties": false
+}

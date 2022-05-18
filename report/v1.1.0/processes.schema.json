@@ -1,0 +1,113 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://yapscan.targodan.de/reportFormat/v1.1.0/processes.schema.json",
+  "title": "processes",
+  "description": "Information about running processes of a scanned system",
+  "type": "object",
+  "properties": {
+    "pid": {
+      "type": "integer",
+      "description": "PID of the process"
+    },
+    "bitness": {
+      "enum": ["invalid", "64Bit", "32Bit"],
+      "description": "Bitness of the process"
+    },
+    "executablePath": {
+      "type": ["string", "null"],
+      "description": "Path to the executable file of the process, if it could be determined"
+    },
+    "executableMD5": {
+      "oneOf": [
+        {
+          "type": "string",
+          "pattern": "^[a-f0-9]{32}$"
+        },
+        {"type": "null"}
+      ],
+      "description": "MD5 hexdigest of the executable file, if the file could be read"
+    },
+    "executableSHA256": {
+      "oneOf": [
+        {
+          "type": "string",
+          "pattern": "^[a-f0-9]{64}$"
+        },
+        {"type": "null"}
+      ],
+      "description": "SHA256 hexdigest of the executable file, if the file could be read"
+    },
+    "username": {
+      "type": "string",
+      "description": "Name of the user, which the process is executed under"
+    },
+    "memorySegments": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "properties": {
+          "parentBaseAddress": {
+            "type": "integer",
+            "description": "Address of the parent segment. This is equal to baseAddress if the segment is a root segment. Note, this value can get very large. make sure your parser uses an int64."
+          },
+          "baseAddress": {
+            "type": "integer",
+            "description": "Address of this segment. Note, this value can get very large. make sure your parser uses an int64."
+          },
+          "allocatedPermissions": {
+            "$ref": "permissions.schema.json",
+            "description": "The permissions, this segment was initialized with"
+          },
+          "currentPermissions": {
+            "$ref": "permissions.schema.json",
+            "description": "The permissions, this segment had during time of the scan"
+          },
+          "size": {
+            "type": "integer",
+            "description": "Size of the segment in bytes. Note, this value can get very large. make sure your parser uses an int64."
+          },
+          "rss": {
+            "type": "integer",
+            "description": "The resident set size (RSS) of the segment in bytes. Only applicable on linux. Note, this value can get very large. make sure your parser uses an int64."
+          },
+          "state": {
+            "enum": ["commit", "free", "reserve"],
+            "description": "The state of the segment. Note that the state \"reserve\" is an approximation on linux; this will be set if the RSS is exactly zero."
+          },
+          "type": {
+            "enum": ["image", "mapped", "private", "privateMapped"],
+            "description": "The type of the memory segment"
+          },
+          "mappedFile": {
+            "oneOf": [
+              {
+                "type": "object",
+                "properties": {
+                  "path": {
+                    "type": "string",
+                    "description": "The path of the mapped file"
+                  },
+                  "md5": {
+                    "type": "string",
+                    "description": "MD5 hexdigest of the mapped file, if the file could be read"
+                  },
+                  "sha256": {
+                    "type": "string",
+                    "description": "SHA256 hexdigest of the mapped file, if the file could be read"
+                  }
+                },
+                "required": ["path"],
+                "additionalProperties": false
+              },
+              {"type": "null"}
+            ]
+          }
+        },
+        "required": ["parentBaseAddress", "baseAddress", "allocatedPermissions", "currentPermissions", "size", "rss", "state", "type", "mappedFile"],
+        "additionalProperties": false
+      }
+    }
+  },
+  "required": ["pid", "bitness", "executablePath", "executableMD5", "executableSHA256", "username", "memorySegments"],
+  "additionalProperties": false
+}

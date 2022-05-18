@@ -1,0 +1,48 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://yapscan.targodan.de/reportFormat/v1.1.0/systeminfo.schema.json",
+  "title": "Yapscan Systeminfo",
+  "description": "System information gathered by Yapscan",
+  "type": "object",
+  "properties": {
+    "totalSwap": {
+      "type": "integer",
+      "description": "Total swap capacity in bytes. Note, this value can get very large. make sure your parser uses an int64."
+    },
+    "hostname": {
+      "type": "string",
+      "description": "The hostname of the scanned system"
+    },
+    "osVersion": {
+      "type": "string",
+      "description": "Operating system version"
+    },
+    "numCPUs": {
+      "type": "integer",
+      "description": "Total number of CPUs/Cores"
+    },
+    "osArch": {
+      "enum": ["invalid", "amd64", "i386"],
+      "description": "The operating system's architecture"
+    },
+    "osName": {
+      "type": "string",
+      "description": "Name of the operating system"
+    },
+    "osFlavour": {
+      "type": "string",
+      "description": "Flavour of the operating system"
+    },
+    "ips": {
+      "type": "array",
+      "items": {"type": "string"},
+      "description": "List of local IPs"
+    },
+    "totalRAM": {
+      "type": "integer",
+      "description": "Total installed RAM in bytes. Note, this value can get very large. make sure your parser uses an int64."
+    }
+  },
+  "required": ["totalSwap", "hostname", "osVersion", "numCPUs", "osArch", "osName", "osFlavour", "ips", "totalRAM"],
+  "additionalProperties": false
+}

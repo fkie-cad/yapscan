@@ -1,4 +1,4 @@
-package output
+package archiver
 
 import (
 	"archive/tar"
@@ -117,6 +117,9 @@ func (t *tarArchiver) ensureDirectoryExistsRecursive(path string, subPaths []str
 }
 
 func (t *tarArchiver) createDirectory(path string) error {
+	if t.lastBuffer != nil {
+		return errors.New("cannot create a new entry in archive before last writer was closed")
+	}
 	err := t.tarWriter.WriteHeader(&tar.Header{
 		Typeflag: tar.TypeDir,
 		Name:     path,
