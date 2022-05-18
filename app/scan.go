@@ -12,6 +12,10 @@ import (
 	"strconv"
 	"time"
 
+	"github.com/fkie-cad/yapscan/archiver"
+
+	"github.com/fkie-cad/yapscan/pgp"
+
 	"github.com/fatih/color"
 
 	"github.com/fkie-cad/yapscan/system"
@@ -147,7 +151,7 @@ func scan(c *cli.Context) error {
 			wcBuilder.Append(output.PGPSymmetricEncryptionDecorator(c.String("password"), true))
 		}
 		if c.String("pgpkey") != "" {
-			ring, err := output.ReadKeyRing(c.String("pgpkey"))
+			ring, err := pgp.ReadKeyRing(c.String("pgpkey"))
 			if err != nil {
 				return fmt.Errorf("could not read specified public pgp key, reason: %w", err)
 			}
@@ -187,7 +191,7 @@ func scan(c *cli.Context) error {
 		if err != nil {
 			return fmt.Errorf("could not initialize archive, reason: %w", err)
 		}
-		reportArchiver := output.NewTarArchiver(decoratedReportTar)
+		reportArchiver := archiver.NewTarArchiver(decoratedReportTar)
 
 		repFac := output.NewAnalysisReporterFactory(reportArchiver).
 			AutoCloseArchiver().
@@ -213,7 +217,7 @@ func scan(c *cli.Context) error {
 			if err != nil {
 				return fmt.Errorf("could not initialize archive, reason: %w", err)
 			}
-			dumpArchiver := output.NewTarArchiver(decoratedDumpTar)
+			dumpArchiver := archiver.NewTarArchiver(decoratedDumpTar)
 
 			ds := output.NewArchiveDumpStorage(dumpArchiver)
 			repFac.WithDumpStorage(ds)

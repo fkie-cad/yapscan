@@ -15,6 +15,7 @@ import (
 
 	"github.com/fkie-cad/yapscan"
 	"github.com/fkie-cad/yapscan/fileio"
+	"github.com/fkie-cad/yapscan/report"
 	"github.com/fkie-cad/yapscan/system"
 	"github.com/hillu/go-yara/v4"
 )
@@ -203,6 +204,15 @@ func (f *NoEmptyScansFilter) FilterFSScanProgress(scan *fileio.FSScanProgress) *
 	return scan
 }
 
+func GenerateRandomSalt(saltLength int) []byte {
+	salt := make([]byte, saltLength)
+	_, err := rand.Read(salt)
+	if err != nil {
+		panic(err)
+	}
+	return salt
+}
+
 type Anonymizer struct {
 	homeDirectoryParent string
 	fsIsCaseSensitive   bool
@@ -210,9 +220,13 @@ type Anonymizer struct {
 }
 
 func NewAnonymizer(salt []byte) *Anonymizer {
+	return NewAnonymizerForOS(salt, runtime.GOOS)
+}
+
+func NewAnonymizerForOS(salt []byte, os string) *Anonymizer {
 	var homeDirectoryParent string
 	var fsIsCaseSensitive bool
-	if runtime.GOOS == "windows" {
+	if strings.Contains(strings.ToLower(os), "windows") {
 		homeDirectoryParent = "users"
 		fsIsCaseSensitive = true
 	} else {
@@ -292,6 +306,62 @@ func (a *Anonymizer) AnonymizeMemorySegments(segments []*procio.MemorySegmentInf
 	return anon
 }
 
+type ReportAnonymizer struct {
+	Anonymizer *Anonymizer
+}
+
+func NewReportAnonymizer(anonymizer *Anonymizer) *ReportAnonymizer {
+	return &ReportAnonymizer{
+		Anonymizer: anonymizer,
+	}
+}
+
+func (a *ReportAnonymizer) AnonymizeReport(rprt *report.Report) *report.Report {
+	rprt.SystemInfo = a.AnonymizeSystemInfo(rprt.SystemInfo)
+	rprt.Processes = a.AnonymizeProcesses(rprt.Processes)
+	rprt.FileScans = a.AnonymizeFileScans(rprt.FileScans)
+	return rprt
+}
+
+func (a *ReportAnonymizer) AnonymizeSystemInfo(info *report.SystemInfo) *report.SystemInfo {
+	info.Hostname = a.Anonymizer.AnonymizeCaseInsensitive(info.Hostname)
+	for i := range info.IPs {
+		info.IPs[i] = a.Anonymizer.AnonymizeCaseInsensitive(info.IPs[i])
+	}
+	return info
+}
+
+func (a *ReportAnonymizer) AnonymizeProcesses(processes []*report.ProcessInfo) []*report.ProcessInfo {
+	for _, proc := range processes {
+		proc.ExecutablePath = a.Anonymizer.AnonymizePath(proc.ExecutablePath)
+		proc.Username = a.Anonymizer.AnonymizeCaseInsensitive(proc.Username)
+		proc.MemorySegments = a.AnonymizeMemorySegments(proc.MemorySegments)
+	}
+	return processes
+}
+
+func (a *ReportAnonymizer) AnonymizeMemorySegments(segments []*report.MemorySegmentInfo) []*report.MemorySegmentInfo {
+	for _, seg := range segments {
+		seg.MappedFile = a.AnonymizeFile(seg.MappedFile)
+	}
+	return segments
+}
+
+func (a *ReportAnonymizer) AnonymizeFile(file *report.File) *report.File {
+	if file == nil {
+		return nil
+	}
+	file.FilePath = a.Anonymizer.AnonymizePath(file.FilePath)
+	return file
+}
+
+func (a *ReportAnonymizer) AnonymizeFileScans(scans []*report.FileScan) []*report.FileScan {
+	for _, scan := range scans {
+		scan.File = a.AnonymizeFile(scan.File)
+	}
+	return scans
+}
+
 type AnonymizingFilter struct {
 	Anonymizer *Anonymizer
 }
@@ -301,12 +371,7 @@ func NewAnonymizingFilter(salt []byte) *AnonymizingFilter {
 }
 
 func NewAnonymizingFilterWithRandomSalt(saltLength int) (*AnonymizingFilter, error) {
-	salt := make([]byte, saltLength)
-	_, err := rand.Read(salt)
-	if err != nil {
-		return nil, err
-	}
-	return NewAnonymizingFilter(salt), nil
+	return NewAnonymizingFilter(GenerateRandomSalt(saltLength)), nil
 }
 
 func (f *AnonymizingFilter) Chain(other Filter) Filter {

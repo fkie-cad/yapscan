@@ -1,12 +1,15 @@
 package output
 
-import "github.com/targodan/go-errors"
+import (
+	"github.com/fkie-cad/yapscan/archiver"
+	"github.com/targodan/go-errors"
+)
 
 type AnalysisReporterFactory struct {
 	reporter *AnalysisReporter
 }
 
-func NewAnalysisReporterFactory(archiver Archiver) *AnalysisReporterFactory {
+func NewAnalysisReporterFactory(archiver archiver.Archiver) *AnalysisReporterFactory {
 	return &AnalysisReporterFactory{
 		reporter: &AnalysisReporter{
 			archiver: archiver,

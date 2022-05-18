@@ -1,4 +1,4 @@
-package output
+package archiver
 
 import "io"
 

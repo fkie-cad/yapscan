@@ -16,6 +16,10 @@ func Now() Time {
 	return Time{time.Now()}
 }
 
+func NewTime(t time.Time) Time {
+	return Time{t}
+}
+
 func (t Time) MarshalJSON() ([]byte, error) {
 	b := make([]byte, 0, len(Format)+2)
 	b = append(b, '"')

@@ -3,10 +3,11 @@ package report
 import (
 	"archive/tar"
 	"bytes"
-	"fmt"
 	"io"
 	"os"
 	"path/filepath"
+
+	"github.com/fkie-cad/yapscan/pgp"
 
 	"golang.org/x/crypto/openpgp"
 
@@ -15,7 +16,7 @@ import (
 
 type Reader interface {
 	SetPassword(password string)
-	SetKeyring(keyring openpgp.KeyRing)
+	SetKeyring(keyring openpgp.EntityList)
 	OpenMeta() (io.ReadCloser, error)
 	OpenSystemInformation() (io.ReadCloser, error)
 	OpenStatistics() (io.ReadCloser, error)
@@ -28,7 +29,7 @@ type Reader interface {
 type FileReader struct {
 	path     string
 	password string
-	keyring  openpgp.KeyRing
+	keyring  openpgp.EntityList
 
 	hasRead   bool
 	lastError error
@@ -48,24 +49,13 @@ func NewFileReader(path string) Reader {
 }
 
 func (rdr *FileReader) decryptIfNecessary(in io.Reader) (io.Reader, error) {
-	if rdr.password == "" && rdr.keyring == nil {
-		return in, nil
+	if rdr.keyring != nil {
+		return pgp.NewPGPDecryptor(rdr.keyring, rdr.password, in)
 	}
-
-	var prompt openpgp.PromptFunction
-
 	if rdr.password != "" {
-		prompt = func(keys []openpgp.Key, symmetric bool) ([]byte, error) {
-			return []byte(rdr.password), nil
-		}
+		return pgp.NewPGPSymmetricDecryptor(rdr.password, in)
 	}
-
-	msg, err := openpgp.ReadMessage(in, rdr.keyring, prompt, nil)
-	if err != nil {
-		return nil, err
-	}
-
-	return msg.UnverifiedBody, nil
+	return in, nil
 }
 
 func (rdr *FileReader) readAll() {
@@ -137,7 +127,7 @@ func (rdr *FileReader) SetPassword(password string) {
 	rdr.password = password
 }
 
-func (rdr *FileReader) SetKeyring(keyring openpgp.KeyRing) {
+func (rdr *FileReader) SetKeyring(keyring openpgp.EntityList) {
 	rdr.keyring = keyring
 }
 
@@ -175,16 +165,30 @@ func (rdr *FileReader) Close() error {
 	return nil
 }
 
-func ReadArmoredKeyring(path string) (openpgp.KeyRing, error) {
-	f, err := os.Open(path)
-	if err != nil {
-		return nil, fmt.Errorf("could not open keyring, reason: %w", err)
-	}
-	defer f.Close()
+type ReaderFactory struct {
+	keyring  openpgp.EntityList
+	password string
+}
 
-	keyring, err := openpgp.ReadArmoredKeyRing(f)
-	if err != nil {
-		return nil, fmt.Errorf("could not read keyring, reason: %w", err)
+func NewReaderFactory() *ReaderFactory {
+	return &ReaderFactory{}
+}
+
+func (f *ReaderFactory) SetPassword(password string) {
+	f.password = password
+}
+
+func (f *ReaderFactory) SetKeyring(keyring openpgp.EntityList) {
+	f.keyring = keyring
+}
+
+func (f *ReaderFactory) OpenFile(path string) Reader {
+	rdr := NewFileReader(path)
+	if f.password != "" {
+		rdr.SetPassword(f.password)
 	}
-	return keyring, nil
+	if f.keyring != nil {
+		rdr.SetKeyring(f.keyring)
+	}
+	return rdr
 }
