@@ -44,8 +44,7 @@ jobs:
         strategy:
             matrix:
                 go-version:
-                    - 1.17
-                    - 1.16
+                    - 1.18
                 yara-version:
                     - v4.1.3
         steps:
@@ -103,7 +102,7 @@ jobs:
         strategy:
             matrix:
                 go-version:
-                    - 1.17
+                    - 1.18
                 yara-version:
                     - v4.1.3
                 openssl-version:
