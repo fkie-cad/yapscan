@@ -2,7 +2,7 @@
 
 Yapscan is a **YA**ra based **P**rocess **SCAN**ner, aimed at giving more control about what to scan and giving detailed reports on matches.
 
-**The report format is now versioned and a stable version 1.0.0 is released with compatibility guarantees, see the [report format documentation](report/v1.0.0/README.md).**
+**The report format is now versioned and a stable version 1.1.0 is released with compatibility guarantees, see the [report format documentation](report/v1.1.0/README.md).**
 
 ## Features
 
@@ -38,6 +38,7 @@ COMMANDS:
    list-process-memory, lsmem  lists all memory segments of a process
    dump                        dumps memory of a process
    scan                        scans processes or paths with yara rules
+   anonymize                   anonymize reports
    zip-rules                   creates an encrypted zip containing compiled yara rules
    join                        joins dumps with padding
    crash-process, crash        crash a process
