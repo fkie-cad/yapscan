@@ -1,17 +1,8 @@
 #!/bin/bash
 
-if [[ "$#" == "0" ]]; then
-    # Build all by default
-    buildYapscan=1
-    buildYapscanDll=1
-    buildMemtest=1
-else
-    # Build depends on arguments
-    buildYapscan=0
-    buildYapscanDll=0
-    buildMemtest=0
-fi
-
+buildYapscan=0
+buildYapscanDll=0
+buildMemtest=0
 pull=0
 
 for arg in "$@"; do
@@ -39,6 +30,12 @@ for arg in "$@"; do
     esac
 done
 
+buildCount=$((buildYapscan+buildYapscanDll+buildMemtest))
+if [[ "$buildCount" == "0" ]]; then
+    buildYapscan=1
+    buildYapscanDll=1
+    buildMemtest=1
+fi
 
 cores=$(cat /proc/cpuinfo | grep "cpu cores" | head -n1 | cut -d: -f2 | cut -d' ' -f2)
 cores=$((cores*2))
