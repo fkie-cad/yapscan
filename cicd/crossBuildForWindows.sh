@@ -12,6 +12,8 @@ else
     buildMemtest=0
 fi
 
+pull=0
+
 for arg in "$@"; do
     case "$arg" in
     yapscan)
@@ -26,6 +28,9 @@ for arg in "$@"; do
     all)
         buildYapscan=1
         buildMemtest=1
+        ;;
+    --pull)
+        pull=1
         ;;
     *)
         echo "Invalid build target \"$arg\"!"
@@ -49,7 +54,13 @@ mkdir -p build/ &>/dev/null
 OPENSSL_VERSION=$("$cicd/opensslVersion.sh") || exit $?
 YARA_VERSION=$("$cicd/yaraVersion.sh") || exit $?
 
+dockerBuildExtraArgs=""
+if [[ "$pull" == "1" ]]; then
+    dockerBuildExtraArgs="--pull"
+fi
+
 docker build \
+    $dockerBuildExtraArgs \
     --build-arg BUILD_THREADS=$cores \
     --build-arg OPENSSL_VERSION=$OPENSSL_VERSION --build-arg YARA_VERSION=$YARA_VERSION \
     --network=host -t yapscan-xcompile -f Dockerfile.xwin . || exit $?

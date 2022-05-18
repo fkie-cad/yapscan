@@ -6,7 +6,7 @@ import (
 	"time"
 )
 
-const Format = "2006-01-02T15:04:05.000000Z-07:00"
+const TimeFormat = "2006-01-02T15:04:05.000000-07:00"
 
 type Time struct {
 	time.Time
@@ -21,9 +21,9 @@ func NewTime(t time.Time) Time {
 }
 
 func (t Time) MarshalJSON() ([]byte, error) {
-	b := make([]byte, 0, len(Format)+2)
+	b := make([]byte, 0, len(TimeFormat)+2)
 	b = append(b, '"')
-	b = t.AppendFormat(b, Format)
+	b = t.AppendFormat(b, TimeFormat)
 	b = append(b, '"')
 	return b, nil
 }
@@ -35,7 +35,7 @@ func (t *Time) UnmarshalJSON(b []byte) error {
 		return fmt.Errorf("expected a JSON-string as Time, %w", err)
 	}
 
-	tmp, err := time.Parse(Format, s)
+	tmp, err := time.Parse(TimeFormat, s)
 	t.Time = tmp
 	return err
 }
