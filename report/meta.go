@@ -30,7 +30,7 @@ const MetaFileName = "meta.json"
 
 var FormatVersion = version.Version{
 	Major:  1,
-	Minor:  0,
+	Minor:  1,
 	Bugfix: 0,
 }
 

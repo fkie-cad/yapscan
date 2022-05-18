@@ -1,0 +1,40 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://yapscan.targodan.de/reportFormat/v1.1.0/match.schema.json",
+  "title": "file-scans",
+  "description": "Scan results of file-scans. For each scanned file, where either a match was found or an error was emitted, one JSON object per line is stored.",
+  "type": "object",
+  "properties": {
+    "file": {
+      "type": "object",
+      "description": "Information about the scanned file",
+      "properties": {
+        "path": {
+          "type": "string",
+          "description": "The path of the scanned file"
+        },
+        "md5": {
+          "type": "string",
+          "description": "MD5 hexdigest of the executable file, if the file could be read"
+        },
+        "sha256": {
+          "type": "string",
+          "description": "SHA256 hexdigest of the executable file, if the file could be read"
+        }
+      },
+      "required": ["path"],
+      "additionalProperties": false
+    },
+    "match": {
+      "type": "array",
+      "description": "Contains information about matched rules. Is empty-array if no rules matched.",
+      "items": {
+        "$ref": "match.schema.json"
+      }
+    },
+    "error": {
+      "type": ["string", "null"],
+      "description": "The error message or null if no error happened. Note, there may still be matches if an error happened."
+    }
+  }
+}
