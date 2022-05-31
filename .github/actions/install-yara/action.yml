@@ -1,0 +1,48 @@
+name: 'Install libyara'
+description: 'Installs libyara and its dependencies'
+inputs:
+    yara-version:
+        description: "Yara version"
+        required: true
+    cache:
+        description: "Activates caching if set to 'true'"
+        default: 'false'
+        required: false
+    skip-install:
+        description: "Yara is only built, not installed if 'true'"
+        default: 'false'
+        required: false
+runs:
+    using: "composite"
+    steps:
+        - name: Install libyara dependencies
+          run: sudo apt-get update && sudo apt-get install -y libssl-dev libprotobuf-dev flex bison
+          shell: bash
+
+        - name: Create dependencies directory
+          run: mkdir -p deps
+          shell: bash
+
+        - name: Cache libyara
+          uses: actions/cache@v3
+          id: yara-cache
+          with:
+              path: deps
+              key: ${{ runner.os }}-yara-${{ inputs.yara-version }}
+          if: ${{ inputs.cache == 'true' }}
+
+        - name: Build libyara
+          run: |
+              git clone --depth=1 --branch ${{ inputs.yara-version }} https://github.com/VirusTotal/yara.git deps/yara
+              cd deps/yara
+              ./bootstrap.sh
+              ./configure --prefix=/usr --with-crypto || exit $?
+              make -j
+          shell: bash
+          if: ${{ inputs.cache != 'true' || steps.yara-cache.outputs.cache-hit != 'true' }}
+
+        - name: Install libyara
+          run: sudo make install
+          shell: bash
+          working-directory: deps/yara
+          if: ${{ inputs.skip-install != 'true' }}
