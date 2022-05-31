@@ -2,74 +2,40 @@ name: CI
 
 on:
     push:
-        branches:
-            - master
-            - develop
+        branches: [ master , develop, feature/ghActionsOverhaul ]
     pull_request:
-        branches:
-            - master
-            - develop
+        branches: [ master , develop ]
 
 jobs:
     setup:
         runs-on: ubuntu-18.04
         strategy:
             matrix:
-                yara-version:
-                    - v4.2.1
+                yara-version: [ "v4.2.1" ]
         steps:
             - uses: actions/checkout@v2
 
-            - name: Install libyara dependencies
-              run: sudo apt-get update && sudo apt-get install -y libssl-dev libprotobuf-dev flex bison
-            - name: Cache libyara
-              uses: actions/cache@v2
-              id: yara-cache
+            - name: Install dependencies
+              uses: ./.github/actions/install-yara
               with:
-                  key: ${{ runner.os }}-yara-${{ matrix.yara-version }}
-                  path: deps
-            - run: mkdir -p deps
-            - name: Build libyara
-              run: |
-                  git clone --depth=1 --branch ${{ matrix.yara-version }} https://github.com/VirusTotal/yara.git deps/yara
-                  cd deps/yara
-                  ./bootstrap.sh
-                  ./configure --prefix=/usr --with-crypto || exit $?
-                  make -j
-              if: steps.yara-cache.outputs.cache-hit != 'true'
+                  yara-version: ${{ matrix.yara-version }}
+                  cache: 'true'
 
     test:
         runs-on: ubuntu-18.04
         needs: setup
         strategy:
             matrix:
-                go-version:
-                    - 1.18
-                yara-version:
-                    - v4.2.1
+                go-version: [ "1.18" ]
+                yara-version: [ "v4.2.1" ]
         steps:
             - uses: actions/checkout@v2
 
-            - name: Install libyara dependencies
-              run: sudo apt-get update && sudo apt-get install -y libssl-dev libprotobuf-dev flex bison
-            - name: Cache libyara
-              uses: actions/cache@v2
-              id: yara-cache
+            - name: Install dependencies
+              uses: ./.github/actions/install-yara
               with:
-                  key: ${{ runner.os }}-yara-${{ matrix.yara-version }}
-                  path: deps
-            - run: mkdir -p deps
-            - name: Build libyara
-              run: |
-                  git clone --depth=1 --branch ${{ matrix.yara-version }} https://github.com/VirusTotal/yara.git deps/yara
-                  cd deps/yara
-                  ./bootstrap.sh
-                  ./configure --prefix=/usr --with-crypto || exit $?
-                  make -j
-              if: steps.yara-cache.outputs.cache-hit != 'true'
-            - name: Install libyara
-              run: sudo make install
-              working-directory: deps/yara
+                  yara-version: ${{ matrix.yara-version }}
+                  cache: 'true'
 
             - name: Set up Go
               uses: actions/setup-go@v2
@@ -101,12 +67,9 @@ jobs:
         needs: setup
         strategy:
             matrix:
-                go-version:
-                    - 1.18
-                yara-version:
-                    - v4.2.1
-                openssl-version:
-                    - OpenSSL_1_1_1-stable
+                go-version: [ "1.18" ]
+                yara-version: [ "v4.2.1" ]
+                openssl-version: [ "OpenSSL_1_1_1-stable" ]
         steps:
             - uses: actions/checkout@v2
 
@@ -115,26 +78,11 @@ jobs:
               with:
                   go-version: ${{ matrix.go-version }}
 
-            - name: Install libyara dependencies
-              run: sudo apt-get update && sudo apt-get install -y libssl-dev libprotobuf-dev flex bison
-            - name: Cache libyara
-              uses: actions/cache@v2
-              id: yara-cache
+            - name: Install dependencies
+              uses: ./.github/actions/install-yara
               with:
-                  key: ${{ runner.os }}-yara-${{ matrix.yara-version }}
-                  path: deps
-            - run: mkdir -p deps
-            - name: Build libyara
-              run: |
-                  git clone --depth=1 --branch ${{ matrix.yara-version }} https://github.com/VirusTotal/yara.git deps/yara
-                  cd deps/yara
-                  ./bootstrap.sh
-                  ./configure --prefix=/usr --with-crypto || exit $?
-                  make -j
-              if: steps.yara-cache.outputs.cache-hit != 'true'
-            - name: Install libyara
-              run: sudo make install
-              working-directory: deps/yara
+                  yara-version: ${{ matrix.yara-version }}
+                  cache: 'true'
 
             - run: mkdir -p cicd/build/
             - name: Building yapscan for linux
