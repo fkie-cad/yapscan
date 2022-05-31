@@ -15,11 +15,12 @@ jobs:
         steps:
             - uses: actions/checkout@v3
 
-            - name: Install dependencies
+            - name: Build yara
               uses: ./.github/actions/install-yara
               with:
                   yara-version: ${{ matrix.yara-version }}
                   cache: 'true'
+                  skip-install: 'true'
 
     test:
         runs-on: ubuntu-latest
@@ -75,18 +76,18 @@ jobs:
         steps:
             - uses: actions/checkout@v3
 
+            - name: Install dependencies
+              uses: ./.github/actions/install-yara
+              with:
+                  yara-version: ${{ matrix.yara-version }}
+                  cache: 'true'
+
             - name: Set up Go
               uses: actions/setup-go@v3
               with:
                   go-version: ${{ matrix.go-version }}
                   cache: true
                   cache-dependency-path: go.sum
-
-            - name: Install dependencies
-              uses: ./.github/actions/install-yara
-              with:
-                  yara-version: ${{ matrix.yara-version }}
-                  cache: 'true'
 
             - run: mkdir -p cicd/build/
             - name: Building yapscan for linux

@@ -8,6 +8,10 @@ inputs:
         description: "Activates caching if set to 'true'"
         default: 'false'
         required: false
+    skip-install:
+        description: "Yara is only built, not installed if 'true'"
+        default: 'false'
+        required: false
 runs:
     using: "composite"
     steps:
@@ -41,3 +45,4 @@ runs:
           run: sudo make install
           shell: bash
           working-directory: deps/yara
+          if: ${{ inputs.skip-install != 'true' }}
