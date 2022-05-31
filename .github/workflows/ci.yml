@@ -2,7 +2,7 @@ name: CI
 
 on:
     push:
-        branches: [ master , develop, feature/ghActionsOverhaul ]
+        branches: [ master , develop ]
     pull_request:
         branches: [ master , develop ]
 
