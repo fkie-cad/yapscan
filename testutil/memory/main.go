@@ -24,7 +24,8 @@ func Main() {
 
 	ensureStdinBinary()
 
-	size, err := strconv.ParseUint(os.Args[1], 10, 64)
+	// 31 bits because we need to convert it to int later
+	size, err := strconv.ParseUint(os.Args[1], 10, 31)
 	if err != nil {
 		fmt.Printf(OutputErrorPrefix+"Invalid size value, %v\n", err)
 		os.Exit(1)

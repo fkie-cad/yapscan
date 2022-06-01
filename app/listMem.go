@@ -19,11 +19,10 @@ func listMemory(c *cli.Context) error {
 	if c.NArg() != 1 {
 		return errors.Newf("expected exactly one argument, got %d", c.NArg())
 	}
-	pid_, err := strconv.ParseUint(c.Args().Get(0), 10, 64)
+	pid, err := strconv.Atoi(c.Args().Get(0))
 	if err != nil {
 		return errors.Newf("\"%s\" is not a pid", c.Args().Get(0))
 	}
-	pid := int(pid_)
 
 	f, err := filterFromArgs(c)
 	if err != nil {
