@@ -21,7 +21,7 @@ type memfileReader struct {
 }
 
 func newMemoryReader(proc Process, seg *MemorySegmentInfo) (memoryReaderImpl, error) {
-	memfile, err := os.OpenFile(fmt.Sprintf("/proc/%d/mem", proc.PID()), os.O_RDONLY, 0400)
+	memfile, err := os.OpenFile(fmt.Sprintf("%s/%d/mem", procPath, proc.PID()), os.O_RDONLY, 0400)
 	if err != nil {
 		return nil, fmt.Errorf("could not open process memory for reading, reason: %w", err)
 	}

@@ -29,6 +29,13 @@ const (
 )
 
 const (
+	nativeProtNone  = C.PROT_NONE
+	nativeProtRead  = C.PROT_READ
+	nativeProtWrite = C.PROT_WRITE
+	nativeProtExec  = C.PROT_EXEC
+)
+
+const (
 	keyRSS            = "Rss"
 	keyLastDetailLine = "VmFlags"
 )
@@ -112,20 +119,17 @@ func parseSegmentHead(line string) (*MemorySegmentInfo, error) {
 
 	addrStart, err := strconv.ParseUint(matches[fieldAddrStart], 16, 64)
 	if err != nil {
-		return seg, fmt.Errorf("start address is not a valid hex number, %w", err)
+		return nil, fmt.Errorf("start address is not a valid hex number, %w", err)
 	}
 	seg.BaseAddress = uintptr(addrStart)
 	seg.ParentBaseAddress = uintptr(addrStart)
 
 	endStart, err := strconv.ParseUint(matches[fieldAddrEnd], 16, 64)
 	if err != nil {
-		return seg, fmt.Errorf("end address is not a valid hex number, %w", err)
+		return nil, fmt.Errorf("end address is not a valid hex number, %w", err)
 	}
 	seg.Size = uintptr(endStart - addrStart)
 
-	if len(matches[fieldPerms]) != 4 {
-		return seg, fmt.Errorf("permissions have invalid length, expected exactly 4 characters")
-	}
 	perms, err := ParsePermissions(matches[fieldPerms][0:3])
 	if err != nil {
 		return seg, fmt.Errorf("permissions have invalid format, %w", err)
@@ -137,7 +141,9 @@ func parseSegmentHead(line string) (*MemorySegmentInfo, error) {
 		t = SegmentTypeMapped
 	case 'p':
 		t = SegmentTypePrivate
-		perms.COW = true
+		if perms.Write {
+			perms.COW = true
+		}
 	default:
 		return seg, errors.Newf("invalid memory type \"%c\"", matches[fieldPerms][3])
 	}
@@ -147,9 +153,9 @@ func parseSegmentHead(line string) (*MemorySegmentInfo, error) {
 
 	fpath := matches[fieldPathname]
 	if fpath != "" && fpath[0] != '[' {
-		deleted := "(deleted)"
-		idxDeleted := strings.Index(fpath, deleted)
-		if idxDeleted == len(fpath)-len(deleted) /* ends with deleted */ {
+		deleted := " (deleted)"
+		idxDeleted := strings.LastIndex(fpath, deleted)
+		if idxDeleted >= 0 && idxDeleted == len(fpath)-len(deleted) /* ends with deleted */ {
 			fpath = strings.TrimSpace(fpath[:idxDeleted])
 		}
 
@@ -225,21 +231,21 @@ func parseBytes(value string) (uintptr, error) {
 // PermissionsToNative converts the given Permissions to the
 // native linux representation.
 func PermissionsToNative(perms Permissions) int {
-	switch perms.String() {
-	case "R--":
-		return C.PROT_READ
-	case "RW-":
-		return C.PROT_READ | C.PROT_WRITE
-	case "RC-":
-		// Isn't actually COW, but RW is close enough
-		return C.PROT_READ | C.PROT_WRITE
-	case "--X":
-		return C.PROT_EXEC
-	case "RWX":
-		return C.PROT_READ | C.PROT_WRITE | C.PROT_EXEC
-	case "RCX":
-		return C.PROT_READ | C.PROT_WRITE | C.PROT_EXEC
-	default:
-		return C.PROT_NONE
+	if !perms.Read && !perms.Write && !perms.Execute {
+		return nativeProtNone
 	}
+
+	// COW does not translate to native permissions, so its ignored
+
+	native := 0
+	if perms.Read {
+		native |= nativeProtRead
+	}
+	if perms.Write {
+		native |= nativeProtWrite
+	}
+	if perms.Execute {
+		native |= nativeProtExec
+	}
+	return native
 }
