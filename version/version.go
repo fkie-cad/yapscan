@@ -9,7 +9,7 @@ import (
 
 var YapscanVersion = Version{
 	Major:  0,
-	Minor:  15,
+	Minor:  16,
 	Bugfix: 0,
 }
 

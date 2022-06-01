@@ -2,79 +2,48 @@ name: CI
 
 on:
     push:
-        branches:
-            - master
-            - develop
+        branches: [ master , develop ]
     pull_request:
-        branches:
-            - master
-            - develop
+        branches: [ master , develop ]
 
 jobs:
     setup:
-        runs-on: ubuntu-18.04
+        runs-on: ubuntu-latest
         strategy:
             matrix:
-                yara-version:
-                    - v4.2.1
+                yara-version: [ "v4.2.1" ]
         steps:
-            - uses: actions/checkout@v2
+            - uses: actions/checkout@v3
 
-            - name: Install libyara dependencies
-              run: sudo apt-get update && sudo apt-get install -y libssl-dev libprotobuf-dev flex bison
-            - name: Cache libyara
-              uses: actions/cache@v2
-              id: yara-cache
+            - name: Build yara
+              uses: ./.github/actions/install-yara
               with:
-                  key: ${{ runner.os }}-yara-${{ matrix.yara-version }}
-                  path: deps
-            - run: mkdir -p deps
-            - name: Build libyara
-              run: |
-                  git clone --depth=1 --branch ${{ matrix.yara-version }} https://github.com/VirusTotal/yara.git deps/yara
-                  cd deps/yara
-                  ./bootstrap.sh
-                  ./configure --prefix=/usr --with-crypto || exit $?
-                  make -j
-              if: steps.yara-cache.outputs.cache-hit != 'true'
+                  yara-version: ${{ matrix.yara-version }}
+                  cache: 'true'
+                  skip-install: 'true'
 
     test:
-        runs-on: ubuntu-18.04
+        runs-on: ubuntu-latest
         needs: setup
         strategy:
             matrix:
-                go-version:
-                    - 1.18
-                yara-version:
-                    - v4.2.1
+                go-version: [ "1.18" ]
+                yara-version: [ "v4.2.1" ]
         steps:
-            - uses: actions/checkout@v2
+            - uses: actions/checkout@v3
 
-            - name: Install libyara dependencies
-              run: sudo apt-get update && sudo apt-get install -y libssl-dev libprotobuf-dev flex bison
-            - name: Cache libyara
-              uses: actions/cache@v2
-              id: yara-cache
+            - name: Install dependencies
+              uses: ./.github/actions/install-yara
               with:
-                  key: ${{ runner.os }}-yara-${{ matrix.yara-version }}
-                  path: deps
-            - run: mkdir -p deps
-            - name: Build libyara
-              run: |
-                  git clone --depth=1 --branch ${{ matrix.yara-version }} https://github.com/VirusTotal/yara.git deps/yara
-                  cd deps/yara
-                  ./bootstrap.sh
-                  ./configure --prefix=/usr --with-crypto || exit $?
-                  make -j
-              if: steps.yara-cache.outputs.cache-hit != 'true'
-            - name: Install libyara
-              run: sudo make install
-              working-directory: deps/yara
+                  yara-version: ${{ matrix.yara-version }}
+                  cache: 'true'
 
             - name: Set up Go
-              uses: actions/setup-go@v2
+              uses: actions/setup-go@v3
               with:
                   go-version: ${{ matrix.go-version }}
+                  cache: true
+                  cache-dependency-path: go.sum
 
             - name: Running unit tests
               run: go test -race -coverprofile=coverage.txt -covermode=atomic -coverpkg="$coverpkg" -v $(go list ./... | grep -v /acceptanceTests)
@@ -88,60 +57,44 @@ jobs:
             - name: Consolidating coverage
               run: cat acceptanceTests/coverage.txt | tail -n+2 >> coverage.txt && rm acceptanceTests/coverage.txt
             - name: Upload coverage
-              uses: actions/upload-artifact@v2
+              uses: actions/upload-artifact@v3
               with:
                   name: coverage-linux-${{ matrix.go-version }}-${{ matrix.yara-version }}
                   path: coverage.txt
             - name: Codecov
-              uses: codecov/codecov-action@v1.5.2
+              uses: codecov/codecov-action@v3
 
 
     build:
-        runs-on: ubuntu-18.04
+        runs-on: ubuntu-latest
         needs: setup
         strategy:
             matrix:
-                go-version:
-                    - 1.18
-                yara-version:
-                    - v4.2.1
-                openssl-version:
-                    - OpenSSL_1_1_1-stable
+                go-version: [ "1.18" ]
+                yara-version: [ "v4.2.1" ]
+                openssl-version: [ "OpenSSL_1_1_1-stable" ]
         steps:
-            - uses: actions/checkout@v2
+            - uses: actions/checkout@v3
+
+            - name: Install dependencies
+              uses: ./.github/actions/install-yara
+              with:
+                  yara-version: ${{ matrix.yara-version }}
+                  cache: 'true'
 
             - name: Set up Go
-              uses: actions/setup-go@v2
+              uses: actions/setup-go@v3
               with:
                   go-version: ${{ matrix.go-version }}
-
-            - name: Install libyara dependencies
-              run: sudo apt-get update && sudo apt-get install -y libssl-dev libprotobuf-dev flex bison
-            - name: Cache libyara
-              uses: actions/cache@v2
-              id: yara-cache
-              with:
-                  key: ${{ runner.os }}-yara-${{ matrix.yara-version }}
-                  path: deps
-            - run: mkdir -p deps
-            - name: Build libyara
-              run: |
-                  git clone --depth=1 --branch ${{ matrix.yara-version }} https://github.com/VirusTotal/yara.git deps/yara
-                  cd deps/yara
-                  ./bootstrap.sh
-                  ./configure --prefix=/usr --with-crypto || exit $?
-                  make -j
-              if: steps.yara-cache.outputs.cache-hit != 'true'
-            - name: Install libyara
-              run: sudo make install
-              working-directory: deps/yara
+                  cache: true
+                  cache-dependency-path: go.sum
 
             - run: mkdir -p cicd/build/
             - name: Building yapscan for linux
               run: go build -trimpath -o ../../cicd/build/yapscan
               working-directory: cmd/yapscan
             - name: Upload linux build
-              uses: actions/upload-artifact@v2
+              uses: actions/upload-artifact@v3
               with:
                   name: yapscan-linux
                   path: cicd/build/yapscan
@@ -149,7 +102,7 @@ jobs:
             - name: Gather linux deps
               uses: ./.github/actions/gather-linux-deps
             - name: Upload linux deps
-              uses: actions/upload-artifact@v2
+              uses: actions/upload-artifact@v3
               with:
                   name: deps-linux
                   path: |
@@ -158,7 +111,7 @@ jobs:
                       cicd/build/libyara.license
 
             - name: Docker Login
-              uses: docker/login-action@v1.10.0
+              uses: docker/login-action@v2
               with:
                   username: ${{ secrets.DOCKER_USERNAME }}
                   password: ${{ secrets.DOCKER_PASSWORD }}
@@ -172,7 +125,7 @@ jobs:
                   openssl-version: ${{ matrix.openssl-version }}
                   yara-version: ${{ matrix.yara-version }}
             - name: Upload windows build
-              uses: actions/upload-artifact@v2
+              uses: actions/upload-artifact@v3
               with:
                   name: yapscan-windows
                   path: |
