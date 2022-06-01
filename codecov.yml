@@ -1,0 +1,9 @@
+coverage:
+    precision: 2
+    round: down
+    range: "50...75"
+
+ignore:
+    - acceptanceTests
+    - testutil
+    - service # Service is only relevant for windows, but coverage is only created on linux
