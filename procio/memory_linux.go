@@ -7,6 +7,7 @@ import (
 	"bufio"
 	"fmt"
 	"io"
+	"os"
 	"regexp"
 	"strconv"
 	"strings"
@@ -106,7 +107,7 @@ func stateSegmentHead(in *bufio.Reader, out chan<- *MemorySegmentInfo, lastSeg *
 }
 
 func parseSegmentHead(line string) (*MemorySegmentInfo, error) {
-	line = strings.TrimSpace(line)
+	line = strings.TrimRight(line, "\n")
 	matches := segmentHeadRegex.FindStringSubmatch(line)
 	if len(matches) != expectedFieldCount {
 		return nil, fmt.Errorf("invalid format \"%s\"", line)
@@ -226,6 +227,26 @@ func parseBytes(value string) (uintptr, error) {
 		return 0, fmt.Errorf("amount \"%s\" is not integer", amount)
 	}
 	return uintptr(amountUint) * detailUnitMultiplier, nil
+}
+
+func sanitizeMappedFile(proc Process, seg *MemorySegmentInfo) {
+	if seg.MappedFile == nil {
+		return
+	}
+	originalPath := seg.MappedFile.Path()
+	if strings.Contains(originalPath, "\\012") {
+		// newline characters are encoded as '\012', but we cannot distinguish between an actual
+		// literal '\012' or it representing the newline character => lookup the link
+		linkPath := fmt.Sprintf("%s/%d/map_files/%x-%x", procPath, proc.PID(), seg.BaseAddress, seg.BaseAddress+seg.Size)
+		actualPath, err := os.Readlink(linkPath)
+		if err != nil {
+			// Could not read the link => leave it as-is
+			return
+		}
+		if originalPath != actualPath {
+			seg.MappedFile = fileio.NewFile(actualPath)
+		}
+	}
 }
 
 // PermissionsToNative converts the given Permissions to the

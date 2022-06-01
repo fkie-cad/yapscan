@@ -5,6 +5,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"os"
 	"testing"
 
 	"github.com/fkie-cad/yapscan/fileio"
@@ -155,6 +156,52 @@ func TestParseSegmentHead(t *testing.T) {
 			Type:  SegmentTypePrivateMapped,
 			MappedFile: &fileio.OSFile{
 				FilePath: "/bin/bash",
+			},
+			SubSegments: []*MemorySegmentInfo{},
+		})
+	})
+
+	Convey("A private file-backed segment with whitespaces should work", t, func() {
+		info, err := parseSegmentHead("00400000-0048a000 r-xp 00000000 fd:03 960637       /bin/some path/with whitespaces.txt")
+		So(err, ShouldBeNil)
+		So(info, ShouldResemble, &MemorySegmentInfo{
+			ParentBaseAddress: 0x400000,
+			BaseAddress:       0x400000,
+			AllocatedPermissions: Permissions{
+				Read: true, Execute: true,
+			},
+			CurrentPermissions: Permissions{
+				Read: true, Execute: true,
+			},
+			Size:  0x8a000,
+			RSS:   0,
+			State: StateCommit,
+			Type:  SegmentTypePrivateMapped,
+			MappedFile: &fileio.OSFile{
+				FilePath: "/bin/some path/with whitespaces.txt",
+			},
+			SubSegments: []*MemorySegmentInfo{},
+		})
+	})
+
+	Convey("A private file-backed segment with trailing whitespace should work", t, func() {
+		info, err := parseSegmentHead("00400000-0048a000 r-xp 00000000 fd:03 960637       /bin/bash ")
+		So(err, ShouldBeNil)
+		So(info, ShouldResemble, &MemorySegmentInfo{
+			ParentBaseAddress: 0x400000,
+			BaseAddress:       0x400000,
+			AllocatedPermissions: Permissions{
+				Read: true, Execute: true,
+			},
+			CurrentPermissions: Permissions{
+				Read: true, Execute: true,
+			},
+			Size:  0x8a000,
+			RSS:   0,
+			State: StateCommit,
+			Type:  SegmentTypePrivateMapped,
+			MappedFile: &fileio.OSFile{
+				FilePath: "/bin/bash ",
 			},
 			SubSegments: []*MemorySegmentInfo{},
 		})
@@ -350,4 +397,99 @@ func TestPermissionsToNative(t *testing.T) {
 			So(native, ShouldEqual, param.native)
 		})
 	}
+}
+
+func TestSanitizeMappedFile(t *testing.T) {
+	Convey("Sanitizing a segment without a mapped file should do nothing", t, func() {
+		proc := NewMockProcess(t)
+
+		seg := &MemorySegmentInfo{}
+		sanitizeMappedFile(proc, seg)
+		So(seg, ShouldResemble, &MemorySegmentInfo{})
+	})
+
+	Convey("Sanitizing a segment with a mapped file", t, func() {
+		Convey("without any special escapes should do nothing", func() {
+			proc := NewMockProcess(t)
+
+			seg := &MemorySegmentInfo{
+				MappedFile: fileio.NewFile("/some/normal/path"),
+			}
+
+			sanitizeMappedFile(proc, seg)
+
+			So(seg, ShouldResemble, &MemorySegmentInfo{
+				MappedFile: fileio.NewFile("/some/normal/path"),
+			})
+		})
+
+		Convey("with a newline escape sequence", func() {
+			pid := 42
+			proc := NewMockProcess(t)
+			proc.On("PID").Return(pid)
+
+			Convey("where the link is non-existent should do nothing", func() {
+				seg := &MemorySegmentInfo{
+					MappedFile: fileio.NewFile("/path/withEscapeSequence\\012"),
+				}
+
+				sanitizeMappedFile(proc, seg)
+
+				So(seg, ShouldResemble, &MemorySegmentInfo{
+					MappedFile: fileio.NewFile("/path/withEscapeSequence\\012"),
+				})
+			})
+
+			Convey("but the link shows its a literal '\\012' should do nothing", func() {
+				origProcPath := procPath
+				defer func() {
+					procPath = origProcPath
+				}()
+
+				tempdir := t.TempDir()
+				procPath = tempdir
+
+				mappedName := "/path/withEscapeSequence\\012/but/notANewline"
+				seg := &MemorySegmentInfo{
+					MappedFile: fileio.NewFile(mappedName),
+				}
+
+				mapFilesPath := fmt.Sprintf("%s/%d/map_files", tempdir, pid)
+				os.MkdirAll(mapFilesPath, 0700)
+				os.Symlink(mappedName, fmt.Sprintf("%s/%x-%x", mapFilesPath, seg.BaseAddress, seg.BaseAddress+seg.Size))
+
+				sanitizeMappedFile(proc, seg)
+
+				So(seg, ShouldResemble, &MemorySegmentInfo{
+					MappedFile: fileio.NewFile(mappedName),
+				})
+			})
+
+			Convey("and its a newline character should replace the path", func() {
+				origProcPath := procPath
+				defer func() {
+					procPath = origProcPath
+				}()
+
+				tempdir := t.TempDir()
+				procPath = tempdir
+
+				mappedName := "/path/withEscapeSequence\\012/asNewline"
+				readName := "/path/withEscapeSequence\n/asNewline"
+				seg := &MemorySegmentInfo{
+					MappedFile: fileio.NewFile(mappedName),
+				}
+
+				mapFilesPath := fmt.Sprintf("%s/%d/map_files", tempdir, pid)
+				os.MkdirAll(mapFilesPath, 0700)
+				os.Symlink(readName, fmt.Sprintf("%s/%x-%x", mapFilesPath, seg.BaseAddress, seg.BaseAddress+seg.Size))
+
+				sanitizeMappedFile(proc, seg)
+
+				So(seg, ShouldResemble, &MemorySegmentInfo{
+					MappedFile: fileio.NewFile(readName),
+				})
+			})
+		})
+	})
 }

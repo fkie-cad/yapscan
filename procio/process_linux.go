@@ -186,7 +186,11 @@ func (p *processLinux) MemorySegments() ([]*MemorySegmentInfo, error) {
 	}
 	defer smaps.Close()
 
-	return parseSMEMFile(smaps)
+	segments, err := parseSMEMFile(smaps)
+	for _, seg := range segments {
+		sanitizeMappedFile(p, seg)
+	}
+	return segments, err
 }
 
 func (p *processLinux) Crash(m CrashMethod) error {
