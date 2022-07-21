@@ -177,14 +177,26 @@ func (s *defaultSegmentScanner) ScanSegment(seg *procio.MemorySegmentInfo) ([]ya
 	defer rdr.Close()
 
 	data := make([]byte, seg.Size)
-	_, err = io.ReadFull(rdr, data)
-	if err != nil {
-		logrus.WithFields(logrus.Fields{
-			"process":       s.proc,
-			"segment":       seg,
-			logrus.ErrorKey: err,
-		}).Error("Could not read memory of process.")
-		return nil, nil, err
+	if isSuitableForOptimization(seg) {
+		err = readSegmentOptimized(s.proc, seg, rdr, data)
+		if err != nil {
+			logrus.WithFields(logrus.Fields{
+				"process":       s.proc,
+				"segment":       seg,
+				logrus.ErrorKey: err,
+			}).Error("Could not read memory of process.")
+			return nil, nil, err
+		}
+	} else {
+		_, err = io.ReadFull(rdr, data)
+		if err != nil {
+			logrus.WithFields(logrus.Fields{
+				"process":       s.proc,
+				"segment":       seg,
+				logrus.ErrorKey: err,
+			}).Error("Could not read memory of process.")
+			return nil, nil, err
+		}
 	}
 
 	matches, err := s.scanner.ScanMem(data)

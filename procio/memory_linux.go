@@ -6,6 +6,7 @@ import "C"
 import (
 	"bufio"
 	"fmt"
+	"golang.org/x/sys/unix"
 	"io"
 	"os"
 	"regexp"
@@ -152,6 +153,27 @@ func parseSegmentHead(line string) (*MemorySegmentInfo, error) {
 	seg.CurrentPermissions = perms
 	seg.Type = t
 
+	offset, err := strconv.ParseUint(matches[fieldOffset], 16, 64)
+	if err != nil {
+		return seg, fmt.Errorf("offset is not a valid hex number, %w", err)
+	}
+
+	dev := strings.Split(matches[fieldDev], ":")
+	devMaj, err := strconv.ParseUint(dev[0], 16, 32)
+	if err != nil {
+		return seg, fmt.Errorf("device major is not a valid hex number, %w", err)
+	}
+
+	devMin, err := strconv.ParseUint(dev[1], 16, 32)
+	if err != nil {
+		return seg, fmt.Errorf("device minor is not a valid hex number, %w", err)
+	}
+
+	inode, err := strconv.ParseUint(matches[fieldInode], 10, 64)
+	if err != nil {
+		return seg, fmt.Errorf("inode is not a valid decimal number, %w", err)
+	}
+
 	fpath := matches[fieldPathname]
 	if fpath != "" && fpath[0] != '[' {
 		deleted := " (deleted)"
@@ -160,7 +182,7 @@ func parseSegmentHead(line string) (*MemorySegmentInfo, error) {
 			fpath = strings.TrimSpace(fpath[:idxDeleted])
 		}
 
-		seg.MappedFile = fileio.NewFile(fpath)
+		seg.MappedFile = fileio.NewFileWithInode(fpath, inode, unix.Mkdev(uint32(devMaj), uint32(devMin)), offset)
 		if seg.Type == SegmentTypePrivate {
 			seg.Type = SegmentTypePrivateMapped
 		}
