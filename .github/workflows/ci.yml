@@ -11,7 +11,7 @@ jobs:
         runs-on: ubuntu-latest
         strategy:
             matrix:
-                yara-version: [ "v4.2.1" ]
+                yara-version: [ "v4.2.3" ]
         steps:
             - uses: actions/checkout@v3
 
@@ -27,8 +27,8 @@ jobs:
         needs: setup
         strategy:
             matrix:
-                go-version: [ "1.18" ]
-                yara-version: [ "v4.2.1" ]
+                go-version: [ "1.18", "1.19" ]
+                yara-version: [ "v4.2.3" ]
         steps:
             - uses: actions/checkout@v3
 
@@ -69,8 +69,8 @@ jobs:
         needs: setup
         strategy:
             matrix:
-                go-version: [ "1.18" ]
-                yara-version: [ "v4.2.1" ]
+                go-version: [ "1.18", "1.19" ]
+                yara-version: [ "v4.2.3" ]
                 openssl-version: [ "OpenSSL_1_1_1-stable" ]
         steps:
             - uses: actions/checkout@v3
@@ -94,6 +94,7 @@ jobs:
               working-directory: cmd/yapscan
             - name: Upload linux build
               uses: actions/upload-artifact@v3
+              if: ${{ matrix.go-version == "1.19" }}
               with:
                   name: yapscan-linux
                   path: cicd/build/yapscan
@@ -102,6 +103,7 @@ jobs:
               uses: ./.github/actions/gather-linux-deps
             - name: Upload linux deps
               uses: actions/upload-artifact@v3
+              if: ${{ matrix.go-version == "1.19" }}
               with:
                   name: deps-linux
                   path: |
@@ -125,6 +127,7 @@ jobs:
                   yara-version: ${{ matrix.yara-version }}
             - name: Upload windows build
               uses: actions/upload-artifact@v3
+              if: ${{ matrix.go-version == "1.19" }}
               with:
                   name: yapscan-windows
                   path: |
