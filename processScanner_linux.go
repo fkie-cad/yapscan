@@ -3,11 +3,12 @@ package yapscan
 import (
 	"encoding/binary"
 	"fmt"
-	"github.com/fkie-cad/yapscan/procio"
-	"github.com/sirupsen/logrus"
 	"io"
 	"os"
 	"syscall"
+
+	"github.com/fkie-cad/yapscan/procio"
+	"github.com/sirupsen/logrus"
 )
 
 type PagemapEntry struct {
@@ -100,17 +101,18 @@ func readSegmentOptimized(proc procio.Process, seg *procio.MemorySegmentInfo, rd
 
 	mappedFile, _ := os.Open(seg.MappedFile.Path())
 	defer mappedFile.Close()
-	io.ReadFull(mappedFile, data)
 
+	_, err = mappedFile.Seek(int64(seg.MappedFile.Offset()), io.SeekStart)
 	if err != nil {
 		logrus.WithFields(logrus.Fields{
 			"process":       proc,
 			"segment":       seg,
 			logrus.ErrorKey: err,
-		}).Error("Could not open mapped file of memory segment.")
+		}).Error("Could not seek mapped file to offset.")
 		return err
 	}
-	defer mappedFile.Close()
+
+	io.ReadFull(mappedFile, data)
 
 	currentAddress := seg.BaseAddress
 	for currentAddress < seg.BaseAddress+seg.Size {
