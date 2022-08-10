@@ -59,13 +59,36 @@ func NewTesterCompiler() (*Compiler, error) {
 
 func NewTester(ctx context.Context, c *Compiler, data []byte, perms string) (*Tester, error) {
 	cmdCtx, cmdCancel := context.WithCancel(ctx)
+	cmd := makeTesterCommand(cmdCtx, c, data, perms)
+	return newTester(ctx, cmdCtx, cmd, cmdCancel, data)
+}
 
-	cmd := exec.CommandContext(ctx,
+func NewMappedTester(ctx context.Context, c *Compiler, mappedFile string, mapOffset, writeOffset int, data []byte, perms string) (*Tester, error) {
+	cmdCtx, cmdCancel := context.WithCancel(ctx)
+	cmd := makeMappedTesterCommand(cmdCtx, c, data, perms, mappedFile, mapOffset, writeOffset)
+	return newTester(ctx, cmdCtx, cmd, cmdCancel, data)
+}
+
+func makeTesterCommand(ctx context.Context, c *Compiler, data []byte, perms string) *exec.Cmd {
+	return exec.CommandContext(ctx,
 		c.BinaryPath(),
 		"alloc",
 		"--size", fmt.Sprintf("%d", len(data)),
 		"--prot", perms)
+}
 
+func makeMappedTesterCommand(ctx context.Context, c *Compiler, data []byte, perms string, mapfilePath string, mapOffset, writeOffset int) *exec.Cmd {
+	return exec.CommandContext(ctx,
+		c.BinaryPath(),
+		"map-file",
+		"--file", mapfilePath,
+		"--size", fmt.Sprintf("%d", len(data)),
+		"--map-offset", fmt.Sprintf("%d", mapOffset),
+		"--write-offset", fmt.Sprintf("%d", writeOffset),
+		"--prot", perms)
+}
+
+func newTester(ctx context.Context, cmdCtx context.Context, cmd *exec.Cmd, cmdCancel func(), data []byte) (*Tester, error) {
 	cmdIn, err := cmd.StdinPipe()
 	if err != nil {
 		cmdCancel()
