@@ -17,7 +17,6 @@ import (
 	"github.com/fkie-cad/yapscan/testutil"
 
 	"github.com/fkie-cad/yapscan/procio"
-	"github.com/fkie-cad/yapscan/testutil/memory"
 	. "github.com/smartystreets/goconvey/convey"
 )
 
@@ -29,7 +28,7 @@ var memoryTesterCompiler *testutil.Compiler
 
 func initializeMemoryTester() io.Closer {
 	var err error
-	memoryTesterCompiler, err = memory.NewTesterCompiler()
+	memoryTesterCompiler, err = testutil.NewTesterCompiler()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(-1)
@@ -45,11 +44,11 @@ func initializeMemoryTester() io.Closer {
 func withMemoryTester(t *testing.T, c C, data []byte) (pid int, addressOfData uintptr) {
 	ctx, cancel := context.WithTimeout(context.Background(), testerTimeout)
 
-	tester, err := memory.NewTester(
+	tester, err := testutil.NewTester(
 		ctx,
 		memoryTesterCompiler,
 		data,
-		uintptr(procio.PermissionsToNative(procio.Permissions{Read: true})))
+		procio.Permissions{Read: true}.String())
 	if err != nil {
 		t.Fatal("could not create memory tester process", err)
 	}

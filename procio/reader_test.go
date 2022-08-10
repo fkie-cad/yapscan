@@ -9,8 +9,6 @@ import (
 	"time"
 
 	"github.com/fkie-cad/yapscan/testutil"
-	"github.com/fkie-cad/yapscan/testutil/memory"
-
 	. "github.com/smartystreets/goconvey/convey"
 )
 
@@ -21,7 +19,7 @@ func testWithData(c C, tc *testutil.Compiler, data []byte) {
 	ctx, cancel := context.WithTimeout(context.Background(), testerTimeout)
 	defer cancel()
 
-	tester, err := memory.NewTester(ctx, tc, data, uintptr(PermissionsToNative(Permissions{Read: true})))
+	tester, err := testutil.NewTester(ctx, tc, data, Permissions{Read: true}.String())
 	c.Convey("process creation should not fail.", func() {
 		So(err, ShouldBeNil)
 	})
@@ -161,7 +159,7 @@ func TestReader(t *testing.T) {
 		t.Skip("skipping memory reader test in short mode")
 	}
 
-	tc, err := memory.NewTesterCompiler()
+	tc, err := testutil.NewTesterCompiler()
 	if err != nil {
 		t.Skip("could not build memory test utility, skipping", err)
 	}

@@ -1,6 +1,8 @@
 package memory
 
 //#include <sys/mman.h>
+//#include <fcntl.h>
+//#include <unistd.h>
 //#include <errno.h>
 //#include <string.h>
 //
@@ -11,8 +13,14 @@ package memory
 // void* negativeOne() {
 //     return ((void*)-1);
 // }
+//
+// int openFile(char* filepath) {
+//     return open(filepath, 0);
+// }
 import "C"
 import (
+	"fmt"
+	"os"
 	"unsafe"
 
 	"github.com/targodan/go-errors"
@@ -37,6 +45,32 @@ func alloc(size uint64) (uintptr, error) {
 		return uintptr(addr), getLastError()
 	}
 	return uintptr(addr), nil
+}
+
+func mmap(filename string, mapoffset uint64) (uintptr, uint64, func(), error) {
+	stat, err := os.Stat(filename)
+	if err != nil {
+		return 0, 0, nil, err
+	}
+	filesize := uint64(stat.Size())
+	allocsize := filesize - mapoffset
+
+	filedesc := C.openFile(C.CString(filename))
+	if int(filedesc) == -1 {
+		return 0, 0, nil, fmt.Errorf("could not open file \"%s\", reason %w", filename, getLastError())
+	}
+
+	addr := C.mmap(
+		unsafe.Pointer(uintptr(0)),
+		C.size_t(allocsize),
+		C.PROT_READ|C.PROT_WRITE,
+		C.MAP_PRIVATE,
+		filedesc,
+		C.off_t(mapoffset))
+	if addr == C.negativeOne() {
+		return uintptr(addr), 0, nil, getLastError()
+	}
+	return uintptr(addr), allocsize, func() { C.close(filedesc) }, nil
 }
 
 func free(addr uintptr, size uint64) {
