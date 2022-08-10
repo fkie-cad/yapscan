@@ -8,7 +8,6 @@ import (
 	"syscall"
 
 	"github.com/fkie-cad/yapscan/procio"
-	"github.com/sirupsen/logrus"
 )
 
 type PagemapEntry struct {
@@ -56,7 +55,7 @@ func isSuitableForOptimization(seg *procio.MemorySegmentInfo) bool {
 		// Segment is file backed but could not open file
 		return false
 	}
-	defer f.Close()
+	f.Close()
 
 	// check stat
 	fileInfo, err := os.Stat(seg.MappedFile.Path())
@@ -90,49 +89,44 @@ func isSuitableForOptimization(seg *procio.MemorySegmentInfo) bool {
 func readSegmentOptimized(proc procio.Process, seg *procio.MemorySegmentInfo, rdr procio.MemoryReader, data []byte) error {
 	pagemapFile, err := os.Open(fmt.Sprintf("/proc/%d/pagemap", proc.PID()))
 	if err != nil {
-		logrus.WithFields(logrus.Fields{
-			"process":       proc,
-			"segment":       seg,
-			logrus.ErrorKey: err,
-		}).Error("Could not open pagemap file of process.")
-		return err
+		return fmt.Errorf("could not open pagemap file of process, reason: %w", err)
 	}
 	defer pagemapFile.Close()
 
-	mappedFile, _ := os.Open(seg.MappedFile.Path())
+	mappedFile, err := os.Open(seg.MappedFile.Path())
+	if err != nil {
+		return fmt.Errorf("could not open mapped file, reason: %w", err)
+	}
 	defer mappedFile.Close()
 
 	_, err = mappedFile.Seek(int64(seg.MappedFile.Offset()), io.SeekStart)
 	if err != nil {
-		logrus.WithFields(logrus.Fields{
-			"process":       proc,
-			"segment":       seg,
-			logrus.ErrorKey: err,
-		}).Error("Could not seek mapped file to offset.")
-		return err
+		return fmt.Errorf("could not seek offset in mapped file, reason: %w", err)
 	}
 
-	io.ReadFull(mappedFile, data)
+	_, err = io.ReadFull(mappedFile, data)
+	if err != nil {
+		return fmt.Errorf("could not read mapped file, reason: %w", err)
+	}
 
 	currentAddress := seg.BaseAddress
+	pagesize := os.Getpagesize()
 	for currentAddress < seg.BaseAddress+seg.Size {
 		pagemapEntry, err := getPagemapEntry(pagemapFile, currentAddress)
 		if err != nil {
-			logrus.WithFields(logrus.Fields{
-				"process":       proc,
-				"segment":       seg,
-				logrus.ErrorKey: err,
-			}).Error("Could not read pagemap entry of process.")
-			return err
+			return fmt.Errorf("could not read pagemap entry, reason: %w", err)
 		}
 
 		if pagemapEntry.IsPresent {
 			offset := currentAddress - seg.BaseAddress
 			rdr.Seek(int64(offset), io.SeekStart)
-			rdr.Read(data[offset : int(offset)+os.Getpagesize()])
+			_, err = io.ReadFull(rdr, data[offset:int(offset)+pagesize])
+			if err != nil {
+				return fmt.Errorf("could not read present page from remote process, reason: %w", err)
+			}
 		}
 
-		currentAddress += uintptr(os.Getpagesize())
+		currentAddress += uintptr(pagesize)
 	}
 
 	return nil
