@@ -3,7 +3,6 @@ package acceptanceTests
 import (
 	"bytes"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -20,7 +19,7 @@ import (
 
 func findReportPath(reportDir string) (string, bool) {
 	var reportName string
-	dir, _ := ioutil.ReadDir(reportDir)
+	dir, _ := os.ReadDir(reportDir)
 	for _, entry := range dir {
 		if !entry.IsDir() && strings.Contains(entry.Name(), ".tar.zst") {
 			reportName = entry.Name()
@@ -312,7 +311,7 @@ KnQN70Q6Eur+z5Gk2qBb04swAkcuxiVZIts=
 -----END PGP PRIVATE KEY BLOCK-----
 `
 	pubkeyPath = filepath.Join(t.TempDir(), "pubkey.pgp")
-	err := ioutil.WriteFile(pubkeyPath, []byte(publicKey), 0600)
+	err := os.WriteFile(pubkeyPath, []byte(publicKey), 0600)
 	if err != nil {
 		t.Fatal("could not create test keypair", err)
 	}
@@ -322,7 +321,7 @@ KnQN70Q6Eur+z5Gk2qBb04swAkcuxiVZIts=
 	}
 
 	privkeyPath = filepath.Join(t.TempDir(), "privkey.pgp")
-	err = ioutil.WriteFile(privkeyPath, []byte(publicKey), 0600)
+	err = os.WriteFile(privkeyPath, []byte(publicKey), 0600)
 	if err != nil {
 		t.Fatal("could not create test keypair", err)
 	}

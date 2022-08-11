@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"strings"
@@ -335,7 +334,7 @@ func loadCompiledRules(in io.Reader) (*yara.Rules, error) {
 func loadUncompiledRules(compiler *yara.Compiler, in io.Reader, name string) error {
 	logrus.Debug("Yara rules file needs to be compiled.")
 
-	data, err := ioutil.ReadAll(in)
+	data, err := io.ReadAll(in)
 	if err != nil {
 		return fmt.Errorf("could not read yara rules, reason: %w", err)
 	}

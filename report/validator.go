@@ -5,7 +5,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"os"
 	"strings"
 
@@ -115,7 +114,7 @@ func (v *Validator) validateSingleObject(schemaURL string, in io.Reader) (map[st
 		return nil, err
 	}
 
-	b, err := ioutil.ReadAll(in)
+	b, err := io.ReadAll(in)
 	if err != nil {
 		return nil, err
 	}
