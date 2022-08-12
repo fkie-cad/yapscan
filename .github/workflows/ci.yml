@@ -7,12 +7,16 @@ on:
     pull_request:
         branches: [ master , develop ]
 
+env:
+    YARA_VERSION: "v4.2.3"
+    OPENSSL_VERSION: "OpenSSL_1_1_1-stable"
+
 jobs:
     setup:
         runs-on: ubuntu-latest
         strategy:
             matrix:
-                yara-version: [ "v4.2.3" ]
+                yara-version: [ ${{ env.YARA_VERSION }} ]
         steps:
             - uses: actions/checkout@v3
 
@@ -29,7 +33,7 @@ jobs:
         strategy:
             matrix:
                 go-version: [ "1.18", "1.19" ]
-                yara-version: [ "v4.2.3" ]
+                yara-version: [ ${{ env.YARA_VERSION }} ]
         steps:
             - uses: actions/checkout@v3
 
@@ -71,8 +75,8 @@ jobs:
         strategy:
             matrix:
                 go-version: [ "1.18", "1.19" ]
-                yara-version: [ "v4.2.3" ]
-                openssl-version: [ "OpenSSL_1_1_1-stable" ]
+                yara-version: [ ${{ env.YARA_VERSION }} ]
+                openssl-version: [ ${{ env.OPENSSL_VERSION }} ]
         steps:
             - uses: actions/checkout@v3
 
