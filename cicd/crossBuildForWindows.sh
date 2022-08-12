@@ -72,7 +72,7 @@ export GOOS=windows
 
 if [[ "$buildMemtest" == "1" ]]; then
     pushd yapscan/cmd/memtest || exit \$?
-    go build -trimpath -o /opt/yapscan/cicd/build/memtest.exe -buildmode=exe || exit \$?
+    go build -trimpath -o /opt/yapscan/cicd/build/memtest.exe -tags yara_static -buildmode=exe || exit \$?
     popd &>/dev/null || exit \$?
 fi
 

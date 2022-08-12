@@ -1,5 +1,7 @@
 package yapscan
 
+import "github.com/fkie-cad/yapscan/procio"
+
 func isSuitableForOptimization(seg *procio.MemorySegmentInfo) bool {
 	return false
 }
