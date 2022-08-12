@@ -71,21 +71,21 @@ export CGO_ENABLED=1
 export GOOS=windows
 
 if [[ "$buildMemtest" == "1" ]]; then
-    pushd yapscan/cmd/memtest
-    go build -trimpath -o /opt/yapscan/cicd/build/memtest.exe -buildmode=exe
-    popd &>/dev/null
+    pushd yapscan/cmd/memtest || exit \$?
+    go build -trimpath -o /opt/yapscan/cicd/build/memtest.exe -buildmode=exe || exit \$?
+    popd &>/dev/null || exit \$?
 fi
 
 if [[ "$buildYapscan" == "1" ]]; then
-    pushd yapscan/cmd/yapscan
-    go build -trimpath -o /opt/yapscan/cicd/build/yapscan.exe -tags yara_static -buildmode=exe
-    popd &>/dev/null
+    pushd yapscan/cmd/yapscan || exit \$?
+    go build -trimpath -o /opt/yapscan/cicd/build/yapscan.exe -tags yara_static -buildmode=exe || exit \$?
+    popd &>/dev/null || exit \$?
 fi
 
 if [[ "$buildYapscanDll" == "1" ]]; then
-    pushd yapscan/cmd/yapscan-dll
-    go build -trimpath -o /opt/yapscan/cicd/build/yapscan.dll -tags yara_static -buildmode=c-shared
-    popd &>/dev/null
+    pushd yapscan/cmd/yapscan-dll || exit \$?
+    go build -trimpath -o /opt/yapscan/cicd/build/yapscan.dll -tags yara_static -buildmode=c-shared || exit \$?
+    popd &>/dev/null || exit \$?
 fi
 
 EOF
