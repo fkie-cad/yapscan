@@ -5,7 +5,6 @@ import (
 	"context"
 	"fmt"
 	"io"
-	"io/ioutil"
 	"math/rand"
 	"os"
 	"path/filepath"
@@ -17,7 +16,6 @@ import (
 	"github.com/fkie-cad/yapscan/testutil"
 
 	"github.com/fkie-cad/yapscan/procio"
-	"github.com/fkie-cad/yapscan/testutil/memory"
 	. "github.com/smartystreets/goconvey/convey"
 )
 
@@ -29,7 +27,7 @@ var memoryTesterCompiler *testutil.Compiler
 
 func initializeMemoryTester() io.Closer {
 	var err error
-	memoryTesterCompiler, err = memory.NewTesterCompiler()
+	memoryTesterCompiler, err = testutil.NewTesterCompiler()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)
 		os.Exit(-1)
@@ -45,11 +43,11 @@ func initializeMemoryTester() io.Closer {
 func withMemoryTester(t *testing.T, c C, data []byte) (pid int, addressOfData uintptr) {
 	ctx, cancel := context.WithTimeout(context.Background(), testerTimeout)
 
-	tester, err := memory.NewTester(
+	tester, err := testutil.NewTester(
 		ctx,
 		memoryTesterCompiler,
 		data,
-		uintptr(procio.PermissionsToNative(procio.Permissions{Read: true})))
+		procio.Permissions{Read: true}.String())
 	if err != nil {
 		t.Fatal("could not create memory tester process", err)
 	}
@@ -74,19 +72,60 @@ func withMemoryTester(t *testing.T, c C, data []byte) (pid int, addressOfData ui
 	return tester.PID(), addressOfData
 }
 
-func withYaraRulesFile(t *testing.T, rules []byte) string {
-	tempDir := t.TempDir()
-	yaraRulesFile := filepath.Join(tempDir, "rules.yar")
-	err := ioutil.WriteFile(yaraRulesFile, rules, 0600)
+func withMappedMemoryTester(t *testing.T, c C, mappedFile string, mapOffset, writeOffset int, data []byte) (pid int, addressOfData uintptr) {
+	ctx, cancel := context.WithTimeout(context.Background(), testerTimeout)
+
+	tester, err := testutil.NewMappedTester(
+		ctx,
+		memoryTesterCompiler,
+		mappedFile, mapOffset, writeOffset,
+		data,
+		procio.Permissions{Read: true}.String())
 	if err != nil {
-		t.Fatal("could not write temporary rules file", err)
+		t.Fatal("could not create memory tester process", err)
+	}
+
+	addressOfData, err = tester.WriteDataAndGetAddress()
+	if err != nil || addressOfData == 0 {
+		t.Fatal("could not write data to memory tester process", err)
+	}
+
+	if c != nil {
+		c.Reset(func() {
+			tester.Close()
+			cancel()
+		})
+	} else {
+		t.Cleanup(func() {
+			tester.Close()
+			cancel()
+		})
+	}
+
+	return tester.PID(), addressOfData
+}
+
+func withTempFile(t *testing.T, filename string, rules []byte) string {
+	tempDir := t.TempDir()
+	yaraRulesFile := filepath.Join(tempDir, filename)
+	err := os.WriteFile(yaraRulesFile, rules, 0600)
+	if err != nil {
+		t.Fatal("could not write temporary file", err)
 	}
 
 	return yaraRulesFile
 }
 
+func withYaraRulesFile(t *testing.T, rules []byte) string {
+	return withTempFile(t, "rules.yar", rules)
+}
+
 func withYaraRulesFileAndMatchingMemoryTester(t *testing.T, c C, data []byte) (yaraRulesPath string, pid int, addressOfData uintptr) {
 	return withYaraRulesFileAndMemoryTester(t, c, data, data)
+}
+
+func withYaraRulesFileAndMatchingMappedMemoryTester(t *testing.T, c C, data []byte, fileData []byte, mapOffset, writeOffset int) (yaraRulesPath, mappedFilePath string, pid int, addressOfData uintptr) {
+	return withYaraRulesFileAndMappedMemoryTester(t, c, data, fileData, mapOffset, writeOffset, data)
 }
 
 func withYaraRulesFileAndNotMatchingMemoryTester(t *testing.T, c C, data []byte) (yaraRulesPath string, pid int, addressOfData uintptr) {
@@ -124,6 +163,33 @@ rule rule1 {
 
 	yaraRulesPath = withYaraRulesFile(t, []byte(rule))
 	pid, addressOfData = withMemoryTester(t, c, memoryData)
+	return
+}
+
+func withYaraRulesFileAndMappedMemoryTester(t *testing.T, c C, ruleData []byte, fileData []byte, mapOffset, writeOffset int, memoryData []byte) (yaraRulesPath, mappedFilePath string, pid int, addressOfData uintptr) {
+	ruleDataHexString := &strings.Builder{}
+	for _, b := range ruleData {
+		ruleDataHexString.WriteString(fmt.Sprintf("%02X ", b))
+	}
+
+	rule := fmt.Sprintf(`
+rule rule1 {
+    meta:
+        description = "just a dummy rule"
+        author = "some dude on the internet"
+        date = "2020-01-01"
+
+    strings:
+        $str1 = { %s}
+
+    condition:
+        $str1
+}
+`, ruleDataHexString.String())
+
+	yaraRulesPath = withYaraRulesFile(t, []byte(rule))
+	mappedFilePath = withTempFile(t, "mapped.dat", fileData)
+	pid, addressOfData = withMappedMemoryTester(t, c, mappedFilePath, mapOffset, writeOffset, memoryData)
 	return
 }
 
@@ -169,4 +235,13 @@ func withCapturedOutput(t *testing.T) (stdout, stderr *bytes.Buffer, cleanup fun
 		stderrR.Close()
 		endWG.Wait()
 	}
+}
+
+func findMemorySegment(address uintptr, segs []*procio.MemorySegmentInfo) *procio.MemorySegmentInfo {
+	for _, seg := range segs {
+		if seg.BaseAddress <= address && address < seg.BaseAddress+seg.Size {
+			return seg
+		}
+	}
+	return nil
 }

@@ -3,11 +3,10 @@ package output
 import (
 	"bytes"
 	"encoding/json"
-	"io/ioutil"
-
-	archiver2 "github.com/fkie-cad/yapscan/archiver"
+	"io"
 
 	"github.com/fkie-cad/yapscan"
+	"github.com/fkie-cad/yapscan/archiver"
 	"github.com/fkie-cad/yapscan/fileio"
 	"github.com/fkie-cad/yapscan/procio"
 	"github.com/fkie-cad/yapscan/report"
@@ -28,7 +27,7 @@ type FileScan struct {
 // specifically intended for later analysis of the report
 // in order to determine rule quality.
 type AnalysisReporter struct {
-	archiver      archiver2.Archiver
+	archiver      archiver.Archiver
 	closeArchiver bool
 
 	filenamePrefix string
@@ -192,7 +191,7 @@ func (r *AnalysisReporter) ConsumeMemoryScanProgress(progress <-chan *yapscan.Me
 			err = r.dumpStorage.Store(&Dump{
 				PID:     info.PID,
 				Segment: prog.MemorySegment,
-				Data:    ioutil.NopCloser(bytes.NewReader(prog.Dump)),
+				Data:    io.NopCloser(bytes.NewReader(prog.Dump)),
 			})
 			if err != nil {
 				logrus.WithError(err).Error("Could not store dump.")

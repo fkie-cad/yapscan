@@ -3,7 +3,6 @@ package yapscan
 import (
 	"errors"
 	"io"
-	"io/ioutil"
 	"os"
 	"path/filepath"
 	"sort"
@@ -247,11 +246,11 @@ func TestLoadYaraRules(t *testing.T) {
 
 func withCompiledRules1And2(inner func(rulesPath string)) func(c C) {
 	return func(c C) {
-		r1, err := ioutil.ReadFile(testDataDir("rules_uncompiled", "rule1.yara"))
+		r1, err := os.ReadFile(testDataDir("rules_uncompiled", "rule1.yara"))
 		if err != nil {
 			panic(err)
 		}
-		r2, err := ioutil.ReadFile(testDataDir("rules_uncompiled", "rule2.yara"))
+		r2, err := os.ReadFile(testDataDir("rules_uncompiled", "rule2.yara"))
 		if err != nil {
 			panic(err)
 		}
@@ -263,7 +262,7 @@ func withCompiledRules1And2(inner func(rulesPath string)) func(c C) {
 
 		rules := yara.MustCompile(sb.String(), nil)
 
-		tmpFile, err := ioutil.TempFile(os.TempDir(), "rule1and2*.yarc")
+		tmpFile, err := os.CreateTemp(os.TempDir(), "rule1and2*.yarc")
 		if err != nil {
 			panic(err)
 		}
@@ -285,15 +284,15 @@ func withCompiledRules1And2(inner func(rulesPath string)) func(c C) {
 
 func withCompiledAndZippedRules1And2And3(inner func(rulesPath string)) func(c C) {
 	return func(c C) {
-		r1, err := ioutil.ReadFile(testDataDir("rules_uncompiled", "rule1.yara"))
+		r1, err := os.ReadFile(testDataDir("rules_uncompiled", "rule1.yara"))
 		if err != nil {
 			panic(err)
 		}
-		r2, err := ioutil.ReadFile(testDataDir("rules_uncompiled", "rule2.yara"))
+		r2, err := os.ReadFile(testDataDir("rules_uncompiled", "rule2.yara"))
 		if err != nil {
 			panic(err)
 		}
-		r3, err := ioutil.ReadFile(testDataDir("rules_uncompiled", "subdir", "rule3.yara"))
+		r3, err := os.ReadFile(testDataDir("rules_uncompiled", "subdir", "rule3.yara"))
 		if err != nil {
 			panic(err)
 		}
@@ -307,7 +306,7 @@ func withCompiledAndZippedRules1And2And3(inner func(rulesPath string)) func(c C)
 
 		rules := yara.MustCompile(sb.String(), nil)
 
-		tmpFile, err := ioutil.TempFile(os.TempDir(), "rule1and2and3*.yarc")
+		tmpFile, err := os.CreateTemp(os.TempDir(), "rule1and2and3*.yarc")
 		if err != nil {
 			panic(err)
 		}
@@ -326,7 +325,7 @@ func withCompiledAndZippedRules1And2And3(inner func(rulesPath string)) func(c C)
 			}
 			defer compiled.Close()
 
-			tmpFile, err = ioutil.TempFile(os.TempDir(), "rule1and2and3*.zip")
+			tmpFile, err = os.CreateTemp(os.TempDir(), "rule1and2and3*.zip")
 			if err != nil {
 				panic(err)
 			}

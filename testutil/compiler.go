@@ -3,7 +3,6 @@ package testutil
 import (
 	"context"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"runtime"
@@ -29,7 +28,7 @@ func NewCompiler(srcPath string) (*Compiler, error) {
 		pattern += ".exe"
 	}
 
-	tmpFile, err := ioutil.TempFile(os.TempDir(), pattern)
+	tmpFile, err := os.CreateTemp(os.TempDir(), pattern)
 	if err != nil {
 		return nil, err
 	}

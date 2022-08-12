@@ -1,4 +1,4 @@
-package memory
+package testutil
 
 import (
 	"bufio"
@@ -12,8 +12,6 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/fkie-cad/yapscan/testutil"
-
 	"github.com/targodan/go-errors"
 )
 
@@ -24,7 +22,7 @@ const (
 )
 
 func getMemtestPath() (string, error) {
-	root, err := testutil.GetProjectRoot()
+	root, err := GetProjectRoot()
 	if err != nil {
 		return "", err
 	}
@@ -51,21 +49,46 @@ type Tester struct {
 	data []byte
 }
 
-func NewTesterCompiler() (*testutil.Compiler, error) {
+func NewTesterCompiler() (*Compiler, error) {
 	srcPath, err := getMemtestPath()
 	if err != nil {
 		return nil, fmt.Errorf("could not determine path to main.go, reason: %w", err)
 	}
-	return testutil.NewCompiler(srcPath)
+	return NewCompiler(srcPath)
 }
 
-func NewTester(ctx context.Context, c *testutil.Compiler, data []byte, nativePermis uintptr) (*Tester, error) {
+func NewTester(ctx context.Context, c *Compiler, data []byte, perms string) (*Tester, error) {
 	cmdCtx, cmdCancel := context.WithCancel(ctx)
+	cmd := makeTesterCommand(cmdCtx, c, data, perms)
+	return newTester(ctx, cmdCtx, cmd, cmdCancel, data)
+}
 
-	cmd := exec.CommandContext(ctx,
+func NewMappedTester(ctx context.Context, c *Compiler, mappedFile string, mapOffset, writeOffset int, data []byte, perms string) (*Tester, error) {
+	cmdCtx, cmdCancel := context.WithCancel(ctx)
+	cmd := makeMappedTesterCommand(cmdCtx, c, data, perms, mappedFile, mapOffset, writeOffset)
+	return newTester(ctx, cmdCtx, cmd, cmdCancel, data)
+}
+
+func makeTesterCommand(ctx context.Context, c *Compiler, data []byte, perms string) *exec.Cmd {
+	return exec.CommandContext(ctx,
 		c.BinaryPath(),
-		fmt.Sprintf("%d", len(data)), fmt.Sprintf("%d", nativePermis))
+		"alloc",
+		"--size", fmt.Sprintf("%d", len(data)),
+		"--prot", perms)
+}
 
+func makeMappedTesterCommand(ctx context.Context, c *Compiler, data []byte, perms string, mapfilePath string, mapOffset, writeOffset int) *exec.Cmd {
+	return exec.CommandContext(ctx,
+		c.BinaryPath(),
+		"map-file",
+		"--file", mapfilePath,
+		"--size", fmt.Sprintf("%d", len(data)),
+		"--map-offset", fmt.Sprintf("%d", mapOffset),
+		"--write-offset", fmt.Sprintf("%d", writeOffset),
+		"--prot", perms)
+}
+
+func newTester(ctx context.Context, cmdCtx context.Context, cmd *exec.Cmd, cmdCancel func(), data []byte) (*Tester, error) {
 	cmdIn, err := cmd.StdinPipe()
 	if err != nil {
 		cmdCancel()

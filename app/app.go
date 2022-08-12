@@ -209,15 +209,15 @@ func MakeApp() *cli.App {
 		Name:        "yapscan",
 		HelpName:    "yapscan",
 		Description: "A yara based scanner for files and process memory with some extras.",
-		Version:     version.YapscanVersion.String(),
+		Version:     fmt.Sprintf("%s (%s)", version.YapscanVersion.String(), runtime.Version()),
 		Writer:      os.Stdout,
 		ErrWriter:   os.Stderr,
 		Authors: []*cli.Author{
-			&cli.Author{
+			{
 				Name:  "Luca Corbatto",
 				Email: "luca.corbatto@fkie.fraunhofer.de",
 			},
-			&cli.Author{
+			{
 				Name: "Fraunhofer FKIE",
 			},
 		},
@@ -236,7 +236,7 @@ func MakeApp() *cli.App {
 			},
 		},
 		Commands: []*cli.Command{
-			&cli.Command{
+			{
 				Name:    "list-processes",
 				Aliases: []string{"ps", "lsproc"},
 				Usage:   "lists all running processes",
@@ -249,7 +249,7 @@ func MakeApp() *cli.App {
 					},
 				}, segmentFilterFlags...),
 			},
-			&cli.Command{
+			{
 				Name:      "list-process-memory",
 				Aliases:   []string{"lsmem"},
 				Usage:     "lists all memory segments of a process",
@@ -267,7 +267,7 @@ func MakeApp() *cli.App {
 				}, segmentFilterFlags...), suspendFlags...),
 				Action: listMemory,
 			},
-			&cli.Command{
+			{
 				Name:      "dump",
 				Usage:     "dumps memory of a process",
 				Action:    dumpMemory,
@@ -297,7 +297,7 @@ func MakeApp() *cli.App {
 					},
 				}, suspendFlags...), segmentFilterFlags...),
 			},
-			&cli.Command{
+			{
 				Name:      "scan",
 				Usage:     "scans processes or paths with yara rules",
 				Action:    scan,
@@ -399,7 +399,7 @@ func MakeApp() *cli.App {
 					},
 				}, segmentFilterFlags...), suspendFlags...),
 			},
-			&cli.Command{
+			{
 				Name:      "anonymize",
 				Usage:     "anonymize reports",
 				Action:    anonymize,
@@ -442,7 +442,7 @@ func MakeApp() *cli.App {
 					},
 				},
 			},
-			&cli.Command{
+			{
 				Name:      "zip-rules",
 				Usage:     "creates an encrypted zip containing compiled yara rules",
 				Action:    zipRules,
@@ -461,7 +461,7 @@ func MakeApp() *cli.App {
 					},
 				},
 			},
-			&cli.Command{
+			{
 				Name:      "join",
 				Usage:     "joins dumps with padding",
 				Action:    join,
@@ -479,7 +479,7 @@ func MakeApp() *cli.App {
 					},
 				},
 			},
-			&cli.Command{
+			{
 				Name:    "crash-process",
 				Aliases: []string{"crash"},
 				Usage:   "crash a process",

@@ -18,13 +18,6 @@ import (
 const maxRandomDataSize = 4095
 const maxSizeFilter = "4K"
 
-func TestMain(m *testing.M) {
-	closer := initializeMemoryTester()
-	defer closer.Close()
-
-	m.Run()
-}
-
 func TestMatchIsFound(t *testing.T) {
 	Convey("Scanning a prepared process", t, func(c C) {
 		data := []byte{0xbd, 0x62, 0xcd, 0xa4, 0x80, 0x8c, 0x3a, 0x1d, 0x7e, 0x1, 0x21, 0xca, 0xc1, 0x52, 0x87, 0xda, 0xdc, 0x57, 0x61}
@@ -300,5 +293,13 @@ func conveyMatchWasSuccessful(c C, addressOfData uintptr, err error, stdout, std
 		c.So(err, ShouldBeNil)
 		c.So(stderr.String(), ShouldBeEmpty)
 		c.So(stdout.String(), ShouldContainSubstring, fmt.Sprintf("Rule-strings matched at 0x%X.", addressOfData))
+	})
+}
+
+func conveyNoMatch(c C, err error, stdout, stderr *bytes.Buffer) {
+	c.Convey("should not error and not find a match.", func() {
+		c.So(err, ShouldBeNil)
+		c.So(stderr.String(), ShouldBeEmpty)
+		c.So(stdout.String(), ShouldNotContainSubstring, "Rule-strings matched")
 	})
 }

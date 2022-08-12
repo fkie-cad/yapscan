@@ -4,6 +4,7 @@ import (
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/hex"
+	"github.com/hillu/go-yara/v4"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -17,7 +18,6 @@ import (
 	"github.com/fkie-cad/yapscan/fileio"
 	"github.com/fkie-cad/yapscan/report"
 	"github.com/fkie-cad/yapscan/system"
-	"github.com/hillu/go-yara/v4"
 )
 
 type Filter interface {
@@ -437,6 +437,18 @@ func (f *AnonymizedFile) Path() string {
 
 func (f *AnonymizedFile) Stat() (os.FileInfo, error) {
 	return f.origFile.Stat()
+}
+
+func (f *AnonymizedFile) Inode() uint64 {
+	return f.origFile.Inode()
+}
+
+func (f *AnonymizedFile) Device() uint64 {
+	return f.origFile.Device()
+}
+
+func (f *AnonymizedFile) Offset() uint64 {
+	return f.origFile.Offset()
 }
 
 func (f *AnonymizedFile) Hashes() (md5sum, sha256sum string, err error) {

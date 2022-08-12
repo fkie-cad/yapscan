@@ -4,13 +4,10 @@ import (
 	"bytes"
 	"context"
 	"io"
-	"io/ioutil"
 	"testing"
 	"time"
 
 	"github.com/fkie-cad/yapscan/testutil"
-	"github.com/fkie-cad/yapscan/testutil/memory"
-
 	. "github.com/smartystreets/goconvey/convey"
 )
 
@@ -21,7 +18,7 @@ func testWithData(c C, tc *testutil.Compiler, data []byte) {
 	ctx, cancel := context.WithTimeout(context.Background(), testerTimeout)
 	defer cancel()
 
-	tester, err := memory.NewTester(ctx, tc, data, uintptr(PermissionsToNative(Permissions{Read: true})))
+	tester, err := testutil.NewTester(ctx, tc, data, Permissions{Read: true}.String())
 	c.Convey("process creation should not fail.", func() {
 		So(err, ShouldBeNil)
 	})
@@ -94,7 +91,7 @@ func testFullRead(c C, proc Process, seg *MemorySegmentInfo, address uintptr, ex
 	})
 	defer rdr.Close()
 
-	readData, err := ioutil.ReadAll(rdr)
+	readData, err := io.ReadAll(rdr)
 	c.Convey("reading the remote segment should not fail.", func() {
 		So(err, ShouldBeNil)
 	})
@@ -112,7 +109,7 @@ func testFullRead(c C, proc Process, seg *MemorySegmentInfo, address uintptr, ex
 		So(err, ShouldBeNil)
 	})
 
-	readData, err = ioutil.ReadAll(rdr)
+	readData, err = io.ReadAll(rdr)
 	c.Convey("reading the remote segment again, should not fail.", func() {
 		So(err, ShouldBeNil)
 	})
@@ -140,7 +137,7 @@ func testPartialRead(c C, proc Process, seg *MemorySegmentInfo, address uintptr,
 		So(err, ShouldBeNil)
 	})
 
-	readData, err := ioutil.ReadAll(io.LimitReader(rdr, int64(len(expectedData)-start)))
+	readData, err := io.ReadAll(io.LimitReader(rdr, int64(len(expectedData)-start)))
 	c.Convey("reading the remote segment should not fail.", func() {
 		So(err, ShouldBeNil)
 	})
@@ -161,7 +158,7 @@ func TestReader(t *testing.T) {
 		t.Skip("skipping memory reader test in short mode")
 	}
 
-	tc, err := memory.NewTesterCompiler()
+	tc, err := testutil.NewTesterCompiler()
 	if err != nil {
 		t.Skip("could not build memory test utility, skipping", err)
 	}

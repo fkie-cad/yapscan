@@ -79,9 +79,12 @@ func TestParseSMEMFile(t *testing.T) {
 				RSS:                  8 * 1024,
 				State:                StateCommit,
 				Type:                 SegmentTypePrivateMapped,
-				MappedFile: &fileio.OSFile{
-					FilePath: "/usr/lib/ld-linux-x86-64.so.2",
-				},
+				MappedFile: fileio.NewFileWithInode(
+					"/usr/lib/ld-linux-x86-64.so.2",
+					921010,
+					0xfe03,
+					0x34000,
+				),
 				SubSegments: []*MemorySegmentInfo{},
 			},
 		})
@@ -100,9 +103,12 @@ func TestParseSMEMFile(t *testing.T) {
 				RSS:                  8 * 1024,
 				State:                StateCommit,
 				Type:                 SegmentTypePrivateMapped,
-				MappedFile: &fileio.OSFile{
-					FilePath: "/usr/lib/ld-linux-x86-64.so.2",
-				},
+				MappedFile: fileio.NewFileWithInode(
+					"/usr/lib/ld-linux-x86-64.so.2",
+					921010,
+					0xfe03,
+					0x34000,
+				),
 				SubSegments: []*MemorySegmentInfo{},
 			},
 		})
@@ -154,9 +160,12 @@ func TestParseSegmentHead(t *testing.T) {
 			RSS:   0,
 			State: StateCommit,
 			Type:  SegmentTypePrivateMapped,
-			MappedFile: &fileio.OSFile{
-				FilePath: "/bin/bash",
-			},
+			MappedFile: fileio.NewFileWithInode(
+				"/bin/bash",
+				960637,
+				0xfd03,
+				0,
+			),
 			SubSegments: []*MemorySegmentInfo{},
 		})
 	})
@@ -177,9 +186,12 @@ func TestParseSegmentHead(t *testing.T) {
 			RSS:   0,
 			State: StateCommit,
 			Type:  SegmentTypePrivateMapped,
-			MappedFile: &fileio.OSFile{
-				FilePath: "/bin/some path/with whitespaces.txt",
-			},
+			MappedFile: fileio.NewFileWithInode(
+				"/bin/some path/with whitespaces.txt",
+				960637,
+				0xfd03,
+				0,
+			),
 			SubSegments: []*MemorySegmentInfo{},
 		})
 	})
@@ -200,9 +212,12 @@ func TestParseSegmentHead(t *testing.T) {
 			RSS:   0,
 			State: StateCommit,
 			Type:  SegmentTypePrivateMapped,
-			MappedFile: &fileio.OSFile{
-				FilePath: "/bin/bash ",
-			},
+			MappedFile: fileio.NewFileWithInode(
+				"/bin/bash ",
+				960637,
+				0xfd03,
+				0,
+			),
 			SubSegments: []*MemorySegmentInfo{},
 		})
 	})
@@ -223,9 +238,12 @@ func TestParseSegmentHead(t *testing.T) {
 			RSS:   0,
 			State: StateCommit,
 			Type:  SegmentTypeMapped,
-			MappedFile: &fileio.OSFile{
-				FilePath: "/bin/bash",
-			},
+			MappedFile: fileio.NewFileWithInode(
+				"/bin/bash",
+				960637,
+				0xfd03,
+				0,
+			),
 			SubSegments: []*MemorySegmentInfo{},
 		})
 	})
@@ -246,9 +264,12 @@ func TestParseSegmentHead(t *testing.T) {
 			RSS:   0,
 			State: StateCommit,
 			Type:  SegmentTypePrivateMapped,
-			MappedFile: &fileio.OSFile{
-				FilePath: "/bin/bash",
-			},
+			MappedFile: fileio.NewFileWithInode(
+				"/bin/bash",
+				960637,
+				0xfd03,
+				0,
+			),
 			SubSegments: []*MemorySegmentInfo{},
 		})
 	})
@@ -269,9 +290,12 @@ func TestParseSegmentHead(t *testing.T) {
 			RSS:   0,
 			State: StateCommit,
 			Type:  SegmentTypePrivateMapped,
-			MappedFile: &fileio.OSFile{
-				FilePath: "/bin/bash",
-			},
+			MappedFile: fileio.NewFileWithInode(
+				"/bin/bash",
+				960637,
+				0xfd03,
+				0,
+			),
 			SubSegments: []*MemorySegmentInfo{},
 		})
 	})

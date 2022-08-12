@@ -2,7 +2,7 @@ package system
 
 import (
 	"fmt"
-	"io/ioutil"
+	"io"
 	"os"
 	"runtime"
 	"strconv"
@@ -23,7 +23,7 @@ func cpuLoad() (oneMinuteAvg, fiveMinuteAvg, fifteenMinuteAvg float64) {
 		logrus.WithError(err).Error("could not determine load average")
 		return
 	}
-	text, err := ioutil.ReadAll(f)
+	text, err := io.ReadAll(f)
 	if err != nil {
 		logrus.WithError(err).Error("could not determine load average")
 		return
