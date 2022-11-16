@@ -1,5 +1,10 @@
 #!/bin/bash
 
+# This script reads the following environment variables for optional configuration.
+# OPENSSL_VERSION
+# YARA_VERSION
+# GO_VERSION
+
 buildYapscan=0
 buildYapscanDll=0
 buildMemtest=0
@@ -48,8 +53,17 @@ fi
 
 mkdir -p build/ &>/dev/null
 
-OPENSSL_VERSION=$("$cicd/opensslVersion.sh") || exit $?
-YARA_VERSION=$("$cicd/yaraVersion.sh") || exit $?
+_default_OPENSSL_VERSION=$("$cicd/opensslVersion.sh") || exit $?
+_default_YARA_VERSION=$("$cicd/yaraVersion.sh") || exit $?
+
+OPENSSL_VERSION=${OPENSSL_VERSION:-$_default_OPENSSL_VERSION}
+YARA_VERSION=${YARA_VERSION:-$_default_YARA_VERSION}
+
+if [[ "$GO_VERSION" == "" ]]; then
+    GO_IMAGE="golang:buster"
+else
+    GO_IMAGE="golang:${GO_VERSION}-buster"
+fi
 
 dockerBuildExtraArgs=""
 if [[ "$pull" == "1" ]]; then
@@ -58,6 +72,7 @@ fi
 
 docker build \
     $dockerBuildExtraArgs \
+    --build-arg GO_IMAGE=$GO_IMAGE \
     --build-arg BUILD_THREADS=$cores \
     --build-arg OPENSSL_VERSION=$OPENSSL_VERSION --build-arg YARA_VERSION=$YARA_VERSION \
     --network=host -t yapscan-xcompile -f Dockerfile.xwin . || exit $?

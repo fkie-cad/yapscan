@@ -1,4 +1,5 @@
-FROM golang:buster
+ARG GO_IMAGE=golang:buster
+FROM ${GO_IMAGE}
 
 ENV DEBIAN_FRONTEND=noninteractive
 

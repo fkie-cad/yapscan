@@ -7,6 +7,9 @@ inputs:
     yara-version:
         description: "Yara version"
         required: true
+    go-version:
+        description: "Golang version"
+        required: true
 runs:
     using: "composite"
     steps:
@@ -14,6 +17,7 @@ runs:
           env:
               OPENSSL_VERSION: ${{ inputs.openssl-version }}
               YARA_VERSION: ${{ inputs.yara-version }}
-          run: ./crossBuildForWindows.sh
+              GO_VERSION: ${{ inputs.go-version }}
+          run: ./crossBuildForWindows.sh --pull
           working-directory: cicd
           shell: bash
