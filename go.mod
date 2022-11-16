@@ -7,7 +7,7 @@ require (
 	github.com/fatih/color v1.13.0
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510
 	github.com/hillu/go-yara/v4 v4.2.4
-	github.com/klauspost/compress v1.15.9
+	github.com/klauspost/compress v1.15.12
 	github.com/rjNemo/underscore v0.4.0
 	github.com/santhosh-tekuri/jsonschema/v5 v5.1.0
 	github.com/sirupsen/logrus v1.9.0
