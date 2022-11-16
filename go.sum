@@ -33,8 +33,8 @@ github.com/mattn/go-isatty v0.0.14 h1:yVuAays6BHfxijgZPzw+3Zlu5yQgKGP2/hcQbHb7S9
 github.com/mattn/go-isatty v0.0.14/go.mod h1:7GGIvUiUoEMVVmxf/4nioHXj79iQHKdU27kJ6hsGG94=
 github.com/pmezard/go-difflib v1.0.0 h1:4DBwDE0NGyQoBHbLQYPwSUPoCMWR5BEzIk/f1lZbAQM=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
-github.com/rjNemo/underscore v0.4.0 h1:g+xEbci2+bqR8NbhfM3xl9ZCbB+j9mkAx0F2YNlYB10=
-github.com/rjNemo/underscore v0.4.0/go.mod h1:y3LuKy2UP6zp7yZff5ZGRm1s/s9QvCoCoQZVqAkk3hM=
+github.com/rjNemo/underscore v0.5.0 h1:Pa58PfchgZWgCY1eBKjER/lm0repbGrTzq6RRxtnGmg=
+github.com/rjNemo/underscore v0.5.0/go.mod h1:y3LuKy2UP6zp7yZff5ZGRm1s/s9QvCoCoQZVqAkk3hM=
 github.com/russross/blackfriday/v2 v2.1.0 h1:JIOH55/0cWyOuilr9/qlrm0BSXldqnqwMsf35Ld67mk=
 github.com/russross/blackfriday/v2 v2.1.0/go.mod h1:+Rmxgy9KzJVeS9/2gXHxylqXiyQDYRxCVz55jmeOWTM=
 github.com/santhosh-tekuri/jsonschema/v5 v5.1.0 h1:wSUNu/w/7OQ0Y3NVnfTU5uxzXY4uMpXW92VXEJKqBB0=
