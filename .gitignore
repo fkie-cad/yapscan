@@ -31,3 +31,4 @@ vendor/
 *.tar.gz
 *.tar.zst
 
+.build-cache/
