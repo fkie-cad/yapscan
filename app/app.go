@@ -367,6 +367,10 @@ func MakeApp() *cli.App {
 						Usage:       "the directory to which the report archive will be written",
 						DefaultText: "current working directory",
 					},
+					&cli.StringFlag{
+						Name:  "report-server",
+						Usage: "the address of the server, the reports will be sent to",
+					},
 					&cli.BoolFlag{
 						Name:  "store-dumps",
 						Usage: "store dumps of memory regions that match rules, implies --full-report, the report will be encrypted with --password",

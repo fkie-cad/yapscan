@@ -174,24 +174,37 @@ func scan(c *cli.Context) error {
 			hostname = anonymizer.Anonymize(hostname)
 		}
 
-		reportArchivePath := fmt.Sprintf("%s_%s.tar%s",
+		reportName := fmt.Sprintf("%s_%s",
 			hostname,
-			time.Now().UTC().Format(filenameDateFormat),
+			time.Now().UTC().Format(filenameDateFormat))
+		reportArchivePath := fmt.Sprintf("%s.tar%s",
+			reportName,
 			wcBuilder.SuggestedFileExtension())
-		if c.String("report-dir") != "" {
-			reportArchivePath = filepath.Join(c.String("report-dir"), reportArchivePath)
-		}
-		reportTar, err := os.OpenFile(reportArchivePath, os.O_CREATE|os.O_RDWR, archivePermissions)
-		if err != nil {
-			return fmt.Errorf("could not create output report archive, reason: %w", err)
-		}
-		// reportTar is closed by the wrapping WriteCloser
 
-		decoratedReportTar, err := wcBuilder.Build(reportTar)
-		if err != nil {
-			return fmt.Errorf("could not initialize archive, reason: %w", err)
+		// TODO: Disallow report-dir or store-dumps and report-server at the same time
+		var reportArchiver archiver.Archiver
+		if c.String("report-server") != "" {
+			reportArchiver, err = archiver.NewRemoteArchiver(c.String("report-server"), reportName)
+			if err != nil {
+				return fmt.Errorf("could not create output report archive, reason: %w", err)
+			}
+		} else {
+			if c.String("report-dir") != "" {
+				reportArchivePath = filepath.Join(c.String("report-dir"), reportArchivePath)
+			}
+			reportTar, err := os.OpenFile(reportArchivePath, os.O_CREATE|os.O_RDWR, archivePermissions)
+			if err != nil {
+				return fmt.Errorf("could not create output report archive, reason: %w", err)
+			}
+			// reportTar is closed by the wrapping WriteCloser
+
+			decoratedReportTar, err := wcBuilder.Build(reportTar)
+			if err != nil {
+				return fmt.Errorf("could not initialize archive, reason: %w", err)
+			}
+
+			reportArchiver = archiver.NewTarArchiver(decoratedReportTar)
 		}
-		reportArchiver := archiver.NewTarArchiver(decoratedReportTar)
 
 		repFac := output.NewAnalysisReporterFactory(reportArchiver).
 			AutoCloseArchiver().
