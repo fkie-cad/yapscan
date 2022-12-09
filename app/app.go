@@ -367,6 +367,22 @@ func MakeApp() *cli.App {
 						Usage:       "the directory to which the report archive will be written",
 						DefaultText: "current working directory",
 					},
+					&cli.StringFlag{
+						Name:  "report-server",
+						Usage: "the address of the server, the reports will be sent to",
+					},
+					&cli.StringFlag{
+						Name:  "server-ca",
+						Usage: "CA.pem to use when validating the server",
+					},
+					&cli.StringFlag{
+						Name:  "client-cert",
+						Usage: "certificate.pem to use for client authentication",
+					},
+					&cli.StringFlag{
+						Name:  "client-key",
+						Usage: "key.pem to use for client authentication",
+					},
 					&cli.BoolFlag{
 						Name:  "store-dumps",
 						Usage: "store dumps of memory regions that match rules, implies --full-report, the report will be encrypted with --password",
@@ -398,6 +414,47 @@ func MakeApp() *cli.App {
 						Value:   false,
 					},
 				}, segmentFilterFlags...), suspendFlags...),
+			},
+			{
+				Name:      "receive",
+				Usage:     "starts a server receiving reports from other yapscan clients (see --report-server flag of scan command)",
+				Action:    receive,
+				ArgsUsage: "<listen-address>",
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:        "report-dir",
+						Usage:       "the directory to which the report archives will be written",
+						DefaultText: "current working directory",
+					},
+					&cli.StringFlag{
+						Name:    "password",
+						Aliases: []string{"p"},
+						Usage:   "setting this will encrypt the report with the given password; ignored without --full-report",
+					},
+					&cli.StringFlag{
+						Name:    "pgpkey",
+						Aliases: []string{"k"},
+						Usage:   "setting this will encrypt the report with the public key in the given file; ignored without --full-report",
+					},
+					&cli.StringFlag{
+						Name:  "server-cert",
+						Usage: "certificate.pem to use for TLS",
+					},
+					&cli.StringFlag{
+						Name:  "server-key",
+						Usage: "key.pem to use for TLS",
+					},
+					&cli.StringFlag{
+						Name:        "client-ca",
+						Usage:       "CA.pem to use for client authentication",
+						DefaultText: "no client authentication by default",
+					},
+					&cli.BoolFlag{
+						Name:    "verbose",
+						Aliases: []string{"v"},
+						Usage:   "activate debug output of the http server",
+					},
+				},
 			},
 			{
 				Name:      "anonymize",
