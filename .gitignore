@@ -25,3 +25,10 @@ vendor/
 
 # Logfiles
 *.log
+
+# Archives, resulting from builds and release prep
+*.zip
+*.tar.gz
+*.tar.zst
+
+.build-cache/

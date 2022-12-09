@@ -52,6 +52,15 @@ func scan(c *cli.Context) error {
 		return errors.Newf("expected at least one argument, or one of the flags \"--all-processes\", \"--all-drives\", \"--all-shares\", got zero")
 	}
 
+	if c.String("report-server") != "" {
+		if c.String("report-dir") != "" {
+			return errors.Newf("flags --report-server and --report-dir are cannot both be set")
+		}
+		if c.Bool("store-dumps") {
+			return errors.Newf("flags --report-server and --store-dumps are cannot both be set")
+		}
+	}
+
 	rules, err := yapscan.LoadYaraRules(c.String("rules"), c.Bool("rules-recurse"))
 	if err != nil {
 		return err
@@ -142,7 +151,7 @@ func scan(c *cli.Context) error {
 		Reporter: output.NewProgressReporter(os.Stdout, output.NewPrettyFormatter(c.Bool("verbose"))),
 		Filter:   progressFilter,
 	}
-	if c.Bool("full-report") || c.Bool("store-dumps") {
+	if c.Bool("full-report") || c.Bool("store-dumps") || c.String("report-server") != "" {
 		wcBuilder := output.NewWriteCloserBuilder()
 		if c.String("password") != "" && c.String("pgpkey") != "" {
 			return fmt.Errorf("cannot encrypt with both pgp key and a password")
@@ -174,30 +183,59 @@ func scan(c *cli.Context) error {
 			hostname = anonymizer.Anonymize(hostname)
 		}
 
-		reportArchivePath := fmt.Sprintf("%s_%s.tar%s",
+		reportName := fmt.Sprintf("%s_%s",
 			hostname,
-			time.Now().UTC().Format(filenameDateFormat),
+			time.Now().UTC().Format(filenameDateFormat))
+		reportArchivePath := fmt.Sprintf("%s.tar%s",
+			reportName,
 			wcBuilder.SuggestedFileExtension())
-		if c.String("report-dir") != "" {
-			reportArchivePath = filepath.Join(c.String("report-dir"), reportArchivePath)
-		}
-		reportTar, err := os.OpenFile(reportArchivePath, os.O_CREATE|os.O_RDWR, archivePermissions)
-		if err != nil {
-			return fmt.Errorf("could not create output report archive, reason: %w", err)
-		}
-		// reportTar is closed by the wrapping WriteCloser
 
-		decoratedReportTar, err := wcBuilder.Build(reportTar)
-		if err != nil {
-			return fmt.Errorf("could not initialize archive, reason: %w", err)
+		var reportArchiver archiver.Archiver
+		if c.String("report-server") != "" {
+			remoteArchiver, err := archiver.NewRemoteArchiver(c.String("report-server"))
+			if err != nil {
+				return fmt.Errorf("could not create output report archive, reason: %w", err)
+			}
+			if c.String("server-ca") != "" {
+				err = remoteArchiver.SetServerCA(c.String("server-ca"))
+				if err != nil {
+					return fmt.Errorf("could not set server CA, reason: %w", err)
+				}
+			}
+			if c.String("client-cert") != "" || c.String("client-key") != "" {
+				err = remoteArchiver.SetClientCert(c.String("client-cert"), c.String("client-key"))
+				if err != nil {
+					return fmt.Errorf("could not set client certificate, reason: %w", err)
+				}
+			}
+			if err = remoteArchiver.InitReport(reportName); err != nil {
+				return fmt.Errorf("could not initialise report, reason: %w", err)
+			}
+			fmt.Printf("Full report will be sent to \"%s\".\n", c.String("report-server"))
+			reportArchiver = remoteArchiver
+		} else {
+			if c.String("report-dir") != "" {
+				reportArchivePath = filepath.Join(c.String("report-dir"), reportArchivePath)
+			}
+			reportTar, err := os.OpenFile(reportArchivePath, os.O_CREATE|os.O_RDWR, archivePermissions)
+			if err != nil {
+				return fmt.Errorf("could not create output report archive, reason: %w", err)
+			}
+			// reportTar is closed by the wrapping WriteCloser
+
+			decoratedReportTar, err := wcBuilder.Build(reportTar)
+			if err != nil {
+				return fmt.Errorf("could not initialize archive, reason: %w", err)
+			}
+
+			reportArchiver = archiver.NewTarArchiver(decoratedReportTar)
+
+			fmt.Printf("Full report will be written to \"%s\".\n", reportArchivePath)
 		}
-		reportArchiver := archiver.NewTarArchiver(decoratedReportTar)
 
 		repFac := output.NewAnalysisReporterFactory(reportArchiver).
 			AutoCloseArchiver().
 			WithFilenamePrefix(hostname + "/")
-
-		fmt.Printf("Full report will be written to \"%s\".\n", reportArchivePath)
 
 		if c.Bool("store-dumps") {
 			dumpArchivePath := fmt.Sprintf("%s_%s_dumps.tar%s",

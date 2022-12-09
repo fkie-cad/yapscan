@@ -7,8 +7,6 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/yeka/zip"
-
 	"github.com/targodan/go-errors"
 )
 
@@ -20,51 +18,6 @@ const (
 type Archiver interface {
 	Create(name string) (io.WriteCloser, error)
 	io.Closer
-}
-
-type zipArchiver struct {
-	zipWriter         *zip.Writer
-	compressionMethod uint16
-	hasOpenWriter     bool
-}
-
-func NewZipArchiver(out io.Writer, compressionMethod uint16) Archiver {
-	return &zipArchiver{
-		zipWriter:         zip.NewWriter(out),
-		compressionMethod: compressionMethod,
-	}
-}
-
-func (z *zipArchiver) Create(name string) (io.WriteCloser, error) {
-	if z.hasOpenWriter {
-		return nil, errors.New("cannot create a new entry in archive before last writer was closed")
-	}
-
-	w, err := z.zipWriter.CreateHeader(&zip.FileHeader{
-		Name:   filepath.ToSlash(name),
-		Method: z.compressionMethod,
-	})
-	if err != nil {
-		return nil, err
-	}
-
-	z.hasOpenWriter = true
-
-	return &callbackWriteCloser{
-		writer: w,
-		close: func() error {
-			z.hasOpenWriter = false
-			return nil
-		},
-	}, nil
-}
-
-func (z *zipArchiver) Close() error {
-	if z.hasOpenWriter {
-		return errors.New("cannot close archiver before all Created writers have been closed")
-	}
-
-	return z.zipWriter.Close()
 }
 
 type tarArchiver struct {
