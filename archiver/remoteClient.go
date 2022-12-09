@@ -2,40 +2,101 @@ package archiver
 
 import (
 	"bytes"
+	"crypto/tls"
 	"encoding/json"
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"path/filepath"
 	"strings"
 
 	"github.com/targodan/go-errors"
 )
 
-type remoteArchiver struct {
-	url      string
-	client   *http.Client
-	reportID string
+type RemoteArchiver struct {
+	url             string
+	client          *http.Client
+	clientTLSConfig *tls.Config
+	reportID        string
 }
 
-func NewRemoteArchiver(server string, reportName string) (Archiver, error) {
+func NewRemoteArchiver(server string) (*RemoteArchiver, error) {
 	client := &http.Client{}
 
 	server = strings.TrimRight(server, "/")
 
-	archiver := &remoteArchiver{
+	archiver := &RemoteArchiver{
 		url:    fmt.Sprintf("%s/v1", server),
 		client: client,
-	}
-	err := archiver.create(reportName)
-	if err != nil {
-		return nil, err
 	}
 
 	return archiver, nil
 }
 
-func (a *remoteArchiver) prepareJson(data map[string]interface{}) (io.Reader, error) {
+func (a *RemoteArchiver) InitReport(reportName string) error {
+	return a.create(reportName)
+}
+
+func (a *RemoteArchiver) defaultTLSConfig() *tls.Config {
+	return &tls.Config{MinVersion: tls.VersionTLS13}
+}
+
+func (a *RemoteArchiver) SetServerCA(filepath string) error {
+	if a.clientTLSConfig == nil {
+		a.clientTLSConfig = a.defaultTLSConfig()
+	}
+
+	fmt.Println("READING CERT ", filepath)
+
+	file, err := os.Open(filepath)
+	if err != nil {
+		return fmt.Errorf("could not open server CA file, reason: %w", err)
+	}
+
+	caPool, err := loadCA(file)
+	if err != nil {
+		return err
+	}
+	a.clientTLSConfig.RootCAs = caPool
+
+	a.client = &http.Client{
+		Transport: &http.Transport{
+			TLSClientConfig: a.clientTLSConfig,
+		},
+	}
+	return nil
+}
+
+func (a *RemoteArchiver) SetClientCert(certPath, keyPath string) error {
+	if a.clientTLSConfig == nil {
+		a.clientTLSConfig = a.defaultTLSConfig()
+	}
+
+	cert, err := os.Open(certPath)
+	if err != nil {
+		return fmt.Errorf("could not open certificate file, reason: %w", err)
+	}
+	key, err := os.Open(keyPath)
+	if err != nil {
+		return fmt.Errorf("could not open key file, reason: %w", err)
+	}
+
+	keypair, err := loadX509KeyPair(cert, key)
+	if err != nil {
+		return err
+	}
+	a.clientTLSConfig.Certificates = []tls.Certificate{keypair}
+
+	a.client = &http.Client{
+		Transport: &http.Transport{
+			TLSClientConfig: a.clientTLSConfig,
+		},
+	}
+	return nil
+}
+
+func (a *RemoteArchiver) prepareJson(data map[string]interface{}) (io.Reader, error) {
 	buf := &bytes.Buffer{}
 	enc := json.NewEncoder(buf)
 	err := enc.Encode(data)
@@ -45,7 +106,7 @@ func (a *remoteArchiver) prepareJson(data map[string]interface{}) (io.Reader, er
 	return buf, nil
 }
 
-func (a *remoteArchiver) postJson(endpoint string, data map[string]interface{}) (*http.Response, error) {
+func (a *RemoteArchiver) postJson(endpoint string, data map[string]interface{}) (*http.Response, error) {
 	buf, err := a.prepareJson(data)
 	if err != nil {
 		return nil, err
@@ -53,7 +114,7 @@ func (a *remoteArchiver) postJson(endpoint string, data map[string]interface{}) 
 	return a.client.Post(a.url+endpoint, "application/json", buf)
 }
 
-func (a *remoteArchiver) put(endpoint string) (*http.Response, error) {
+func (a *RemoteArchiver) put(endpoint string) (*http.Response, error) {
 	req, err := http.NewRequest("PUT", a.url+endpoint, &bytes.Buffer{})
 	if err != nil {
 		return nil, err
@@ -61,7 +122,7 @@ func (a *remoteArchiver) put(endpoint string) (*http.Response, error) {
 	return a.client.Do(req)
 }
 
-func (a *remoteArchiver) patch(endpoint string, data []byte) (*http.Response, error) {
+func (a *RemoteArchiver) patch(endpoint string, data []byte) (*http.Response, error) {
 	buf := bytes.NewReader(data)
 	req, err := http.NewRequest("PATCH", a.url+endpoint, buf)
 	if err != nil {
@@ -70,7 +131,7 @@ func (a *remoteArchiver) patch(endpoint string, data []byte) (*http.Response, er
 	return a.client.Do(req)
 }
 
-func (a *remoteArchiver) closeResource(resource string) error {
+func (a *RemoteArchiver) closeResource(resource string) error {
 	url := fmt.Sprintf("/report/%s", a.reportID)
 	if resource != "" {
 		url += "/" + resource
@@ -84,7 +145,7 @@ func (a *remoteArchiver) closeResource(resource string) error {
 	return err
 }
 
-func (a *remoteArchiver) json(resp *http.Response) (map[string]interface{}, error) {
+func (a *RemoteArchiver) json(resp *http.Response) (map[string]interface{}, error) {
 	defer resp.Body.Close()
 
 	dec := json.NewDecoder(resp.Body)
@@ -93,7 +154,7 @@ func (a *remoteArchiver) json(resp *http.Response) (map[string]interface{}, erro
 	return data, err
 }
 
-func (a *remoteArchiver) extractErr(data map[string]interface{}) error {
+func (a *RemoteArchiver) extractErr(data map[string]interface{}) error {
 	errTxt, ok := data["error"]
 	if !ok {
 		return fmt.Errorf("invalid response body")
@@ -108,7 +169,7 @@ func (a *remoteArchiver) extractErr(data map[string]interface{}) error {
 	return errors.New(errString)
 }
 
-func (a *remoteArchiver) parseResponse(resp *http.Response) (map[string]interface{}, error) {
+func (a *RemoteArchiver) parseResponse(resp *http.Response) (map[string]interface{}, error) {
 	data, err := a.json(resp)
 	if err != nil {
 		return nil, err
@@ -123,7 +184,7 @@ func (a *remoteArchiver) parseResponse(resp *http.Response) (map[string]interfac
 	return data, nil
 }
 
-func (a *remoteArchiver) create(reportName string) error {
+func (a *RemoteArchiver) create(reportName string) error {
 	resp, err := a.postJson("/report", map[string]interface{}{
 		"name": reportName,
 	})
@@ -144,7 +205,7 @@ func (a *remoteArchiver) create(reportName string) error {
 	return nil
 }
 
-func (a *remoteArchiver) Create(name string) (io.WriteCloser, error) {
+func (a *RemoteArchiver) Create(name string) (io.WriteCloser, error) {
 	name = filepath.ToSlash(name)
 	resp, err := a.postJson(fmt.Sprintf("/report/%s/%s", a.reportID, name), map[string]interface{}{})
 	if err != nil {
@@ -160,12 +221,12 @@ func (a *remoteArchiver) Create(name string) (io.WriteCloser, error) {
 	}, nil
 }
 
-func (a *remoteArchiver) Close() error {
+func (a *RemoteArchiver) Close() error {
 	return a.closeResource("")
 }
 
 type remoteFile struct {
-	archiver *remoteArchiver
+	archiver *RemoteArchiver
 	filepath string
 }
 

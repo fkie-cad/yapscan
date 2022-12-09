@@ -53,15 +53,35 @@ func receive(c *cli.Context) error {
 	}
 	wcBuilder.Append(output.ZSTDCompressionDecorator())
 
-	reportServer := archiver.NewArchiverServer(c.String("report-dir"), wcBuilder.SuggestedFileExtension(), wcBuilder)
+	reportServer := archiver.NewArchiverServer(
+		c.Args().First(),
+		c.String("report-dir"),
+		wcBuilder.SuggestedFileExtension(),
+		wcBuilder)
 
 	signalChan := make(chan os.Signal)
 	signal.Notify(signalChan, os.Interrupt)
-	shutdownComplete := make(chan interface{})
+	shutdownStarted := make(chan bool, 1)
+	shutdownCompleted := make(chan interface{})
+
+	if c.String("server-cert") != "" ||
+		c.String("server-key") != "" ||
+		c.String("client-ca") != "" {
+		err = reportServer.EnableTLS(
+			c.String("server-cert"),
+			c.String("server-key"),
+			c.String("client-ca"))
+		if err != nil {
+			return cli.Exit(err, 1)
+		}
+	}
 
 	go func() {
 		var err error
 		<-signalChan
+		defer close(shutdownCompleted)
+
+		shutdownStarted <- true
 
 		shutdownTimeout := 5 * time.Second
 		logrus.Infof("Received interrupt, shutting down server (timeout: %v)...", shutdownTimeout)
@@ -75,14 +95,17 @@ func receive(c *cli.Context) error {
 		} else {
 			logrus.Info("Closed open reports.")
 		}
-
-		close(shutdownComplete)
 	}()
 
-	err = reportServer.Start(c.Args().First())
-	<-shutdownComplete
+	err = reportServer.Start()
+
+	switch {
+	case <-shutdownStarted:
+		<-shutdownCompleted
+	default:
+	}
 	if err != http.ErrServerClosed {
-		return err
+		return cli.Exit(err, 10)
 	}
 	return nil
 }

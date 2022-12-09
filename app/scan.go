@@ -192,11 +192,27 @@ func scan(c *cli.Context) error {
 
 		var reportArchiver archiver.Archiver
 		if c.String("report-server") != "" {
-			reportArchiver, err = archiver.NewRemoteArchiver(c.String("report-server"), reportName)
+			remoteArchiver, err := archiver.NewRemoteArchiver(c.String("report-server"))
 			if err != nil {
 				return fmt.Errorf("could not create output report archive, reason: %w", err)
 			}
+			if c.String("server-ca") != "" {
+				err = remoteArchiver.SetServerCA(c.String("server-ca"))
+				if err != nil {
+					return fmt.Errorf("could not set server CA, reason: %w", err)
+				}
+			}
+			if c.String("client-cert") != "" || c.String("client-key") != "" {
+				err = remoteArchiver.SetClientCert(c.String("client-cert"), c.String("client-key"))
+				if err != nil {
+					return fmt.Errorf("could not set client certificate, reason: %w", err)
+				}
+			}
+			if err = remoteArchiver.InitReport(reportName); err != nil {
+				return fmt.Errorf("could not initialise report, reason: %w", err)
+			}
 			fmt.Printf("Full report will be sent to \"%s\".\n", c.String("report-server"))
+			reportArchiver = remoteArchiver
 		} else {
 			if c.String("report-dir") != "" {
 				reportArchivePath = filepath.Join(c.String("report-dir"), reportArchivePath)

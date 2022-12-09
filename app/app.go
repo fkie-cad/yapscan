@@ -371,6 +371,18 @@ func MakeApp() *cli.App {
 						Name:  "report-server",
 						Usage: "the address of the server, the reports will be sent to",
 					},
+					&cli.StringFlag{
+						Name:  "server-ca",
+						Usage: "CA.pem to use when validating the server",
+					},
+					&cli.StringFlag{
+						Name:  "client-cert",
+						Usage: "certificate.pem to use for client authentication",
+					},
+					&cli.StringFlag{
+						Name:  "client-key",
+						Usage: "key.pem to use for client authentication",
+					},
 					&cli.BoolFlag{
 						Name:  "store-dumps",
 						Usage: "store dumps of memory regions that match rules, implies --full-report, the report will be encrypted with --password",
@@ -423,6 +435,19 @@ func MakeApp() *cli.App {
 						Name:    "pgpkey",
 						Aliases: []string{"k"},
 						Usage:   "setting this will encrypt the report with the public key in the given file; ignored without --full-report",
+					},
+					&cli.StringFlag{
+						Name:  "server-cert",
+						Usage: "certificate.pem to use for TLS",
+					},
+					&cli.StringFlag{
+						Name:  "server-key",
+						Usage: "key.pem to use for TLS",
+					},
+					&cli.StringFlag{
+						Name:        "client-ca",
+						Usage:       "CA.pem to use for client authentication",
+						DefaultText: "no client authentication by default",
 					},
 					&cli.BoolFlag{
 						Name:    "verbose",

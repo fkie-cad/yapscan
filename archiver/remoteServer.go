@@ -3,6 +3,8 @@ package archiver
 import (
 	"context"
 	"crypto/sha256"
+	"crypto/tls"
+	"crypto/x509"
 	"encoding/hex"
 	"fmt"
 	"io"
@@ -61,7 +63,7 @@ type ArchiverServer struct {
 	openReports map[string]*reportHandler
 }
 
-func NewArchiverServer(outdir, outerExt string, builder WriteCloserBuilder) *ArchiverServer {
+func NewArchiverServer(addr, outdir, outerExt string, builder WriteCloserBuilder) *ArchiverServer {
 	router := gin.Default()
 	router.SetTrustedProxies([]string{})
 	router.Use()
@@ -83,16 +85,95 @@ func NewArchiverServer(outdir, outerExt string, builder WriteCloserBuilder) *Arc
 	v1.PATCH("/report/:report/*filepath", s.writeFile)
 	v1.PUT("/report/:report/*filepath", s.closeFile)
 
+	s.server = &http.Server{
+		Addr:    addr,
+		Handler: router,
+	}
+
 	return s
 }
 
-func (s *ArchiverServer) Start(addr string) error {
-	s.server = &http.Server{
-		Addr:    addr,
-		Handler: s.router,
+func (s *ArchiverServer) Start() error {
+	if s.server.TLSConfig != nil {
+		return s.server.ListenAndServeTLS("", "")
+	} else {
+		return s.server.ListenAndServe()
+	}
+}
+
+func loadX509KeyPair(cert, key io.Reader) (tls.Certificate, error) {
+	certBlock, err := io.ReadAll(cert)
+	if err != nil {
+		return tls.Certificate{}, fmt.Errorf("could not read certificate, reason: %w", err)
+	}
+	keyBlock, err := io.ReadAll(key)
+	if err != nil {
+		return tls.Certificate{}, fmt.Errorf("could not read key, reason: %w", err)
+	}
+	return tls.X509KeyPair(certBlock, keyBlock)
+}
+
+func loadCA(ca io.Reader) (*x509.CertPool, error) {
+	caBlock, err := io.ReadAll(ca)
+	if err != nil {
+		return nil, err
 	}
 
-	return s.server.ListenAndServe()
+	certPool := x509.NewCertPool()
+	if !certPool.AppendCertsFromPEM(caBlock) {
+		return nil, fmt.Errorf("could not register CA certificate")
+	}
+	return certPool, nil
+}
+
+func getTLSConfig(serverCert, serverKey, clientCA string) (*tls.Config, error) {
+	cert, err := os.Open(serverCert)
+	if err != nil {
+		return nil, fmt.Errorf("could not open server-cert file, reason: %w", err)
+	}
+	defer cert.Close()
+	key, err := os.Open(serverKey)
+	if err != nil {
+		return nil, fmt.Errorf("could not open server-key file, reason: %w", err)
+	}
+	defer key.Close()
+
+	serverKeypair, err := loadX509KeyPair(cert, key)
+	if err != nil {
+		return nil, err
+	}
+
+	var certPool *x509.CertPool
+	clientAuth := tls.NoClientCert
+	if clientCA != "" {
+		ca, err := os.Open(clientCA)
+		if err != nil {
+			return nil, fmt.Errorf("could not open client-ca file, reason: %w", err)
+		}
+		defer ca.Close()
+
+		certPool, err = loadCA(ca)
+		if err != nil {
+			return nil, err
+		}
+
+		clientAuth = tls.RequireAndVerifyClientCert
+	}
+
+	config := &tls.Config{
+		Certificates: []tls.Certificate{serverKeypair},
+		ClientAuth:   clientAuth,
+		MinVersion:   tls.VersionTLS13,
+		ClientCAs:    certPool,
+	}
+
+	return config, nil
+}
+
+func (s *ArchiverServer) EnableTLS(serverCert, serverKey, clientCA string) error {
+	var err error
+	s.server.TLSConfig, err = getTLSConfig(serverCert, serverKey, clientCA)
+	return err
 }
 
 func (s *ArchiverServer) Shutdown(ctx context.Context) error {
