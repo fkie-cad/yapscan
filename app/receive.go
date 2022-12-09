@@ -1,7 +1,14 @@
 package app
 
 import (
+	"context"
 	"fmt"
+	"net/http"
+	"os"
+	"os/signal"
+	"time"
+
+	"github.com/sirupsen/logrus"
 
 	"github.com/gin-gonic/gin"
 
@@ -47,5 +54,35 @@ func receive(c *cli.Context) error {
 	wcBuilder.Append(output.ZSTDCompressionDecorator())
 
 	reportServer := archiver.NewArchiverServer(c.String("report-dir"), wcBuilder.SuggestedFileExtension(), wcBuilder)
-	return reportServer.Start(c.Args().First())
+
+	signalChan := make(chan os.Signal)
+	signal.Notify(signalChan, os.Interrupt)
+	shutdownComplete := make(chan interface{})
+
+	go func() {
+		var err error
+		<-signalChan
+
+		shutdownTimeout := 5 * time.Second
+		logrus.Infof("Received interrupt, shutting down server (timeout: %v)...", shutdownTimeout)
+
+		ctx, cancel := context.WithTimeout(context.Background(), shutdownTimeout)
+		defer cancel()
+
+		err = reportServer.Shutdown(ctx)
+		if err != nil {
+			logrus.WithError(err).Error("Error during closing of open reports.")
+		} else {
+			logrus.Info("Closed open reports.")
+		}
+
+		close(shutdownComplete)
+	}()
+
+	err = reportServer.Start(c.Args().First())
+	<-shutdownComplete
+	if err != http.ErrServerClosed {
+		return err
+	}
+	return nil
 }

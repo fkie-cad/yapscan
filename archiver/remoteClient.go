@@ -50,11 +50,11 @@ func (a *remoteArchiver) postJson(endpoint string, data map[string]interface{}) 
 	if err != nil {
 		return nil, err
 	}
-	return a.client.Post(fmt.Sprintf("%s/%s", a.url, endpoint), "application/json", buf)
+	return a.client.Post(a.url+endpoint, "application/json", buf)
 }
 
 func (a *remoteArchiver) put(endpoint string) (*http.Response, error) {
-	req, err := http.NewRequest("PUT", fmt.Sprintf("%s/%s", a.url, endpoint), &bytes.Buffer{})
+	req, err := http.NewRequest("PUT", a.url+endpoint, &bytes.Buffer{})
 	if err != nil {
 		return nil, err
 	}
@@ -63,7 +63,7 @@ func (a *remoteArchiver) put(endpoint string) (*http.Response, error) {
 
 func (a *remoteArchiver) patch(endpoint string, data []byte) (*http.Response, error) {
 	buf := bytes.NewReader(data)
-	req, err := http.NewRequest("PATCH", fmt.Sprintf("%s/%s", a.url, endpoint), buf)
+	req, err := http.NewRequest("PATCH", a.url+endpoint, buf)
 	if err != nil {
 		return nil, err
 	}
@@ -73,22 +73,15 @@ func (a *remoteArchiver) patch(endpoint string, data []byte) (*http.Response, er
 func (a *remoteArchiver) closeResource(resource string) error {
 	url := fmt.Sprintf("/report/%s", a.reportID)
 	if resource != "" {
-		url = fmt.Sprintf("%s/%s", url, resource)
+		url += "/" + resource
 	}
 
 	resp, err := a.put(url)
 	if err != nil {
 		return err
 	}
-	data, err := a.json(resp)
-	if err != nil {
-		return err
-	}
-	err = a.extractErr(data)
-	if err != nil {
-		return err
-	}
-	return nil
+	_, err = a.parseResponse(resp)
+	return err
 }
 
 func (a *remoteArchiver) json(resp *http.Response) (map[string]interface{}, error) {
@@ -115,6 +108,21 @@ func (a *remoteArchiver) extractErr(data map[string]interface{}) error {
 	return errors.New(errString)
 }
 
+func (a *remoteArchiver) parseResponse(resp *http.Response) (map[string]interface{}, error) {
+	data, err := a.json(resp)
+	if err != nil {
+		return nil, err
+	}
+	err = a.extractErr(data)
+	if err != nil {
+		return nil, err
+	}
+	if resp.StatusCode != 200 {
+		return nil, fmt.Errorf("unexpected http status: %s", resp.Status)
+	}
+	return data, nil
+}
+
 func (a *remoteArchiver) create(reportName string) error {
 	resp, err := a.postJson("/report", map[string]interface{}{
 		"name": reportName,
@@ -122,14 +130,7 @@ func (a *remoteArchiver) create(reportName string) error {
 	if err != nil {
 		return err
 	}
-	data, err := a.json(resp)
-	if err != nil {
-		return err
-	}
-	err = a.extractErr(data)
-	if err != nil {
-		return err
-	}
+	data, err := a.parseResponse(resp)
 	reportID, ok := data["reportID"]
 	if !ok {
 		return fmt.Errorf("invalid response body")
@@ -149,11 +150,7 @@ func (a *remoteArchiver) Create(name string) (io.WriteCloser, error) {
 	if err != nil {
 		return nil, err
 	}
-	data, err := a.json(resp)
-	if err != nil {
-		return nil, err
-	}
-	err = a.extractErr(data)
+	_, err = a.parseResponse(resp)
 	if err != nil {
 		return nil, err
 	}
@@ -177,11 +174,7 @@ func (f *remoteFile) Write(d []byte) (int, error) {
 	if err != nil {
 		return 0, err
 	}
-	data, err := f.archiver.json(resp)
-	if err != nil {
-		return 0, err
-	}
-	err = f.archiver.extractErr(data)
+	_, err = f.archiver.parseResponse(resp)
 	if err != nil {
 		return 0, err
 	}

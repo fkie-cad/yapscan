@@ -1,20 +1,29 @@
 package archiver
 
 import (
+	"context"
 	"crypto/sha256"
-	"encoding/base64"
+	"encoding/hex"
 	"fmt"
 	"io"
 	"math/rand"
 	"net/http"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
+	"time"
+
+	"github.com/sirupsen/logrus"
 
 	"github.com/targodan/go-errors"
 
 	"github.com/gin-gonic/gin"
 )
+
+func init() {
+	rand.Seed(time.Now().UnixNano())
+}
 
 type WriteCloserBuilder interface {
 	Build(closer io.WriteCloser) (io.WriteCloser, error)
@@ -25,11 +34,12 @@ func generateReportID() string {
 	rand.Read(buf)
 	hash := sha256.New()
 	hash.Write(buf)
-	return base64.URLEncoding.EncodeToString(hash.Sum(nil))
+	return hex.EncodeToString(hash.Sum(nil))
 }
 
 func handleError(c *gin.Context, err error) bool {
 	if err != nil {
+		logrus.WithError(err).Error("Error during handling of request.")
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return true
 	}
@@ -37,11 +47,12 @@ func handleError(c *gin.Context, err error) bool {
 }
 
 func sendOkay(c *gin.Context) {
-	c.JSON(http.StatusInternalServerError, gin.H{"error": nil})
+	c.JSON(http.StatusOK, gin.H{"error": nil})
 }
 
 type ArchiverServer struct {
 	router    *gin.Engine
+	server    *http.Server
 	outdir    string
 	outerExt  string
 	wcBuilder WriteCloserBuilder
@@ -53,6 +64,7 @@ type ArchiverServer struct {
 func NewArchiverServer(outdir, outerExt string, builder WriteCloserBuilder) *ArchiverServer {
 	router := gin.Default()
 	router.SetTrustedProxies([]string{})
+	router.Use()
 
 	s := &ArchiverServer{
 		router:      router,
@@ -75,7 +87,31 @@ func NewArchiverServer(outdir, outerExt string, builder WriteCloserBuilder) *Arc
 }
 
 func (s *ArchiverServer) Start(addr string) error {
-	return s.router.Run(addr)
+	s.server = &http.Server{
+		Addr:    addr,
+		Handler: s.router,
+	}
+
+	return s.server.ListenAndServe()
+}
+
+func (s *ArchiverServer) Shutdown(ctx context.Context) error {
+	err := s.server.Shutdown(ctx)
+
+	s.reportsMux.Lock()
+	defer s.reportsMux.Unlock()
+
+	for id, report := range s.openReports {
+		e := report.Close()
+		if e != nil {
+			logrus.WithError(e).Errorf("Error during final close of report with ID '%s'", id)
+			err = errors.NewMultiError(err, e)
+		}
+		logrus.Infof("Closed report with ID '%s'", id)
+	}
+
+	s.openReports = nil
+	return err
 }
 
 func (s *ArchiverServer) registerReport(reportID, reportName string) (*reportHandler, error) {
@@ -107,14 +143,26 @@ func (s *ArchiverServer) getReport(reportID string) (*reportHandler, error) {
 	return report, nil
 }
 
+func (s *ArchiverServer) getAndRemoveReport(reportID string) (*reportHandler, error) {
+	s.reportsMux.Lock()
+	defer s.reportsMux.Unlock()
+
+	report, exists := s.openReports[reportID]
+	if !exists {
+		return nil, fmt.Errorf("report with ID '%s' does not exists", reportID)
+	}
+	delete(s.openReports, reportID)
+
+	return report, nil
+}
+
 type CreateReportRequest struct {
 	Name string `json:"name"`
 }
 
 func (s *ArchiverServer) createReport(c *gin.Context) {
 	var req CreateReportRequest
-	if err := c.ShouldBindJSON(&req); err != nil {
-		c.JSON(http.StatusBadRequest, gin.H{"error": err.Error()})
+	if err := c.ShouldBindJSON(&req); handleError(c, err) {
 		return
 	}
 
@@ -124,20 +172,23 @@ func (s *ArchiverServer) createReport(c *gin.Context) {
 		return
 	}
 
-	c.JSON(http.StatusInternalServerError, gin.H{
+	logrus.Infof("Creating new report '%s' with ID '%s'", req.Name, reportID)
+
+	c.JSON(http.StatusOK, gin.H{
 		"error":    nil,
 		"reportID": reportID,
 	})
 }
 
 func (s *ArchiverServer) closeReport(c *gin.Context) {
-	report, err := s.getReport(c.Param("report"))
+	report, err := s.getAndRemoveReport(c.Param("report"))
 	if handleError(c, err) {
 		return
 	}
 	if handleError(c, report.Close()) {
 		return
 	}
+	logrus.Infof("Closed report with ID '%s'", c.Param("report"))
 	sendOkay(c)
 }
 
@@ -220,13 +271,20 @@ func newReportHandler(dir, reportName, outerExt string, wcBuilder WriteCloserBui
 		archiver:             reportArchiver,
 		reportArchivePath:    reportArchivePath,
 		reportArchiveSwpPath: reportArchiveSwpPath,
+		openFilesMux:         &sync.RWMutex{},
 		openFiles:            make(map[string]io.WriteCloser),
 	}, nil
+}
+
+func sanitizePath(path string) string {
+	return strings.Trim(filepath.Clean(path), "/")
 }
 
 func (h *reportHandler) CreateFile(filepath string) error {
 	h.openFilesMux.Lock()
 	defer h.openFilesMux.Unlock()
+
+	filepath = sanitizePath(filepath)
 
 	if _, exists := h.openFiles[filepath]; exists {
 		return fmt.Errorf("file '%s' already opened", filepath)
@@ -244,6 +302,8 @@ func (h *reportHandler) WriteFile(filepath string, data []byte) error {
 	h.openFilesMux.RLock()
 	defer h.openFilesMux.RUnlock()
 
+	filepath = sanitizePath(filepath)
+
 	file, ok := h.openFiles[filepath]
 	if !ok {
 		return fmt.Errorf("file '%s' has not been opened", filepath)
@@ -256,11 +316,13 @@ func (h *reportHandler) CloseFile(filepath string) error {
 	h.openFilesMux.Lock()
 	defer h.openFilesMux.Unlock()
 
+	filepath = sanitizePath(filepath)
+
 	file, ok := h.openFiles[filepath]
 	if !ok {
 		return fmt.Errorf("file '%s' has not been opened", filepath)
 	}
-	h.openFiles[filepath] = nil
+	delete(h.openFiles, filepath)
 
 	return file.Close()
 }

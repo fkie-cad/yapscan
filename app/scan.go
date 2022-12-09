@@ -151,7 +151,7 @@ func scan(c *cli.Context) error {
 		Reporter: output.NewProgressReporter(os.Stdout, output.NewPrettyFormatter(c.Bool("verbose"))),
 		Filter:   progressFilter,
 	}
-	if c.Bool("full-report") || c.Bool("store-dumps") {
+	if c.Bool("full-report") || c.Bool("store-dumps") || c.String("report-server") != "" {
 		wcBuilder := output.NewWriteCloserBuilder()
 		if c.String("password") != "" && c.String("pgpkey") != "" {
 			return fmt.Errorf("cannot encrypt with both pgp key and a password")
@@ -196,6 +196,7 @@ func scan(c *cli.Context) error {
 			if err != nil {
 				return fmt.Errorf("could not create output report archive, reason: %w", err)
 			}
+			fmt.Printf("Full report will be sent to \"%s\".\n", c.String("report-server"))
 		} else {
 			if c.String("report-dir") != "" {
 				reportArchivePath = filepath.Join(c.String("report-dir"), reportArchivePath)
@@ -212,13 +213,13 @@ func scan(c *cli.Context) error {
 			}
 
 			reportArchiver = archiver.NewTarArchiver(decoratedReportTar)
+
+			fmt.Printf("Full report will be written to \"%s\".\n", reportArchivePath)
 		}
 
 		repFac := output.NewAnalysisReporterFactory(reportArchiver).
 			AutoCloseArchiver().
 			WithFilenamePrefix(hostname + "/")
-
-		fmt.Printf("Full report will be written to \"%s\".\n", reportArchivePath)
 
 		if c.Bool("store-dumps") {
 			dumpArchivePath := fmt.Sprintf("%s_%s_dumps.tar%s",
