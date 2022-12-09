@@ -13,10 +13,12 @@ import (
 
 	"github.com/targodan/go-errors"
 
-	"github.com/fkie-cad/yapscan/output"
-
 	"github.com/gin-gonic/gin"
 )
+
+type WriteCloserBuilder interface {
+	Build(closer io.WriteCloser) (io.WriteCloser, error)
+}
 
 func generateReportID() string {
 	buf := make([]byte, 32)
@@ -41,18 +43,21 @@ func sendOkay(c *gin.Context) {
 type ArchiverServer struct {
 	router    *gin.Engine
 	outdir    string
-	wcBuilder *output.WriteCloserBuilder
+	outerExt  string
+	wcBuilder WriteCloserBuilder
 
 	reportsMux  *sync.RWMutex
 	openReports map[string]*reportHandler
 }
 
-func NewArchiverServer(outdir string, builder *output.WriteCloserBuilder) *ArchiverServer {
+func NewArchiverServer(outdir, outerExt string, builder WriteCloserBuilder) *ArchiverServer {
 	router := gin.Default()
+	router.SetTrustedProxies([]string{})
 
 	s := &ArchiverServer{
 		router:      router,
 		outdir:      outdir,
+		outerExt:    outerExt,
 		wcBuilder:   builder,
 		reportsMux:  &sync.RWMutex{},
 		openReports: make(map[string]*reportHandler),
@@ -69,6 +74,10 @@ func NewArchiverServer(outdir string, builder *output.WriteCloserBuilder) *Archi
 	return s
 }
 
+func (s *ArchiverServer) Start(addr string) error {
+	return s.router.Run(addr)
+}
+
 func (s *ArchiverServer) registerReport(reportID, reportName string) (*reportHandler, error) {
 	s.reportsMux.Lock()
 	defer s.reportsMux.Unlock()
@@ -78,7 +87,7 @@ func (s *ArchiverServer) registerReport(reportID, reportName string) (*reportHan
 		return nil, fmt.Errorf("report with ID '%s' already exists", reportID)
 	}
 
-	handler, err := newReportHandler(s.outdir, reportName, s.wcBuilder)
+	handler, err := newReportHandler(s.outdir, reportName, s.outerExt, s.wcBuilder)
 	if err != nil {
 		return nil, err
 	}
@@ -187,10 +196,10 @@ type reportHandler struct {
 	openFiles            map[string]io.WriteCloser
 }
 
-func newReportHandler(dir, reportName string, wcBuilder *output.WriteCloserBuilder) (*reportHandler, error) {
+func newReportHandler(dir, reportName, outerExt string, wcBuilder WriteCloserBuilder) (*reportHandler, error) {
 	reportArchiveName := fmt.Sprintf("%s.tar%s",
 		reportName,
-		wcBuilder.SuggestedFileExtension())
+		outerExt)
 	reportArchiveSwpName := "." + reportArchiveName + ".swp"
 	reportArchivePath := filepath.Join(dir, reportArchiveName)
 	reportArchiveSwpPath := filepath.Join(dir, reportArchiveSwpName)

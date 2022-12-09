@@ -404,6 +404,34 @@ func MakeApp() *cli.App {
 				}, segmentFilterFlags...), suspendFlags...),
 			},
 			{
+				Name:      "receive",
+				Usage:     "starts a server receiving reports from other yapscan clients (see --report-server flag of scan command)",
+				Action:    receive,
+				ArgsUsage: "<listen-address>",
+				Flags: []cli.Flag{
+					&cli.StringFlag{
+						Name:        "report-dir",
+						Usage:       "the directory to which the report archives will be written",
+						DefaultText: "current working directory",
+					},
+					&cli.StringFlag{
+						Name:    "password",
+						Aliases: []string{"p"},
+						Usage:   "setting this will encrypt the report with the given password; ignored without --full-report",
+					},
+					&cli.StringFlag{
+						Name:    "pgpkey",
+						Aliases: []string{"k"},
+						Usage:   "setting this will encrypt the report with the public key in the given file; ignored without --full-report",
+					},
+					&cli.BoolFlag{
+						Name:    "verbose",
+						Aliases: []string{"v"},
+						Usage:   "activate debug output of the http server",
+					},
+				},
+			},
+			{
 				Name:      "anonymize",
 				Usage:     "anonymize reports",
 				Action:    anonymize,
