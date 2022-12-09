@@ -52,6 +52,15 @@ func scan(c *cli.Context) error {
 		return errors.Newf("expected at least one argument, or one of the flags \"--all-processes\", \"--all-drives\", \"--all-shares\", got zero")
 	}
 
+	if c.String("report-server") != "" {
+		if c.String("report-dir") != "" {
+			return errors.Newf("flags --report-server and --report-dir are cannot both be set")
+		}
+		if c.Bool("store-dumps") {
+			return errors.Newf("flags --report-server and --store-dumps are cannot both be set")
+		}
+	}
+
 	rules, err := yapscan.LoadYaraRules(c.String("rules"), c.Bool("rules-recurse"))
 	if err != nil {
 		return err
@@ -181,7 +190,6 @@ func scan(c *cli.Context) error {
 			reportName,
 			wcBuilder.SuggestedFileExtension())
 
-		// TODO: Disallow report-dir or store-dumps and report-server at the same time
 		var reportArchiver archiver.Archiver
 		if c.String("report-server") != "" {
 			reportArchiver, err = archiver.NewRemoteArchiver(c.String("report-server"), reportName)
