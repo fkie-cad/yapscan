@@ -357,6 +357,11 @@ func MakeApp() *cli.App {
 						Usage: "create a full report",
 						Value: false,
 					},
+					&cli.StringFlag{
+						Name:        "report-name",
+						Usage:       "name of the generated report, file-extension is added automatically",
+						DefaultText: "<hostname>_<utc_timestamp>",
+					},
 					&cli.BoolFlag{
 						Name:  "scan-mapped-files",
 						Usage: "when encountering memory-mapped files also scan the backing file on disk",

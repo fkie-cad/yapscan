@@ -183,9 +183,12 @@ func scan(c *cli.Context) error {
 			hostname = anonymizer.Anonymize(hostname)
 		}
 
-		reportName := fmt.Sprintf("%s_%s",
-			hostname,
-			time.Now().UTC().Format(filenameDateFormat))
+		reportName := c.String("report-name")
+		if reportName == "" {
+			reportName = fmt.Sprintf("%s_%s",
+				hostname,
+				time.Now().UTC().Format(filenameDateFormat))
+		}
 		reportArchivePath := fmt.Sprintf("%s.tar%s",
 			reportName,
 			wcBuilder.SuggestedFileExtension())
