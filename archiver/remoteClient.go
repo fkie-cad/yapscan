@@ -47,8 +47,6 @@ func (a *RemoteArchiver) SetServerCA(filepath string) error {
 		a.clientTLSConfig = a.defaultTLSConfig()
 	}
 
-	fmt.Println("READING CERT ", filepath)
-
 	file, err := os.Open(filepath)
 	if err != nil {
 		return fmt.Errorf("could not open server CA file, reason: %w", err)
