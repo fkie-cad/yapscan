@@ -9,7 +9,7 @@ RUN apt-get clean
 RUN apt-get update
 RUN apt-get install -y build-essential pkg-config \
     git gcc-multilib gcc-mingw-w64 autoconf automake \
-    libtool libjansson-dev libmagic-dev libssl-dev
+    libtool libjansson-dev libmagic-dev libssl-dev flex bison
 
 RUN mkdir /opt/cicd
 
