@@ -11,6 +11,7 @@ import (
 	"math/rand"
 	"net/http"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -201,7 +202,7 @@ func (s *ArchiverServer) registerReport(reportID, reportName string) (*reportHan
 
 	_, exists := s.openReports[reportID]
 	if exists {
-		return nil, fmt.Errorf("report with ID '%s' already exists", reportID)
+		return nil, fmt.Errorf("report with ID '%s' already exists", sanitizeStringForLogs(reportID))
 	}
 
 	handler, err := newReportHandler(s.outdir, reportName, s.outerExt, s.wcBuilder)
@@ -219,7 +220,7 @@ func (s *ArchiverServer) getReport(reportID string) (*reportHandler, error) {
 
 	report, exists := s.openReports[reportID]
 	if !exists {
-		return nil, fmt.Errorf("report with ID '%s' does not exists", reportID)
+		return nil, fmt.Errorf("report with ID '%s' does not exists", sanitizeStringForLogs(reportID))
 	}
 	return report, nil
 }
@@ -230,7 +231,7 @@ func (s *ArchiverServer) getAndRemoveReport(reportID string) (*reportHandler, er
 
 	report, exists := s.openReports[reportID]
 	if !exists {
-		return nil, fmt.Errorf("report with ID '%s' does not exists", reportID)
+		return nil, fmt.Errorf("report with ID '%s' does not exists", sanitizeStringForLogs(reportID))
 	}
 	delete(s.openReports, reportID)
 
@@ -241,19 +242,29 @@ type CreateReportRequest struct {
 	Name string `json:"name"`
 }
 
+func sanitizeFilename(name string) string {
+	return path.Base(path.Clean("/" + removeNewlines(name)))
+}
+
 func (s *ArchiverServer) createReport(c *gin.Context) {
 	var req CreateReportRequest
 	if err := c.ShouldBindJSON(&req); handleError(c, err) {
 		return
 	}
 
+	reportName := sanitizeFilename(req.Name)
+	if reportName == "." || reportName == "/" {
+		handleError(c, fmt.Errorf("invalid report name '%s'", sanitizeStringForLogs(req.Name)))
+		return
+	}
+
 	reportID := generateReportID()
-	_, err := s.registerReport(reportID, req.Name)
+	_, err := s.registerReport(reportID, reportName)
 	if handleError(c, err) {
 		return
 	}
 
-	logrus.Infof("Creating new report '%s' with ID '%s'", req.Name, reportID)
+	logrus.Infof("Creating new report '%s' with ID '%s'", sanitizeStringForLogs(req.Name), reportID)
 
 	c.JSON(http.StatusOK, gin.H{
 		"error":    nil,
@@ -269,7 +280,7 @@ func (s *ArchiverServer) closeReport(c *gin.Context) {
 	if handleError(c, report.Close()) {
 		return
 	}
-	logrus.Infof("Closed report with ID '%s'", c.Param("report"))
+	logrus.Infof("Closed report with ID '%s'", sanitizeStringForLogs(c.Param("report")))
 	sendOkay(c)
 }
 
@@ -357,10 +368,6 @@ func newReportHandler(dir, reportName, outerExt string, wcBuilder WriteCloserBui
 	}, nil
 }
 
-func sanitizePath(path string) string {
-	return strings.Trim(filepath.Clean(path), "/")
-}
-
 func (h *reportHandler) CreateFile(filepath string) error {
 	h.openFilesMux.Lock()
 	defer h.openFilesMux.Unlock()
@@ -422,4 +429,16 @@ func (h *reportHandler) Close() error {
 	err = errors.NewMultiError(err, h.archiver.Close())
 	err = errors.NewMultiError(err, os.Rename(h.reportArchiveSwpPath, h.reportArchivePath))
 	return err
+}
+
+func removeNewlines(s string) string {
+	return strings.Replace(strings.Replace(s, "\n", "", -1), "\r", "", -1)
+}
+
+func sanitizeStringForLogs(s string) string {
+	return removeNewlines(s)
+}
+
+func sanitizePath(path string) string {
+	return strings.Trim(filepath.Clean(removeNewlines(path)), "/")
 }

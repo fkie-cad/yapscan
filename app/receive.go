@@ -98,14 +98,14 @@ func receive(c *cli.Context) error {
 	}()
 
 	err = reportServer.Start()
+	if err != http.ErrServerClosed {
+		return cli.Exit(err, 10)
+	}
 
 	switch {
 	case <-shutdownStarted:
 		<-shutdownCompleted
 	default:
-	}
-	if err != http.ErrServerClosed {
-		return cli.Exit(err, 10)
 	}
 	return nil
 }
