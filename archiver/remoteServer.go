@@ -11,6 +11,7 @@ import (
 	"math/rand"
 	"net/http"
 	"os"
+	"path"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -241,14 +242,24 @@ type CreateReportRequest struct {
 	Name string `json:"name"`
 }
 
+func sanitizeFilename(name string) string {
+	return path.Base(path.Clean("/" + name))
+}
+
 func (s *ArchiverServer) createReport(c *gin.Context) {
 	var req CreateReportRequest
 	if err := c.ShouldBindJSON(&req); handleError(c, err) {
 		return
 	}
 
+	reportName := sanitizeFilename(req.Name)
+	if reportName == "." || reportName == "/" {
+		handleError(c, fmt.Errorf("invalid report name '%s'", req.Name))
+		return
+	}
+
 	reportID := generateReportID()
-	_, err := s.registerReport(reportID, req.Name)
+	_, err := s.registerReport(reportID, reportName)
 	if handleError(c, err) {
 		return
 	}
