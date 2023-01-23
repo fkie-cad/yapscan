@@ -8,7 +8,7 @@ require (
 	github.com/gin-gonic/gin v1.8.1
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510
 	github.com/hillu/go-yara/v4 v4.2.4
-	github.com/klauspost/compress v1.15.13
+	github.com/klauspost/compress v1.15.15
 	github.com/rjNemo/underscore v0.5.0
 	github.com/santhosh-tekuri/jsonschema/v5 v5.1.1
 	github.com/sirupsen/logrus v1.9.0
