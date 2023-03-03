@@ -3,7 +3,7 @@ module github.com/fkie-cad/yapscan
 go 1.18
 
 require (
-	github.com/dustin/go-humanize v1.0.0
+	github.com/dustin/go-humanize v1.0.1
 	github.com/fatih/color v1.13.0
 	github.com/gin-gonic/gin v1.9.0
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510
