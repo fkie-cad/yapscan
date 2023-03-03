@@ -4,7 +4,7 @@ go 1.18
 
 require (
 	github.com/dustin/go-humanize v1.0.1
-	github.com/fatih/color v1.13.0
+	github.com/fatih/color v1.14.1
 	github.com/gin-gonic/gin v1.9.0
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510
 	github.com/hillu/go-yara/v4 v4.2.4
@@ -36,7 +36,7 @@ require (
 	github.com/jtolds/gls v4.20.0+incompatible // indirect
 	github.com/klauspost/cpuid/v2 v2.0.9 // indirect
 	github.com/leodido/go-urn v1.2.1 // indirect
-	github.com/mattn/go-colorable v0.1.12 // indirect
+	github.com/mattn/go-colorable v0.1.13 // indirect
 	github.com/mattn/go-isatty v0.0.17 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180228061459-e0a39a4cb421 // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect
