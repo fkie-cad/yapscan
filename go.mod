@@ -18,7 +18,7 @@ require (
 	github.com/urfave/cli/v2 v2.24.4
 	github.com/yeka/zip v0.0.0-20180914125537-d046722c6feb
 	golang.org/x/crypto v0.6.0
-	golang.org/x/sys v0.5.0
+	golang.org/x/sys v0.6.0
 )
 
 require (
