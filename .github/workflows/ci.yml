@@ -40,7 +40,7 @@ jobs:
                   cache: 'true'
 
             - name: Set up Go
-              uses: actions/setup-go@v3
+              uses: actions/setup-go@v4
               with:
                   go-version: ${{ matrix.go-version }}
                   cache: true
@@ -83,7 +83,7 @@ jobs:
                   cache: 'true'
 
             - name: Set up Go
-              uses: actions/setup-go@v3
+              uses: actions/setup-go@v4
               with:
                   go-version: ${{ matrix.go-version }}
                   cache: true
