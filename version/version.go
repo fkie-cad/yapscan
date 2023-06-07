@@ -10,7 +10,7 @@ import (
 var YapscanVersion = Version{
 	Major:  0,
 	Minor:  19,
-	Bugfix: 1,
+	Bugfix: 3,
 }
 
 type Version struct {
