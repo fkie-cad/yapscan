@@ -4,7 +4,7 @@ go 1.18
 
 require (
 	github.com/dustin/go-humanize v1.0.1
-	github.com/fatih/color v1.14.1
+	github.com/fatih/color v1.15.0
 	github.com/gin-gonic/gin v1.9.0
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510
 	github.com/hillu/go-yara/v4 v4.2.4
@@ -18,7 +18,7 @@ require (
 	github.com/urfave/cli/v2 v2.24.4
 	github.com/yeka/zip v0.0.0-20180914125537-d046722c6feb
 	golang.org/x/crypto v0.6.0
-	golang.org/x/sys v0.5.0
+	golang.org/x/sys v0.6.0
 )
 
 require (
