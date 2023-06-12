@@ -13,7 +13,7 @@ require (
 	github.com/santhosh-tekuri/jsonschema/v5 v5.2.0
 	github.com/sirupsen/logrus v1.9.0
 	github.com/smartystreets/goconvey v1.7.2
-	github.com/stretchr/testify v1.8.2
+	github.com/stretchr/testify v1.8.4
 	github.com/targodan/go-errors v1.0.0
 	github.com/urfave/cli/v2 v2.25.5
 	github.com/yeka/zip v0.0.0-20180914125537-d046722c6feb
