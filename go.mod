@@ -9,11 +9,11 @@ require (
 	github.com/google/shlex v0.0.0-20191202100458-e7afc7fbc510
 	github.com/hillu/go-yara/v4 v4.2.4
 	github.com/klauspost/compress v1.16.5
-	github.com/rjNemo/underscore v0.5.0
+	github.com/rjNemo/underscore v0.6.1
 	github.com/santhosh-tekuri/jsonschema/v5 v5.2.0
 	github.com/sirupsen/logrus v1.9.0
 	github.com/smartystreets/goconvey v1.7.2
-	github.com/stretchr/testify v1.8.2
+	github.com/stretchr/testify v1.8.4
 	github.com/targodan/go-errors v1.0.0
 	github.com/urfave/cli/v2 v2.25.5
 	github.com/yeka/zip v0.0.0-20180914125537-d046722c6feb
@@ -49,7 +49,7 @@ require (
 	github.com/ugorji/go/codec v1.2.10 // indirect
 	github.com/xrash/smetrics v0.0.0-20201216005158-039620a65673 // indirect
 	golang.org/x/arch v0.2.0 // indirect
-	golang.org/x/exp v0.0.0-20230224173230-c95f2b4c22f2 // indirect
+	golang.org/x/exp v0.0.0-20230522175609-2e198f4a06a1 // indirect
 	golang.org/x/net v0.10.0 // indirect
 	golang.org/x/text v0.9.0 // indirect
 	google.golang.org/protobuf v1.28.1 // indirect
