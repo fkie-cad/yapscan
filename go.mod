@@ -10,7 +10,7 @@ require (
 	github.com/hillu/go-yara/v4 v4.2.4
 	github.com/klauspost/compress v1.16.5
 	github.com/rjNemo/underscore v0.5.0
-	github.com/santhosh-tekuri/jsonschema/v5 v5.2.0
+	github.com/santhosh-tekuri/jsonschema/v5 v5.3.1
 	github.com/sirupsen/logrus v1.9.0
 	github.com/smartystreets/goconvey v1.7.2
 	github.com/stretchr/testify v1.8.2
